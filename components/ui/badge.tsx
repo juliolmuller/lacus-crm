@@ -1,5 +1,6 @@
 import { AlertTriangle, Check, Clock } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { contactStatuses, statusLabel, type ContactStatus } from '@/lib/leads/labels';
 import { cn } from '@/lib/utils';
 
 const tones = {
@@ -29,17 +30,21 @@ export function Badge({
   );
 }
 
-export const contactStatusMeta = {
-  new: { label: 'Novo', tone: 'neutral' },
-  to_contact: { label: 'A abordar', tone: 'primary' },
-  contacted: { label: 'Abordado', tone: 'primary' },
-  no_response: { label: 'Sem resposta', tone: 'warning' },
-  replied: { label: 'Respondeu', tone: 'success' },
-  negotiating: { label: 'Em negociação', tone: 'warning' },
-  client: { label: 'Cliente', tone: 'success' },
-  lost: { label: 'Perdido', tone: 'danger' },
-  discarded: { label: 'Descartado', tone: 'neutral' },
-} as const satisfies Record<string, { label: string; tone: keyof typeof tones }>;
+const statusTone = {
+  new: 'neutral',
+  to_contact: 'primary',
+  contacted: 'primary',
+  no_response: 'warning',
+  replied: 'success',
+  negotiating: 'warning',
+  client: 'success',
+  lost: 'danger',
+  discarded: 'neutral',
+} as const satisfies Record<ContactStatus, keyof typeof tones>;
+
+export const contactStatusMeta = Object.fromEntries(
+  contactStatuses.map((s) => [s, { label: statusLabel[s], tone: statusTone[s] }]),
+) as Record<ContactStatus, { label: string; tone: keyof typeof tones }>;
 
 export function StatusBadge({ status }: { status: keyof typeof contactStatusMeta }) {
   const { label, tone } = contactStatusMeta[status];

@@ -1,0 +1,8 @@
+"Limite diário de requisições (editável)","30","","limite"
+"Usadas hoje","15"
+"Saldo de hoje","15"
+""
+"Data","Hora","Ordem na fila","Requisições","Leads gravados","Observação"
+"12/11/2026","13:10","-","3","0","Testes"
+"12/11/2026","14:01","1","8","4","Xaxim × Clínicas; STATUS=OK"
+"13/11/2026","6:36","2","8","0","Boqueirão; STATUS=OK"

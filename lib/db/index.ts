@@ -2,6 +2,8 @@ import { attachDatabasePool } from '@vercel/functions';
 import { Pool as NeonPool } from '@neondatabase/serverless';
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
 import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
+import type { NodePgQueryResultHKT } from 'drizzle-orm/node-postgres';
+import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { Pool as PgPool } from 'pg';
 import { getEnv } from '@/lib/env';
 import * as schema from './schema';
@@ -20,7 +22,8 @@ function create() {
     : drizzlePg(pool as PgPool, { schema });
 }
 
-type Db = ReturnType<typeof drizzlePg<typeof schema>>;
+/** Banco ou transação: os serviços aceitam os dois (transaction() dentro de uma transação vira SAVEPOINT). */
+export type Db = PgDatabase<NodePgQueryResultHKT, typeof schema>;
 
 const globalForDb = globalThis as unknown as { __db?: Db };
 

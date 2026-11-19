@@ -12,6 +12,7 @@ export default defineConfig({
         test: {
           name: 'int',
           include: ['tests/int/**/*.test.ts'],
+          globalSetup: ['tests/int/global-setup.ts'],
           setupFiles: ['tests/int/setup.ts'],
           fileParallelism: false,
         },
