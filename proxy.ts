@@ -25,6 +25,8 @@ function csp(nonce: string) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
     "font-src 'self'",
+    "worker-src 'self'",
+    "manifest-src 'self'",
     `connect-src 'self'${dev ? ' ws: wss:' : ''}`,
     "object-src 'none'",
     "base-uri 'self'",
