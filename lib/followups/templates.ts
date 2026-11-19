@@ -49,7 +49,7 @@ type LeadLike = {
   name: string;
   mapsRating: string | null;
   mapsReviews: number | null;
-  websiteStatus: WebsiteStatus;
+  websiteStatus: WebsiteStatus | null;
   pitch: string | null;
 };
 
@@ -66,7 +66,7 @@ export function templateValues(
     cidade: region.city,
     nota_maps: lead.mapsRating,
     avaliacoes: lead.mapsReviews?.toString(),
-    situacao_site: siteLabel[lead.websiteStatus],
+    situacao_site: siteLabel[lead.websiteStatus ?? 'unknown'],
     argumento: lead.pitch,
     meu_nome: profile.name,
     link_portfolio: profile.portfolioUrl,

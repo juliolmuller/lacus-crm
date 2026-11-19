@@ -4,6 +4,7 @@ import { schema } from '@/lib/db';
 import { keyBetween, needsRebalance, rebalanceKeys } from '@/lib/funnel/fractional';
 import { DNC_REASON, syncedStatus } from '@/lib/funnel/status-sync';
 import type { ContactStatus } from '@/lib/leads/labels';
+import { nextDueByLead } from './reminders';
 import { applyRules } from './rules';
 import { setDoNotContact } from './leads';
 
@@ -393,6 +394,9 @@ export type BoardCard = {
   score: number;
   whatsapp: string | null;
   daysInStage: number;
+  /** próximo lembrete aberto do lead (ISO) */
+  nextFollowupAt: string | null;
+  followupOverdue: boolean;
   status: 'open' | 'won' | 'lost';
 };
 export type BoardStage = Stage & { count: number; total: string };
@@ -451,6 +455,9 @@ export async function listBoard(db: Db) {
       ),
   ]);
   const now = Date.now();
+  const next = await nextDueByLead(db, [
+    ...new Set([...open, ...closed.flat()].map((r) => r.leadId)),
+  ]);
   const toCard = (r: (typeof open)[number]): BoardCard => ({
     id: r.id,
     leadId: r.leadId,
@@ -463,6 +470,8 @@ export async function listBoard(db: Db) {
     score: r.score,
     whatsapp: r.hasWhatsapp ? r.phone : null,
     daysInStage: Math.max(0, Math.floor((now - r.enteredAt.getTime()) / 86_400_000)),
+    nextFollowupAt: next.get(r.leadId)?.toISOString() ?? null,
+    followupOverdue: (next.get(r.leadId)?.getTime() ?? Infinity) < now,
     status: r.status,
   });
   const byStage = new Map(totals.map((t) => [t.stageId, t]));
@@ -491,7 +500,7 @@ export async function getDealDetail(db: Db, id: string) {
     .innerJoin(niches, eq(niches.id, leads.nicheId))
     .where(eq(deals.id, id));
   if (!row) return null;
-  const [ints, hist, rems, stages] = await Promise.all([
+  const [ints, hist, rems, stages, openRems] = await Promise.all([
     db
       .select()
       .from(interactions)
@@ -505,6 +514,11 @@ export async function getDealDetail(db: Db, id: string) {
       .orderBy(desc(dealStageHistory.movedAt)),
     db.select().from(reminders).where(eq(reminders.dealId, id)).orderBy(desc(reminders.dueAt)),
     db.select().from(dealStages).orderBy(asc(dealStages.sort)),
+    db
+      .select()
+      .from(reminders)
+      .where(and(eq(reminders.leadId, row.deal.leadId), eq(reminders.status, 'open')))
+      .orderBy(asc(reminders.dueAt)),
   ]);
   const name = new Map(stages.map((s) => [s.id, s.name]));
   const timeline: TimelineItem[] = [
@@ -519,6 +533,6 @@ export async function getDealDetail(db: Db, id: string) {
     })),
     ...rems.map((r): TimelineItem => ({ kind: 'reminder', at: r.dueAt, id: r.id, row: r })),
   ].sort((a, b) => b.at.getTime() - a.at.getTime());
-  return { ...row, timeline };
+  return { ...row, timeline, openReminders: openRems };
 }
 export type DealDetail = NonNullable<Awaited<ReturnType<typeof getDealDetail>>>;

@@ -109,3 +109,21 @@ export function spDateTime(ymd: string, hhmm: string): Date {
   const guess = Date.parse(`${ymd}T${hhmm}:00Z`);
   return new Date(guess - offsetMs(guess - offsetMs(guess)));
 }
+
+/** Valor de <input type="datetime-local"> ("AAAA-MM-DDTHH:MM") de um instante, em São Paulo. */
+export const spInputValue = (d: Date): string => {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: TZ,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+      .formatToParts(d)
+      .map((x) => [x.type, x.value]),
+  );
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+};

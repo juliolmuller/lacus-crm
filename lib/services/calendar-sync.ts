@@ -328,3 +328,23 @@ export async function syncOverview(db: Db) {
     pending: Number(c?.pending ?? 0),
   };
 }
+
+/** Ids de eventos do Calendar de um lead (guardados antes de excluí-lo, que apaga os lembretes). */
+export async function leadEventIds(db: Db, leadId: string) {
+  const rows = await db
+    .select({ id: reminders.googleEventId })
+    .from(reminders)
+    .where(and(eq(reminders.leadId, leadId), isNotNull(reminders.googleEventId)));
+  return rows.flatMap((r) => (r.id ? [r.id] : []));
+}
+
+/** Apaga eventos órfãos (lead excluído). Melhor esforço: 404/410 contam como feito. */
+export async function purgeEvents(db: Db, ctx: SyncContext, eventIds: string[]) {
+  const conn = await getConnection(db);
+  if (!conn || conn.status !== 'active' || !conn.calendarId || !eventIds.length) return;
+  const api = calendarApi(ctx.deps, tokenSource(db, ctx, conn));
+  for (const id of eventIds)
+    await api.remove(conn.calendarId, id).catch((e) => {
+      if (!isGone(e)) throw e;
+    });
+}

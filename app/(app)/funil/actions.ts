@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { fail, type Result } from '@/lib/action-result';
 import { requireOwner } from '@/lib/auth/dal';
 import { getDb } from '@/lib/db';
+import { syncAfterResponse } from '@/lib/google/context';
 import { lossReasons } from '@/lib/funnel/status-sync';
 import { parseContactDate, parseDate, parseNumber } from '@/lib/leads/csv';
 import { createDeal, loseDeal, moveDeal, updateDeal, winDeal } from '@/lib/services/deals';
@@ -32,6 +33,7 @@ export async function moveDealAction(input: unknown): Promise<Result<{ reminders
   if (!p.success) return { ok: false, error: 'Movimento inválido' };
   try {
     const r = await moveDeal(getDb(), p.data);
+    syncAfterResponse();
     return { ok: true, reminders: r.reminderIds.length };
   } catch (e) {
     return fail(e);
@@ -46,6 +48,7 @@ export async function winDealAction(dealId: string, value: string, date: string)
       value: money(value),
       wonAt: date ? parseContactDate(parseDate(date)) : undefined,
     });
+    syncAfterResponse();
     return { ok: true };
   } catch (e) {
     return formError(e);
@@ -64,6 +67,7 @@ export async function loseDealAction(
   if (!p.success) return { ok: false, error: 'Escolha o motivo da perda' };
   try {
     await loseDeal(getDb(), p.data);
+    syncAfterResponse();
     return { ok: true };
   } catch (e) {
     return fail(e);
@@ -74,6 +78,7 @@ export async function createDealAction(leadId: string): Promise<Result<{ id: str
   await requireOwner();
   try {
     const d = await createDeal(getDb(), { leadId: uuid.parse(leadId), source: 'ui' });
+    syncAfterResponse();
     return { ok: true, id: d.id };
   } catch (e) {
     return fail(e);
@@ -128,16 +133,22 @@ const interactionSchema = z.object({
     .nullable(),
   summary: z.string().trim().min(1, 'Descreva a interação').max(300),
   body: z.string().trim().max(5000).nullable(),
+  meetingOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  resumeInDays: z.number().int().min(1).max(250).optional(),
 });
 
 /** Criação rápida de interação (drawer do lead e da negociação). */
-export async function logInteractionAction(input: unknown): Promise<Result> {
+export async function logInteractionAction(input: unknown): Promise<Result<{ reminders: number }>> {
   await requireOwner();
   const p = interactionSchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? 'Dados inválidos' };
   try {
-    await logInteraction(getDb(), { ...p.data, createdBy: 'user' });
-    return { ok: true };
+    const r = await logInteraction(getDb(), { ...p.data, createdBy: 'user' });
+    syncAfterResponse();
+    return { ok: true, reminders: r.reminderIds.length };
   } catch (e) {
     return fail(e);
   }

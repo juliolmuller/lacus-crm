@@ -1,10 +1,13 @@
 'use server';
 
 import { and, asc, eq } from 'drizzle-orm';
+import { after } from 'next/server';
 import { z } from 'zod';
 import { fail, type Result } from '@/lib/action-result';
 import { requireOwner } from '@/lib/auth/dal';
 import { getDb, schema } from '@/lib/db';
+import { syncAfterResponse, syncContext } from '@/lib/google/context';
+import { leadEventIds, purgeEvents } from '@/lib/services/calendar-sync';
 import { safeUrl } from '@/lib/leads/links';
 import { contactStatuses } from '@/lib/leads/labels';
 import { parseFilters } from '@/lib/leads/filters-server';
@@ -140,6 +143,7 @@ export async function markDoNotContact(
   if (reason.trim().length < 3) return { ok: false, error: 'Informe o motivo' };
   try {
     await setDoNotContact(getDb(), id, { reason: reason.trim(), optOut });
+    syncAfterResponse();
     return { ok: true };
   } catch (e) {
     return fail(e);
@@ -149,23 +153,34 @@ export async function markDoNotContact(
 export async function deleteLeadAction(id: string, typedName: string): Promise<Result> {
   await requireOwner();
   try {
+    const events = await leadEventIds(getDb(), id);
     await deleteLead(getDb(), id, typedName);
+    after(() => purgeEvents(getDb(), syncContext(), events).catch((e) => console.error(e)));
     return { ok: true };
   } catch (e) {
     return fail(e);
   }
 }
 
-export async function registerApproachAction(id: string): Promise<Result> {
+/** "Registrar como abordado?": outbound por WhatsApp, com o modelo e o texto usados (se houve). */
+export async function registerApproachAction(
+  id: string,
+  sent?: { templateId: number; name: string; body: string },
+): Promise<Result<{ reminders: number }>> {
   await requireOwner();
   try {
-    await logInteraction(getDb(), {
+    const r = await logInteraction(getDb(), {
       leadId: id,
       type: 'whatsapp',
       direction: 'outbound',
-      summary: 'Mensagem enviada por WhatsApp',
+      summary: sent
+        ? `Mensagem enviada por WhatsApp: ${sent.name}`
+        : 'Mensagem enviada por WhatsApp',
+      body: sent?.body ?? null,
+      templateId: sent?.templateId ?? null,
     });
-    return { ok: true };
+    syncAfterResponse();
+    return { ok: true, reminders: r.reminderIds.length };
   } catch (e) {
     return fail(e);
   }

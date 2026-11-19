@@ -3,11 +3,14 @@ import type { Db } from '@/lib/db';
 import { schema } from '@/lib/db';
 import { spDateTime, spYmd } from '@/lib/followups/business-days';
 import { snoozeDue, type SnoozePreset } from '@/lib/followups/snooze';
+import { renderTemplate, templateValues } from '@/lib/followups/templates';
+import { whatsappUrl } from '@/lib/leads/links';
 import { cadence } from '@/lib/validation/followups';
+import { getSetting } from './followup-settings';
 import { logInteraction, type InteractionInput } from './interactions';
 import { businessCalendar } from './rules';
 
-const { reminders, leads, followupRules } = schema;
+const { reminders, leads, followupRules, messageTemplates, niches, regions } = schema;
 
 export class ReminderError extends Error {
   constructor(
@@ -216,22 +219,6 @@ export async function listReminders(db: Db, tab: ReminderTab, now = new Date()) 
   return { rows, counts: { overdue: Number(c?.overdue ?? 0), today: Number(c?.today ?? 0) } };
 }
 
-/** Lembretes abertos de um lead (drawers do lead e da negociação). */
-export async function listLeadReminders(db: Db, leadId: string) {
-  return db
-    .select({
-      id: reminders.id,
-      title: reminders.title,
-      dueAt: reminders.dueAt,
-      dealId: reminders.dealId,
-      source: reminders.source,
-      syncStatus: reminders.syncStatus,
-    })
-    .from(reminders)
-    .where(and(eq(reminders.leadId, leadId), eq(reminders.status, 'open')))
-    .orderBy(asc(reminders.dueAt));
-}
-
 /** Próximo vencimento aberto por lead (cartões do funil). */
 export async function nextDueByLead(db: Db, leadIds: string[]) {
   if (!leadIds.length) return new Map<string, Date>();
@@ -241,4 +228,46 @@ export async function nextDueByLead(db: Db, leadIds: string[]) {
     .where(and(eq(reminders.status, 'open'), inArray(reminders.leadId, leadIds)))
     .groupBy(reminders.leadId);
   return new Map(rows.map((r) => [r.leadId, new Date(r.due)]));
+}
+
+/**
+ * Link do WhatsApp de cada lembrete: se o passo da cadência tem modelo e a mensagem renderiza sem
+ * variáveis faltando, o texto vai junto (`?text=`); senão, abre a conversa em branco.
+ */
+export async function whatsappLinks(db: Db, rows: ReminderRow[], now = new Date()) {
+  const out = new Map<string, string | null>();
+  const withStep = rows.map((r) => ({ r, step: stepOf(r.dedupeKey) }));
+  const ruleIds = [...new Set(withStep.flatMap((x) => (x.step ? [x.step.ruleId] : [])))];
+  const rules = ruleIds.length
+    ? await db.select().from(followupRules).where(inArray(followupRules.id, ruleIds))
+    : [];
+  const keyOf = (s: { ruleId: number; index: number } | null) => {
+    if (!s) return undefined;
+    const c = cadence.safeParse(rules.find((x) => x.id === s.ruleId)?.cadence);
+    return c.success ? c.data[s.index]?.templateKey : undefined;
+  };
+  const keys = [...new Set(withStep.flatMap((x) => keyOf(x.step) ?? []))];
+  const templates = keys.length
+    ? await db.select().from(messageTemplates).where(inArray(messageTemplates.key, keys))
+    : [];
+  const profile = templates.length ? await getSetting(db, 'owner_profile') : {};
+  for (const { r, step } of withStep) {
+    const base = whatsappUrl(r.phone);
+    const tpl = templates.find((t) => t.key === keyOf(step));
+    let url = base;
+    if (base && tpl) {
+      const [x] = await db
+        .select({ lead: leads, niche: niches, region: regions })
+        .from(leads)
+        .innerJoin(niches, eq(niches.id, leads.nicheId))
+        .innerJoin(regions, eq(regions.id, leads.regionId))
+        .where(eq(leads.id, r.leadId));
+      if (x) {
+        const m = renderTemplate(tpl.body, templateValues(x.lead, x.niche, x.region, profile), now);
+        if (!m.blocked) url = whatsappUrl(r.phone, m.text);
+      }
+    }
+    out.set(r.id, url);
+  }
+  return out;
 }
