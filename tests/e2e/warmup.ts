@@ -18,6 +18,9 @@ export default async function warmup() {
     '/api/leads/export',
     '/api/leads/import',
     '/design-system',
+    '/funil',
+    `/funil?deal=${nil}`,
+    '/configuracoes',
   ]) {
     await fetch(base + path, { headers: { cookie } });
   }

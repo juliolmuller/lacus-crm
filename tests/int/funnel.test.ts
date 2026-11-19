@@ -10,7 +10,7 @@ import {
   winDeal,
 } from '@/lib/services/deals';
 import { logInteraction } from '@/lib/services/interactions';
-import { archiveStage, createStage } from '@/lib/services/stages';
+import { archiveStage, createStage, listStages } from '@/lib/services/stages';
 import { inTx, schema } from './db';
 
 const { leads, niches, regions, dealStages, deals, dealStageHistory, suppressionList } = schema;
@@ -351,6 +351,7 @@ describe('listBoard e etapas', () => {
       const all = await tx.select().from(dealStages).orderBy(asc(dealStages.sort));
       expect(all.map((x) => x.key).slice(-3)).toEqual(['proposta_enviada', 'won', 'lost']);
       const d = await createDeal(tx, { leadId: ls[0]!.id, stageKey: s.key, source: 'ui' });
+      expect((await listStages(tx)).find((r) => r.stage.id === s.id)?.open).toBe(1);
       await expect(archiveStage(tx, s.id, true)).rejects.toBeInstanceOf(DealError);
       await moveDeal(tx, {
         dealId: d.id,

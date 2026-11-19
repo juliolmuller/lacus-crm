@@ -5,6 +5,7 @@ const port = 3100;
 export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
+  workers: 2, // o dev server compila sob demanda: mais workers só trazem timeouts
   globalSetup: './tests/e2e/warmup.ts',
   timeout: 120_000, // máquina de dev carregada: o 1º page.goto do navegador chega a levar 25 s
   retries: 1, // a 1ª compilação do dev server pode recarregar a página no meio do teste
