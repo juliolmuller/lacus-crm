@@ -20,6 +20,8 @@ export function LogoutButton({ iconOnly }: { iconOnly?: boolean }) {
       onClick={async () => {
         setLoading(true);
         await authClient.signOut(); // revoga a sessão no banco
+        // o service worker apaga os caches de runtime (snapshot com dados do usuário)
+        navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_CACHES' });
         router.replace('/login');
       }}
     >
