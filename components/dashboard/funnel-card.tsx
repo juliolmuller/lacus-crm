@@ -1,6 +1,6 @@
 import { formatMoney, formatPercent } from '@/lib/format';
 import type { Funnel } from '@/lib/services/dashboard';
-import { HBarChart, type BarDatum } from './charts';
+import { HBarChart, type BarDatum } from './lazy-charts';
 import { Empty, Panel } from './panel';
 
 /** Barras por etapa (quantidade e R$) e a conversão entre etapas consecutivas. */

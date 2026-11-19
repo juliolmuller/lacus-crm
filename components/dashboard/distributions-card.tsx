@@ -1,6 +1,6 @@
 import { statusLabel } from '@/lib/leads/labels';
 import type { Distributions } from '@/lib/services/dashboard';
-import { HBarChart, type BarDatum } from './charts';
+import { HBarChart, type BarDatum } from './lazy-charts';
 import { Empty, Panel } from './panel';
 
 const bars = (rows: { name: string; count: number; fill?: string }[]): BarDatum[] =>
