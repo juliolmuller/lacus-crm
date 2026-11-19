@@ -367,31 +367,3 @@ export async function recomputeAllScores(db: Db, batchSize = 500) {
     after = batch[batch.length - 1]!.lead.id;
   }
 }
-
-/** "Registrar como abordado": interação outbound, último contato agora e status → abordado (só se ainda não avançou). */
-export async function registerApproach(
-  db: Db,
-  id: string,
-  channel: 'whatsapp' | 'call' = 'whatsapp',
-) {
-  await db.transaction(async (tx) => {
-    const cur = await getLead(tx, id);
-    if (!cur) throw new LeadError('NOT_FOUND', 'Lead não encontrado');
-    await tx.insert(interactions).values({
-      leadId: id,
-      type: channel,
-      direction: 'outbound',
-      summary: channel === 'whatsapp' ? 'Mensagem enviada por WhatsApp' : 'Ligação',
-      createdBy: 'user',
-    });
-    const advance = ['new', 'to_contact'].includes(cur.lead.contactStatus);
-    await tx
-      .update(leads)
-      .set({
-        lastContactAt: new Date(),
-        channel: channel === 'whatsapp' ? 'WhatsApp' : 'Ligação',
-        ...(advance ? { contactStatus: 'contacted', contactStatusChangedAt: new Date() } : {}),
-      })
-      .where(eq(leads.id, id));
-  });
-}

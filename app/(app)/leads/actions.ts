@@ -2,11 +2,13 @@
 
 import { and, asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { fail, type Result } from '@/lib/action-result';
 import { requireOwner } from '@/lib/auth/dal';
 import { getDb, schema } from '@/lib/db';
 import { safeUrl } from '@/lib/leads/links';
 import { contactStatuses } from '@/lib/leads/labels';
 import { parseFilters } from '@/lib/leads/filters-server';
+import { logInteraction } from '@/lib/services/interactions';
 import { prepareLeadInput } from '@/lib/services/lead-form';
 import { listLeads } from '@/lib/services/lead-list';
 import {
@@ -15,18 +17,9 @@ import {
   createLead,
   deleteLead,
   getLead,
-  registerApproach,
   setDoNotContact,
   updateLead,
 } from '@/lib/services/leads';
-
-type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
-
-const fail = (e: unknown): { ok: false; error: string } => {
-  if (e instanceof LeadError) return { ok: false, error: e.message };
-  console.error(e);
-  return { ok: false, error: 'Não foi possível concluir. Tente de novo.' };
-};
 
 const toFilters = (qs: string) => parseFilters(Object.fromEntries(new URLSearchParams(qs)));
 const toRow = (fd: FormData) =>
@@ -167,7 +160,12 @@ export async function deleteLeadAction(id: string, typedName: string): Promise<R
 export async function registerApproachAction(id: string): Promise<Result> {
   await requireOwner();
   try {
-    await registerApproach(getDb(), id);
+    await logInteraction(getDb(), {
+      leadId: id,
+      type: 'whatsapp',
+      direction: 'outbound',
+      summary: 'Mensagem enviada por WhatsApp',
+    });
     return { ok: true };
   } catch (e) {
     return fail(e);
