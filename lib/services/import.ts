@@ -1,5 +1,5 @@
 import { and, eq, or } from 'drizzle-orm';
-import { TransactionRollbackError } from 'drizzle-orm';
+import { TransactionRollbackError, is } from 'drizzle-orm';
 import type { Db } from '@/lib/db';
 import { schema } from '@/lib/db';
 import { parseLeadRow } from '@/lib/leads/csv';
@@ -58,7 +58,8 @@ export async function inRollbackableTx<T>(db: Db, dryRun: boolean, fn: (tx: Db) 
       if (dryRun) tx.rollback();
     });
   } catch (e) {
-    if (!(e instanceof TransactionRollbackError)) throw e;
+    // `is` compara o entityKind: `instanceof` falha se o bundler duplicar o drizzle-orm
+    if (!is(e, TransactionRollbackError)) throw e;
   }
   return result;
 }
