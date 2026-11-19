@@ -2,6 +2,7 @@ import { and, asc, eq, gt, inArray, or, sql } from 'drizzle-orm';
 import type { Db } from '@/lib/db';
 import { schema } from '@/lib/db';
 import { suppressionKeys } from '@/lib/hash';
+import { spDate } from '@/lib/leads/csv';
 import { normalizeName, normalizePhone, type ParsedPlace } from '@/lib/normalize';
 import { computeScore, type ScoreNiche, type ScoreSettings } from '@/lib/score';
 import { parseSetting, settingDefaults } from '@/lib/validation/settings';
@@ -36,6 +37,21 @@ export class LeadError extends Error {
     super(message);
   }
 }
+
+const sameValue = (key: string, a: unknown, b: unknown) => {
+  if (key === 'lastContactAt') {
+    // a planilha e o formulário só têm a data: compara o dia em São Paulo
+    return (a instanceof Date ? spDate(a) : null) === (b instanceof Date ? spDate(b) : null);
+  }
+  if (a instanceof Date || b instanceof Date) return +new Date(a as Date) === +new Date(b as Date);
+  return (a ?? null) === (b ?? null);
+};
+
+/** Chaves do patch cujo valor difere do lead atual (evita regravar o que não mudou). */
+export const changedFields = (current: object, patch: object) =>
+  Object.entries(patch)
+    .filter(([k, v]) => !sameValue(k, (current as Record<string, unknown>)[k], v))
+    .map(([k]) => k);
 
 export async function getScoreSettings(db: Db): Promise<ScoreSettings> {
   const rows = await db
@@ -350,4 +366,32 @@ export async function recomputeAllScores(db: Db, batchSize = 500) {
     });
     after = batch[batch.length - 1]!.lead.id;
   }
+}
+
+/** "Registrar como abordado": interação outbound, último contato agora e status → abordado (só se ainda não avançou). */
+export async function registerApproach(
+  db: Db,
+  id: string,
+  channel: 'whatsapp' | 'call' = 'whatsapp',
+) {
+  await db.transaction(async (tx) => {
+    const cur = await getLead(tx, id);
+    if (!cur) throw new LeadError('NOT_FOUND', 'Lead não encontrado');
+    await tx.insert(interactions).values({
+      leadId: id,
+      type: channel,
+      direction: 'outbound',
+      summary: channel === 'whatsapp' ? 'Mensagem enviada por WhatsApp' : 'Ligação',
+      createdBy: 'user',
+    });
+    const advance = ['new', 'to_contact'].includes(cur.lead.contactStatus);
+    await tx
+      .update(leads)
+      .set({
+        lastContactAt: new Date(),
+        channel: channel === 'whatsapp' ? 'WhatsApp' : 'Ligação',
+        ...(advance ? { contactStatus: 'contacted', contactStatusChangedAt: new Date() } : {}),
+      })
+      .where(eq(leads.id, id));
+  });
 }

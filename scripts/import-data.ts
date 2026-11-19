@@ -47,6 +47,34 @@ if (existsSync(`${dir}/uso-da-api.csv`))
   out.usoApi = await cat.importApiUsage(db, matrix('uso-da-api.csv'), { dryRun });
 
 writeFileSync(`${dir}/import-report.json`, JSON.stringify(out, null, 2));
+
+// Candidatos a "Não contatar": só relatório, nada é aplicado (PLAN, decisão 4).
+const cands = new Map<string, { id: string; name: string; status: string; evidence: string[] }>();
+for (const k of ['leads', 'topLeads'] as const)
+  for (const c of (
+    out[k] as
+      | { dncCandidates?: { id: string; name: string; status: string; evidence: string[] }[] }
+      | undefined
+  )?.dncCandidates ?? [])
+    cands.set(c.id, c);
+const cell = (t: string) => t.replace(/\|/g, '\\|').replace(/\s+/g, ' ').slice(0, 160);
+writeFileSync(
+  `${dir}/dnc-candidates.md`,
+  [
+    '# Candidatos a "Não contatar" (NÃO aplicados)',
+    '',
+    `Gerado por \`pnpm db:import\` em ${new Date().toISOString().slice(0, 10)}. Nada foi marcado no banco: o Júlio confirma cada caso.`,
+    '',
+    '| Lead | Status | ID | Evidência |',
+    '|---|---|---|---|',
+    ...[...cands.values()].map(
+      (c) => `| ${c.name} | ${c.status} | \`${c.id}\` | ${c.evidence.map(cell).join(' / ')} |`,
+    ),
+    '',
+    'Para aplicar um caso: abrir o lead em `/leads` e usar **Não contatar** (opt-out).',
+    '',
+  ].join('\n'),
+);
 const short = (r: { messages?: string[] }) => ({
   ...r,
   rows: undefined,

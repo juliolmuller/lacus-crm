@@ -2,12 +2,12 @@ import { and, eq, or } from 'drizzle-orm';
 import { TransactionRollbackError } from 'drizzle-orm';
 import type { Db } from '@/lib/db';
 import { schema } from '@/lib/db';
-import { parseLeadRow, spDate } from '@/lib/leads/csv';
+import { parseLeadRow } from '@/lib/leads/csv';
 import { dncEvidence } from '@/lib/leads/dnc';
 import { statusLabel, type ContactStatus } from '@/lib/leads/labels';
 import { normalizeName, parseCityNeighborhood } from '@/lib/normalize';
 import { createDeal, stageKeyForStatus } from './deals';
-import { createLead, getScoreSettings, resolveRegion, updateLead, type LeadValues } from './leads';
+import { changedFields, createLead, resolveRegion, updateLead, type LeadValues } from './leads';
 
 const { leads, niches, deals, interactions } = schema;
 
@@ -62,17 +62,6 @@ export async function inRollbackableTx<T>(db: Db, dryRun: boolean, fn: (tx: Db) 
   }
   return result;
 }
-
-const sameValue = (key: string, a: unknown, b: unknown) => {
-  if (key === 'lastContactAt') {
-    // a planilha só tem a data: compara o dia em São Paulo
-    const da = a instanceof Date ? spDate(a) : null;
-    const db = b instanceof Date ? spDate(b) : null;
-    return da === db;
-  }
-  if (a instanceof Date || b instanceof Date) return +new Date(a as Date) === +new Date(b as Date);
-  return (a ?? null) === (b ?? null);
-};
 
 const CHANNEL_TYPE: Record<string, 'whatsapp' | 'call' | 'email' | 'instagram_dm' | 'in_person'> = {
   whatsapp: 'whatsapp',
@@ -215,14 +204,14 @@ export async function importLeads(
             if (opts.insertOnly)
               return { r: { action: 'skip', reason: 'já existe (somente novos)' } as const };
             delete data.dataSource; // a origem do cadastro original não muda
+            // Top leads vence no status: lead priorizado (priority definida) não volta ao status da aba Leads
+            if (existing.priority != null) delete data.contactStatus;
             const patch: LeadValues & { nicheId?: number; regionId?: number } = {
               ...data,
               ...(niche ? { nicheId: niche.id } : {}),
               ...(regionId ? { regionId } : {}),
             };
-            const changed = Object.entries(patch)
-              .filter(([k, v]) => !sameValue(k, (existing as Record<string, unknown>)[k], v))
-              .map(([k]) => k);
+            const changed = changedFields(existing, patch);
             if (changed.length) {
               lead = await updateLead(sp, existing.id, patch);
               result = { action: 'update', changed };
