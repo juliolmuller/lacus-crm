@@ -11,6 +11,9 @@ import {
 import { planFollowups, type RuleRow } from '@/lib/followups/engine';
 import { greeting, renderTemplate } from '@/lib/followups/templates';
 import { decrypt, encrypt } from '@/lib/crypto';
+import { isInvalidGrant } from '@/lib/google/calendar-api';
+import { buildEvent } from '@/lib/google/event';
+import { backoffMinutes, snoozeDue } from '@/lib/followups/snooze';
 
 describe('dias úteis', () => {
   it('Páscoa e feriados móveis de 2026 e 2027', () => {
@@ -254,5 +257,63 @@ describe('cifra AES-256-GCM', () => {
     expect(() => decrypt(parts.join('.'), keys)).toThrow();
     expect(() => decrypt(blob, { v1: 'c'.repeat(32) })).toThrow();
     expect(() => decrypt('lixo', keys)).toThrow();
+  });
+});
+
+describe('adiar, backoff e evento do Calendar', () => {
+  const now = new Date('2026-11-19T20:00:00Z'); // quinta, 17h em São Paulo
+  it('presets de adiamento', () => {
+    expect(snoozeDue('1h', now).toISOString()).toBe('2026-11-19T21:00:00.000Z');
+    expect(snoozeDue('tomorrow', now).toISOString()).toBe('2026-11-20T12:30:00.000Z');
+    // quinta + 2 dias úteis: sexta 20/11 é feriado, então terça 24/11
+    expect(snoozeDue('plus2bd', now).toISOString()).toBe('2026-11-24T12:30:00.000Z');
+  });
+
+  it('backoff de 1, 5 e 30 min; depois só o job', () => {
+    expect([1, 2, 3, 4, 9].map(backoffMinutes)).toEqual([1, 5, 30, null, null]);
+  });
+
+  it('evento: título, descrição, horário, avisos e propriedades privadas', () => {
+    const e = buildEvent(
+      {
+        id: 'r1',
+        leadId: 'l1',
+        title: 'Ligar',
+        notes: 'Falar do site',
+        dueAt: new Date('2026-11-24T13:00:00Z'),
+        durationMin: 15,
+      },
+      { name: 'Clínica X', phoneE164: '+5541999990000', nextAction: 'Enviar proposta' },
+      { appUrl: 'https://crm.example.com', popupMinutes: [10, 0] },
+    );
+    expect(e.summary).toBe('Follow-up: Clínica X – Ligar');
+    expect(e.description.split('\n')).toEqual([
+      'Próxima ação: Enviar proposta',
+      'Telefone: +5541999990000',
+      'WhatsApp: https://wa.me/5541999990000',
+      'Lead: https://crm.example.com/leads/l1',
+      'Notas: Falar do site',
+    ]);
+    expect(e.start).toEqual({
+      dateTime: '2026-11-24T13:00:00.000Z',
+      timeZone: 'America/Sao_Paulo',
+    });
+    expect(e.end.dateTime).toBe('2026-11-24T13:15:00.000Z');
+    expect(e.reminders).toEqual({
+      useDefault: false,
+      overrides: [
+        { method: 'popup', minutes: 10 },
+        { method: 'popup', minutes: 0 },
+      ],
+    });
+    expect(e.extendedProperties.private).toEqual({ crmReminderId: 'r1', crmLeadId: 'l1' });
+  });
+
+  it('detecta invalid_grant', () => {
+    expect(isInvalidGrant(new Error('invalid_grant'))).toBe(true);
+    expect(isInvalidGrant({ message: 'x', response: { data: { error: 'invalid_grant' } } })).toBe(
+      true,
+    );
+    expect(isInvalidGrant(new Error('timeout'))).toBe(false);
   });
 });
