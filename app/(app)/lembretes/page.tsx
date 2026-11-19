@@ -2,6 +2,7 @@ import { BellOff } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ReminderItem } from '@/components/reminders/reminder-item';
+import { rowToView } from '@/components/reminders/view';
 import { EmptyState } from '@/components/ui/empty-state';
 import { getDb } from '@/lib/db';
 import { listReminders, whatsappLinks, type ReminderTab } from '@/lib/services/reminders';
@@ -55,23 +56,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
       {rows.length ? (
         <ul className="flex flex-col gap-2" aria-label={current.label}>
           {rows.map((r) => (
-            <ReminderItem
-              key={r.id}
-              r={{
-                id: r.id,
-                title: r.title,
-                notes: r.notes,
-                dueAt: r.dueAt.toISOString(),
-                status: r.status,
-                overdue: r.status === 'open' && r.dueAt < now,
-                source: r.source,
-                syncStatus: r.syncStatus,
-                syncError: r.syncError,
-                leadId: r.leadId,
-                leadName: r.leadName,
-                whatsapp: links.get(r.id) ?? null,
-              }}
-            />
+            <ReminderItem key={r.id} r={rowToView(r, now, links.get(r.id) ?? null)} />
           ))}
         </ul>
       ) : (

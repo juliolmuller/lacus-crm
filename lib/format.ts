@@ -17,3 +17,7 @@ export const formatMoney = (v: string | number | null | undefined) =>
   v == null || v === ''
     ? '—'
     : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/** 0,6667 vira "67%"; null (denominador zero) vira "—". */
+export const formatPercent = (rate: number | null) =>
+  rate == null ? '—' : `${Math.round(rate * 100)}%`;
