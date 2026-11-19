@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: lacus-crm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lacus
+      POSTGRES_PASSWORD: lacus
+      POSTGRES_DB: lacus_crm
+    ports:
+      - '127.0.0.1:54329:5432'
+    volumes:
+      - lacus-crm-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lacus -d lacus_crm']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+volumes:
+  lacus-crm-pg:
