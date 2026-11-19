@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Copyright } from '@/components/brand/copyright';
 import { Logo } from '@/components/brand/logo';
 import { BottomNav } from '@/components/layout/bottom-nav';
+import { GoogleBanner } from '@/components/layout/google-banner';
 import { Sidebar } from '@/components/layout/sidebar';
 import { requireOwner } from '@/lib/auth/dal';
 
@@ -17,6 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </Link>
         </header>
         <main className="flex-1 p-4 pb-[calc(5rem+var(--safe-bottom))] lg:p-8 lg:pb-8">
+          <GoogleBanner />
           {children}
         </main>
       </div>

@@ -13,35 +13,11 @@ import {
   outcomeLabel,
 } from '@/lib/leads/labels';
 
-/** Criação rápida de interação (SPEC 6.3). Os efeitos no status e na etapa são do serviço (PLAN D3). */
-export function InteractionForm({ leadId, disabled }: { leadId: string; disabled?: boolean }) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
-  const [key, setKey] = useState(0); // zera o formulário depois de salvar
-
+/** Campos de uma interação (formulário rápido e "concluir lembrete"). Leia com `readInteraction`. */
+export function InteractionFields() {
+  const [outcome, setOutcome] = useState('');
   return (
-    <form
-      key={key}
-      className="grid gap-3 rounded-md border border-border bg-surface-1 p-3 sm:grid-cols-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const f = new FormData(e.currentTarget);
-        start(async () => {
-          const r = await logInteractionAction({
-            leadId,
-            type: f.get('type'),
-            direction: f.get('direction'),
-            outcome: f.get('outcome') || null,
-            summary: f.get('summary'),
-            body: String(f.get('body') ?? '').trim() || null,
-          });
-          if (!r.ok) return void toast.error(r.error);
-          toast.success('Interação registrada');
-          setKey((k) => k + 1);
-          router.refresh();
-        });
-      }}
-    >
+    <>
       <SelectField label="Tipo" name="type" defaultValue="whatsapp">
         {interactionTypes.map((t) => (
           <option key={t} value={t}>
@@ -56,7 +32,13 @@ export function InteractionForm({ leadId, disabled }: { leadId: string; disabled
           </option>
         ))}
       </SelectField>
-      <SelectField label="Resultado" name="outcome" defaultValue="" className="sm:col-span-2">
+      <SelectField
+        label="Resultado"
+        name="outcome"
+        value={outcome}
+        onChange={(e) => setOutcome(e.target.value)}
+        className="sm:col-span-2"
+      >
         <option value="">Sem resultado definido</option>
         {Object.entries(outcomeLabel).map(([v, l]) => (
           <option key={v} value={v}>
@@ -64,8 +46,73 @@ export function InteractionForm({ leadId, disabled }: { leadId: string; disabled
           </option>
         ))}
       </SelectField>
+      {outcome === 'meeting_set' && (
+        <Field
+          label="Data da reunião"
+          name="meetingOn"
+          type="date"
+          required
+          help="Cria o lembrete “Preparar diagnóstico” 1 dia útil antes."
+          className="sm:col-span-2"
+        />
+      )}
+      {outcome === 'asked_later' && (
+        <Field
+          label="Retomar em (dias úteis)"
+          name="resumeInDays"
+          type="number"
+          min={1}
+          max={250}
+          defaultValue={20}
+          className="sm:col-span-2"
+        />
+      )}
       <Field label="Resumo" name="summary" required maxLength={300} className="sm:col-span-2" />
       <TextareaField label="Detalhes (opcional)" name="body" className="sm:col-span-2" />
+    </>
+  );
+}
+
+export function readInteraction(f: FormData) {
+  const resume = String(f.get('resumeInDays') ?? '');
+  return {
+    type: f.get('type'),
+    direction: f.get('direction'),
+    outcome: f.get('outcome') || null,
+    summary: f.get('summary'),
+    body: String(f.get('body') ?? '').trim() || null,
+    meetingOn: String(f.get('meetingOn') ?? '') || undefined,
+    resumeInDays: resume ? Number(resume) : undefined,
+  };
+}
+
+/** Criação rápida de interação (SPEC 6.3). Os efeitos no status e na etapa são do serviço (PLAN D3). */
+export function InteractionForm({ leadId, disabled }: { leadId: string; disabled?: boolean }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [key, setKey] = useState(0); // zera o formulário depois de salvar
+
+  return (
+    <form
+      key={key}
+      className="grid gap-3 rounded-md border border-border bg-surface-1 p-3 sm:grid-cols-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const f = new FormData(e.currentTarget);
+        start(async () => {
+          const r = await logInteractionAction({ leadId, ...readInteraction(f) });
+          if (!r.ok) return void toast.error(r.error);
+          toast.success(
+            r.reminders
+              ? `Interação registrada. ${r.reminders} ${r.reminders === 1 ? 'lembrete criado' : 'lembretes criados'}.`
+              : 'Interação registrada',
+          );
+          setKey((k) => k + 1);
+          router.refresh();
+        });
+      }}
+    >
+      <InteractionFields />
       <div className="flex justify-end sm:col-span-2">
         <Button type="submit" loading={pending} disabled={disabled}>
           Registrar interação

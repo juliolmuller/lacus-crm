@@ -24,6 +24,7 @@ import { CreateDealButton } from '@/components/funnel/create-deal-button';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field, TextareaField } from '@/components/ui/field';
+import { renderTemplate, type TemplateValues } from '@/lib/followups/templates';
 import { instagramUrl, safeUrl, telUrl, whatsappUrl } from '@/lib/leads/links';
 import { cn } from '@/lib/utils';
 
@@ -38,7 +39,10 @@ type Props = {
     sessionUrl: string | null;
     doNotContact: boolean;
     hasOpenDeal: boolean;
+    contacted: boolean;
   };
+  templates: { id: number; key: string; name: string; body: string }[];
+  values: TemplateValues;
 };
 
 const linkCls = buttonVariants({ variant: 'secondary', size: 'sm' });
@@ -72,8 +76,8 @@ function Item({
   );
 }
 
-/** Barra fixa do drawer (SPEC 6.2). Criar lembrete chega na fase 4. */
-export function QuickActions({ lead }: Props) {
+/** Barra fixa do drawer (SPEC 6.2). WhatsApp e "Copiar mensagem" usam o modelo escolhido. */
+export function QuickActions({ lead, templates, values }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [dialog, setDialog] = useState<'dnc' | 'delete' | 'session' | null>(null);
@@ -81,8 +85,26 @@ export function QuickActions({ lead }: Props) {
   const [optOut, setOptOut] = useState(true);
   const [typed, setTyped] = useState('');
   const [session, setSession] = useState(lead.sessionUrl ?? '');
+  // 1º contato ainda não feito → modelo de primeiro contato; depois, o 1º follow-up
+  const first = lead.contacted ? 'followup_1' : 'first_contact';
+  const [tplKey, setTplKey] = useState(templates.find((t) => t.key === first)?.key ?? '');
+  const tpl = templates.find((t) => t.key === tplKey);
+  const missing = tpl ? renderTemplate(tpl.body, values).missing : [];
   const close = () => setDialog(null);
   const icon = 'size-4';
+
+  /** Texto final do modelo (a saudação usa a hora do clique); undefined sem modelo. */
+  const message = () => (tpl ? renderTemplate(tpl.body, values, new Date()).text : undefined);
+  const askRegister = () => {
+    const sent = tpl && { templateId: tpl.id, name: tpl.name, body: message() ?? '' };
+    toast('Registrar como abordado?', {
+      duration: 15000,
+      action: {
+        label: 'Registrar',
+        onClick: () => run(() => registerApproachAction(lead.id, sent), 'Abordagem registrada'),
+      },
+    });
+  };
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, ok: string, then?: () => void) =>
     start(async () => {
@@ -99,25 +121,58 @@ export function QuickActions({ lead }: Props) {
       <Item href={safeUrl(lead.mapsUrl)} icon={<MapPin className={icon} aria-hidden />}>
         Maps
       </Item>
-      <a
-        href={whatsappUrl(lead.phoneE164) ?? undefined}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-disabled={!lead.phoneE164}
-        className={cn(linkCls, !lead.phoneE164 && 'pointer-events-none opacity-50')}
-        onClick={() =>
-          toast('Abriu o WhatsApp.', {
-            duration: 15000,
-            action: {
-              label: 'Registrar como abordado',
-              onClick: () => run(() => registerApproachAction(lead.id), 'Abordagem registrada'),
-            },
-          })
-        }
+      {templates.length > 0 && (
+        <label className="flex items-center gap-2 text-label text-text-muted">
+          Mensagem
+          <select
+            value={tplKey}
+            onChange={(e) => setTplKey(e.target.value)}
+            className="h-8 rounded-md border border-border-strong bg-surface-3 px-2 text-label text-text"
+          >
+            <option value="">Sem mensagem</option>
+            {templates.map((t) => (
+              <option key={t.key} value={t.key}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={!lead.phoneE164 || missing.length > 0}
+        title={missing.length ? `Faltam dados do lead: ${missing.join(', ')}` : undefined}
+        onClick={() => {
+          const text = message();
+          window.open(whatsappUrl(lead.phoneE164, text) ?? '', '_blank', 'noopener,noreferrer');
+          askRegister();
+        }}
       >
         <MessageCircle className={icon} aria-hidden />
         WhatsApp
-      </a>
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={!tpl || missing.length > 0}
+        title={missing.length ? `Faltam dados do lead: ${missing.join(', ')}` : undefined}
+        onClick={() =>
+          navigator.clipboard.writeText(message() ?? '').then(() => {
+            toast.success('Mensagem copiada');
+            askRegister();
+          })
+        }
+      >
+        <Copy className={icon} aria-hidden />
+        Copiar mensagem
+      </Button>
+      {missing.length > 0 && (
+        <p role="status" className="w-full text-label text-warning-text">
+          Faltam dados para esta mensagem: {missing.join(', ')}. Complete o lead ou escolha outro
+          modelo.
+        </p>
+      )}
       <Item href={instagramUrl(lead.instagram)} icon={<AtSign className={icon} aria-hidden />}>
         Instagram
       </Item>

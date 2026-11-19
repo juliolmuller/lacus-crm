@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MessageCircle } from 'lucide-react';
 import { ScoreBadge } from '@/components/ui/badge';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, formatWhen } from '@/lib/format';
 import { whatsappUrl } from '@/lib/leads/links';
 import type { BoardCard } from '@/lib/services/deals';
 import { cn } from '@/lib/utils';
@@ -23,9 +23,15 @@ export function CardBody({ card }: { card: BoardCard }) {
         <span className="tabular text-body">{formatMoney(card.value)}</span>
         <ScoreBadge score={card.score} />
       </div>
-      {/* próximo follow-up chega com os lembretes (fase 4) */}
       <p className="text-label text-text-muted">
-        Follow-up: — · {card.daysInStage} {card.daysInStage === 1 ? 'dia' : 'dias'} na etapa
+        {card.nextFollowupAt ? (
+          <span className={cn(card.followupOverdue && 'font-semibold text-danger-text')}>
+            Follow-up: {formatWhen(new Date(card.nextFollowupAt))}
+          </span>
+        ) : (
+          'Follow-up: —'
+        )}{' '}
+        · {card.daysInStage} {card.daysInStage === 1 ? 'dia' : 'dias'} na etapa
       </p>
     </>
   );

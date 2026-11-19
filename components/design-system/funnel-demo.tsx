@@ -24,6 +24,9 @@ const card = (
   score,
   whatsapp,
   daysInStage: i * 3,
+  // o primeiro vence no passado (vermelho), o segundo não tem follow-up
+  nextFollowupAt: i === 0 ? '2026-01-05T12:30:00.000Z' : null,
+  followupOverdue: i === 0,
   status: 'open',
 });
 const cards = [

@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { ScoreBadge, StatusBadge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import type { DealDetail } from '@/lib/services/deals';
+import { LeadReminders } from '@/components/reminders/lead-reminders';
+import { toReminderView } from '@/components/reminders/view';
 import { DealForm } from './deal-form';
 import { InteractionForm } from './interaction-form';
 import { DealTimeline } from './timeline';
@@ -50,9 +52,17 @@ export function DealDetailView({ d }: { d: DealDetail }) {
           Nova interação
         </h3>
         <InteractionForm leadId={lead.id} disabled={lead.doNotContact} />
-        <p className="text-label text-text-muted">
-          Lembretes com atalhos (amanhã 9h30, +2 dias úteis…) chegam na fase 4.
-        </p>
+      </section>
+      <section aria-labelledby="deal-reminders" className="flex flex-col gap-3">
+        <h3 id="deal-reminders" className="text-section">
+          Lembretes
+        </h3>
+        <LeadReminders
+          leadId={lead.id}
+          dealId={deal.status === 'open' ? deal.id : null}
+          reminders={d.openReminders.map((r) => toReminderView(r, lead.name))}
+          disabled={lead.doNotContact}
+        />
       </section>
       <section aria-labelledby="deal-timeline" className="flex flex-col gap-3">
         <h3 id="deal-timeline" className="text-section">

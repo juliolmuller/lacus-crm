@@ -4,6 +4,7 @@ import { ScoreBadge, StatusBadge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatWhen, formatMoney } from '@/lib/format';
 import { formatDate, leadToRow, spDate } from '@/lib/leads/csv';
+import { templateValues } from '@/lib/followups/templates';
 import { siteLabel } from '@/lib/leads/labels';
 import { formatCityNeighborhood } from '@/lib/normalize';
 import type { ScoreBreakdown as Breakdown } from '@/lib/score';
@@ -11,6 +12,8 @@ import type { LeadDetail as Detail } from '@/lib/services/lead-detail';
 import { CreateDealButton } from '@/components/funnel/create-deal-button';
 import { InteractionForm } from '@/components/funnel/interaction-form';
 import { InteractionItem } from '@/components/funnel/timeline';
+import { LeadReminders } from '@/components/reminders/lead-reminders';
+import { toReminderView } from '@/components/reminders/view';
 import { LeadDataForm } from './lead-data-form';
 import { LeadTabs } from './lead-tabs';
 import { QuickActions } from './quick-actions';
@@ -145,23 +148,33 @@ export function LeadDetail({
     </div>
   );
 
-  const lembretes = d.reminders.length ? (
-    <ul className="flex flex-col gap-3">
-      {d.reminders.map((r) => (
-        <li
-          key={r.id}
-          className="flex justify-between gap-3 rounded-md border border-border bg-surface-2 p-3 text-body"
-        >
-          <span>{r.title}</span>
-          <span className="text-text-muted">
-            {when(r.dueAt)} ·{' '}
-            {r.status === 'open' ? 'aberto' : r.status === 'done' ? 'feito' : 'cancelado'}
-          </span>
-        </li>
-      ))}
-    </ul>
-  ) : (
-    empty('Sem lembretes. Eles chegam na fase 4, junto com o Google Calendar.')
+  const closed = d.reminders.filter((r) => r.status !== 'open').slice(0, 10);
+  const lembretes = (
+    <div className="flex flex-col gap-4">
+      <LeadReminders
+        leadId={lead.id}
+        dealId={d.deals.find(({ deal }) => deal.status === 'open')?.deal.id ?? null}
+        reminders={d.reminders
+          .filter((r) => r.status === 'open')
+          .map((r) => toReminderView(r, lead.name))}
+        disabled={lead.doNotContact}
+      />
+      {closed.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h3 className="text-label text-text-muted">Encerrados</h3>
+          <ul className="flex flex-col gap-1">
+            {closed.map((r) => (
+              <li key={r.id} className="flex justify-between gap-3 text-body text-text-muted">
+                <span>{r.title}</span>
+                <span>
+                  {when(r.dueAt)} · {r.status === 'done' ? 'feito' : 'cancelado'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
   );
 
   const dados = (
@@ -219,7 +232,10 @@ export function LeadDetail({
           sessionUrl: lead.sessionUrl,
           doNotContact: lead.doNotContact,
           hasOpenDeal,
+          contacted: lead.lastContactAt !== null,
         }}
+        templates={d.templates.map((t) => ({ id: t.id, key: t.key, name: t.name, body: t.body }))}
+        values={templateValues(lead, niche, region, d.profile)}
       />
       <LeadTabs
         tabs={[
