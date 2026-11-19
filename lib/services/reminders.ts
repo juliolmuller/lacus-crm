@@ -166,7 +166,7 @@ export async function completeReminder(
 
 export type ReminderTab = 'overdue' | 'today' | 'upcoming' | 'done';
 
-const row = {
+export const reminderRow = {
   id: reminders.id,
   leadId: reminders.leadId,
   dealId: reminders.dealId,
@@ -203,7 +203,7 @@ export async function listReminders(db: Db, tab: ReminderTab, now = new Date()) 
     done: eq(reminders.status, 'done'),
   }[tab];
   const rows = await db
-    .select(row)
+    .select(reminderRow)
     .from(reminders)
     .innerJoin(leads, eq(leads.id, reminders.leadId))
     .where(where)
