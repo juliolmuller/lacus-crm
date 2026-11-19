@@ -43,3 +43,40 @@ Os Termos de Serviço da Vercel (seção 4, "Hobby Plan") dizem: "You shall only
 - Criar o Vercel App (Client ID/Secret) e preencher `OWNER_VERCEL_USER_ID`/`OWNER_EMAIL`: sem isso o login real e a recusa de conta fora da allowlist não puderam ser exercitados contra a Vercel.
 - Deploy de preview abrindo `/login`: depende de deploy (fora do escopo desta execução, sem push).
 - Confirmar `pg_trgm` no Neon e "Sign-In Access" para contas Hobby no painel da Vercel.
+
+## Fase 2: Leads, importação e dados reais
+
+### Dependências (conferidas em 19/11/2026)
+
+`@tanstack/react-virtual` 3.14.26, `nuqs` 2.10.3 (adapter `nuqs/adapters/next/app`, `createLoader` no servidor, `shallow: false` para a URL refazer a consulta) e `fractional-indexing` 4.0.0 (chaves de `deals.position`, usadas já pela importação). Papa Parse 5.7.1 já estava no projeto.
+
+### Desvios
+
+1. **Sem `@tanstack/react-table` nem `cmdk`.** Ordenação, filtro e paginação são do servidor (cursor); o que sobra é desenhar linhas virtualizadas, e o react-table v9 (API nova, `tableFeatures`) não ajudaria. A tabela é um `div role="table"` com `useVirtualizer`. `cmdk` é da paleta ⌘K (fase 8). Se a tabela ganhar seleção em lote ou reordenação de colunas, vale reavaliar.
+2. **Dialog e drawer em `<dialog>` nativo**, sem Radix: foco preso, Esc, backdrop e `aria-modal` vêm do navegador. O evento `close` borbulha na árvore do React; o `Dialog` o contém com `stopPropagation` para um diálogo aninhado (Não contatar dentro do drawer) não fechar o pai.
+3. **Drawer na URL.** Desktop: `/leads?lead=<id>` (o servidor renderiza o detalhe dentro do `<dialog>`); celular (< 768 px): o clique navega para a rota cheia `/leads/[id]`. O mesmo componente `LeadDetail` serve aos dois.
+4. **Uma conversão só para tela, CSV e (fase 7) REST/MCP.** `lib/leads/csv.ts` define os 39 campos (cabeçalho, coluna do banco, tipo) e converte linha ↔ valores. A aba Dados do drawer e o formulário de criar lead enviam os cabeçalhos da planilha e passam por `prepareLeadInput`, então tela e importação nunca divergem. Campo ausente no arquivo não é tocado; campo vazio vira `null`/`false` ("Sim"/vazio → bool, "Dono responde avaliações" vazio → desconhecido).
+5. **Dry-run = a importação real dentro de uma transação desfeita.** Cada linha roda num SAVEPOINT (um erro isola a linha). Por isso os números do dry-run são exatamente os da execução.
+6. **"Reimportar não muda nada" é medido linha a linha**: o importador compara o valor convertido com o do banco (`changedFields`) e só grava o que difere; o `updated_at` das linhas iguais não se mexe. Data do contato compara só o dia em São Paulo (a planilha não tem hora).
+7. **Aba Leads × Top leads.** O Top leads vence em prioridade, `session_url` e status. Para a reimportação da aba Leads não desfazer o que o Top leads fez (hoje: 2 leads `Perdido` na Leads e `Descartado` no Top leads), a importação da Leads **não toca no status de lead que já tem `priority`** (só o Top leads e a edição na tela definem prioridade). Efeito colateral: mudar o status de um lead priorizado na planilha Leads não chega ao CRM; use o Top leads ou a tela.
+8. **Negociações da importação (SPEC 6.2 e D4)** só nascem para lead sem nenhuma negociação (aberta ou não), para a reimportação não duplicar. Status `discarded` não vira negociação. `lost` e `client` entram já fechadas (`lost`/`won`) na etapa correspondente, com histórico `source='import'`.
+9. **Histórico de contato**: lead com "Data do contato" ganha uma interação `outbound` (`created_by='import'`, 12:00 de São Paulo, tipo pelo Canal, resumo "Contato por <canal>: <resposta>"); não duplica porque a importação procura `(lead, import, occurred_at)` antes de inserir. Lembretes não são criados a partir de "Próxima ação".
+10. **`do_not_contact` nunca é aplicado pela importação.** O importador só lista candidatos (status Perdido/Descartado com recusa explícita em Observações, Resposta ou Próxima ação) em `.data/dnc-candidates.md` para o Júlio confirmar; ver `lib/leads/dnc.ts`.
+11. **Testes de integração em banco próprio** (`<banco>_test`, criado e migrado por `tests/int/global-setup.ts`), porque a base de desenvolvimento agora guarda os dados reais. Cada teste roda numa transação revertida (`db.transaction` + `rollback`); os serviços usam `transaction()`, que dentro dela vira SAVEPOINT. Os testes de trigger da fase 1 continuam com cliente `pg` próprio.
+12. **Edição inline otimista** com rollback e toast. Ordenação suportada só por colunas sem nulos no cursor (score, nome, atualizado, inclusão) ou com `coalesce` (último contato, prioridade); o cursor é o valor da ordenação mais o `id`.
+13. **Importar em produção**: a caixa "Somente novos" já vem marcada com `NODE_ENV=production` (SPEC 6.2). O limite do upload é 10 MB por Route Handler (`/api/leads/import`), não Server Action.
+14. **Rótulos centralizados** em `lib/leads/labels.ts` (status, site, ticket); o `StatusBadge` e o CSV usam a mesma fonte.
+
+### Dados reais (somente leitura no Sheets, tudo em `.data/`, fora do git)
+
+- A aba Leads tem **2 linhas de parâmetros do score** acima do cabeçalho (pontos e critérios mínimos); o CSV começa no cabeçalho. A planilha é viva (a rotina grava de 2 em 2 horas), então a contagem muda entre leituras: 52 leads na leitura final.
+- "Uso da API": limite diário **30** na planilha contra 150 semeado em `places_daily_budget` (PLAN, decisão 5: o Júlio confirma). A importação não muda a configuração.
+- Fila: o status "Sem resultados" vira `done` com 0 leads. Datas misturam `dd/mm/aaaa` e ISO.
+- Cidades: 6 linhas. As planilhas das outras cidades (Pato Branco, Toledo, Guarapuava, Jaraguá do Sul, Chapecó) só têm a fila, sem leads: não há o que importar delas hoje.
+- O Top leads cita um lead (**Pinturas Arcanjo Miguel**, ID `b34554fc-0251-48ec-b6aa-4cc186006794`, nicho Reformas e construção civil) que **não está na aba Leads**: o importador não o cria (falta nicho no Top leads) e o relata como erro. Pedir ao Júlio para conferir a planilha.
+
+### Pendências e riscos da fase 2
+
+- Mensagem do WhatsApp (`?text=`), "Copiar mensagem", "Criar negociação" e "Criar lembrete" dependem de modelos (fase 4), funil (fase 3) e lembretes (fase 4); a barra abre o WhatsApp sem texto. O aviso "Registrar como abordado?" é um toast com ação.
+- Mudar os pesos do score ainda não tem tela (Configurações é da fase 8): `recomputeAllScores` existe, testado, e fica pronto para essa tela e para o REST/MCP.
+- A aba Interações lista, mas não cria interações; a criação rápida entra com a fase 3.

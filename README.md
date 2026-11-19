@@ -36,18 +36,23 @@ Gere `BETTER_AUTH_SECRET`, `TOKEN_ENCRYPTION_KEY` (`openssl rand -base64 32`) e 
 
 O seed lê `.data/nichos.csv` (fora do git) exportado da aba "Nichos" da planilha. Sem o arquivo, a etapa é ignorada.
 
+### Dados reais (fase 2)
+
+Os CSVs ficam em `.data/` (fora do git), gerados a partir da planilha por leitura. `pnpm db:import` importa na ordem nichos, cidades, fila, leads, top leads e uso da API, é idempotente e grava `.data/import-report.json` e `.data/dnc-candidates.md` (candidatos a "Não contatar", **nunca aplicados**). Na interface: `/leads/importar` (mapeamento, simulação, relatório e confirmação) e **Exportar** na tela de leads.
+
 ## Scripts
 
-| Script                                     | O que faz                                                                    |
-| ------------------------------------------ | ---------------------------------------------------------------------------- |
-| `pnpm dev` / `build` / `start`             | Next.js (Turbopack)                                                          |
-| `pnpm check`                               | typecheck + lint + testes unitários                                          |
-| `pnpm test:int`                            | integração contra o Postgres do Docker (triggers)                            |
-| `pnpm e2e`                                 | Playwright (desktop e Pixel 7); usa a rota de bypass com `E2E_AUTH_BYPASS=1` |
-| `pnpm db:generate`                         | gera migration do schema Drizzle                                             |
-| `pnpm db:migrate` / `db:rollback [n\|all]` | aplica / desfaz migrations (`drizzle/down/*.down.sql`)                       |
-| `pnpm db:seed`                             | seeds idempotentes                                                           |
-| `pnpm icons`                               | regenera os ícones em `public/brand`                                         |
+| Script                                       | O que faz                                                                           |
+| -------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `pnpm dev` / `build` / `start`               | Next.js (Turbopack)                                                                 |
+| `pnpm check`                                 | typecheck + lint + testes unitários                                                 |
+| `pnpm test:int`                              | integração num banco `<nome>_test` do Postgres do Docker (criado e migrado sozinho) |
+| `pnpm e2e`                                   | Playwright (desktop e Pixel 7); usa a rota de bypass com `E2E_AUTH_BYPASS=1`        |
+| `pnpm db:generate`                           | gera migration do schema Drizzle                                                    |
+| `pnpm db:migrate` / `db:rollback [n\|all]`   | aplica / desfaz migrations (`drizzle/down/*.down.sql`)                              |
+| `pnpm db:seed`                               | seeds idempotentes                                                                  |
+| `pnpm db:import [--insert-only] [--dry-run]` | importa os CSVs de `.data/` (nichos, cidades, fila, leads, top leads, uso da API)   |
+| `pnpm icons`                                 | regenera os ícones em `public/brand`                                                |
 
 Commits seguem Conventional Commits (commitlint + husky).
 
