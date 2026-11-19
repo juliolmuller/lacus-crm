@@ -17,7 +17,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/migrate.ts",
+    "db:migrate": "drizzle-kit migrate",
     "db:rollback": "tsx scripts/rollback.ts",
     "db:seed": "tsx scripts/seed.ts",
     "icons": "tsx scripts/generate-icons.ts"

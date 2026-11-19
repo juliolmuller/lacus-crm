@@ -1,0 +1,12 @@
+DROP TRIGGER IF EXISTS trg_settings_updated_at ON settings;
+DROP TRIGGER IF EXISTS trg_google_connections_updated_at ON google_connections;
+DROP TRIGGER IF EXISTS trg_reminders_updated_at ON reminders;
+DROP TRIGGER IF EXISTS trg_deals_updated_at ON deals;
+DROP TRIGGER IF EXISTS trg_leads_updated_at ON leads;
+DROP TRIGGER IF EXISTS trg_niches_updated_at ON niches;
+DROP TRIGGER IF EXISTS trg_reminders_2_do_not_contact ON reminders;
+DROP TRIGGER IF EXISTS trg_reminders_1_lead_from_deal ON reminders;
+DROP TRIGGER IF EXISTS trg_deals_do_not_contact ON deals;
+DROP FUNCTION IF EXISTS lacus_touch_updated_at();
+DROP FUNCTION IF EXISTS lacus_reminder_lead_from_deal();
+DROP FUNCTION IF EXISTS lacus_block_do_not_contact();
