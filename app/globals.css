@@ -92,6 +92,14 @@
   --score-low-bg: #fbe4e2;
   --score-low-fg: #b3261e;
 
+  /* marcas de gráfico sobre fundo branco precisam de 3:1; mesmas cores, passos mais escuros */
+  --chart-1: #1f6fc5;
+  --chart-2: #1a7347;
+  --chart-3: #9a6a0b;
+  --chart-4: #8a4fd0;
+  --chart-5: #c25a14;
+  --chart-6: #6b7482;
+
   --elev-1: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.08);
   --elev-2: 0 4px 12px rgba(0, 0, 0, 0.1);
   --elev-3: 0 12px 32px rgba(0, 0, 0, 0.14);
