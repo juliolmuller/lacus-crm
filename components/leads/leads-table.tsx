@@ -1,7 +1,7 @@
 'use client';
 
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ArrowDown, ArrowUp, SearchX } from 'lucide-react';
+import { ArrowDown, ArrowUp, Ban, SearchX } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -172,7 +172,6 @@ export function LeadsTable(p: LeadsTableProps) {
                 data-testid="lead-row"
                 className={cn(
                   'absolute inset-x-0 grid items-center border-b border-border text-table hover:bg-surface-2',
-                  r.doNotContact && 'opacity-60',
                 )}
                 style={{
                   height: ROW_H,
@@ -218,9 +217,18 @@ function Cell({
         <button
           type="button"
           onClick={() => onOpen(row.id)}
-          className="block w-full truncate text-left font-medium text-text hover:text-primary hover:underline"
+          className={cn(
+            'block w-full truncate text-left font-medium hover:text-primary hover:underline',
+            row.doNotContact ? 'text-text-muted' : 'text-text',
+          )}
           title={row.name}
         >
+          {row.doNotContact && (
+            <>
+              <Ban aria-hidden className="mr-1 inline size-3.5 align-[-2px] text-danger-text" />
+              <span className="sr-only">Não contatar: </span>
+            </>
+          )}
           {row.name}
         </button>
       );

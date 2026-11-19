@@ -100,12 +100,10 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-// Os demos novos do /design-system (KPI, gráficos, linha do tempo, navegação). A página inteira ainda
-// tem a linha esmaecida de "Não contatar" (opacity-60) e `text-subtle` sobre o --bg, dívida das fases 2 e 1.
+// A página inteira do /design-system (todos os demos), nos dois temas.
 for (const theme of ['light', 'dark'] as const) {
-  test(`axe: demos do painel em /design-system no tema ${theme}`, async ({ page }) => {
+  test(`axe: /design-system completo no tema ${theme}`, async ({ page }) => {
     await open(page, theme, '/design-system', 'Design System');
-    await page.locator('#painel').scrollIntoViewIfNeeded();
-    await scan(page, 'section[aria-labelledby="painel"]');
+    await scan(page);
   });
 }
