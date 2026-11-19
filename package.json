@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "UNLICENSED",
+  "packageManager": "pnpm@12.8.1",
   "author": "Lacus Solutions",
   "type": "module",
   "scripts": {
@@ -37,6 +38,7 @@
     "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "server-only": "^0.0.1",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
     "zod": "4.6.7"
