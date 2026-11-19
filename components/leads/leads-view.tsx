@@ -88,7 +88,7 @@ export function LeadsView(p: Props) {
   const [f, setF] = useQueryStates(leadSearchParams, { shallow: false, startTransition: start });
   const [draft, setDraft] = useState<string | null>(null); // texto em edição; null = segue a URL
   const [showFilters, setShowFilters] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(search.get('novo') === '1'); // atalho do PWA
   const [saving, setSaving] = useState(false);
   const [viewName, setViewName] = useState('');
 

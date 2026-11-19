@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Copyright } from '@/components/brand/copyright';
 import { LogoutButton } from '@/components/layout/logout-button';
 import { moreNav } from '@/components/layout/nav';
+import { InstallApp } from '@/components/pwa/install-app';
 import { ThemeSelector } from '@/components/layout/theme-selector';
 
 export const metadata: Metadata = { title: 'Mais' };
@@ -30,6 +31,7 @@ export default function Page() {
         <h2 className="text-label text-text-muted">Aparência</h2>
         <ThemeSelector />
       </div>
+      <InstallApp />
       <LogoutButton />
       <Copyright />
     </section>
