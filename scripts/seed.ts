@@ -104,11 +104,18 @@ await db
 // --- Regras de follow-up (SPEC 11 adaptada ao PLAN D2) ---
 // "Negociação parada" roda no job diário (fase 4), sem linha em followup_rules.
 const wonStage = await db.query.dealStages.findFirst({ where: eq(s.dealStages.key, 'won') });
-const step = (offsetBusinessDays: number, time: string, title: string, templateKey?: string) => ({
+const step = (
+  offsetBusinessDays: number,
+  time: string,
+  title: string,
+  templateKey?: string,
+  suggestStatus?: 'no_response',
+) => ({
   offsetBusinessDays,
   time,
   title,
   ...(templateKey && { templateKey }),
+  ...(suggestStatus && { suggestStatus }),
 });
 const rules = [
   {
@@ -118,7 +125,7 @@ const rules = [
     cadence: [
       step(2, '09:30', 'Follow-up 1', 'followup_1'),
       step(5, '09:30', 'Follow-up 2'),
-      step(10, '09:30', 'Follow-up 3', 'followup_2'),
+      step(10, '09:30', 'Follow-up 3', 'followup_2', 'no_response'),
     ],
     cancelOn: { inboundInteraction: true, stageLeft: true },
   },

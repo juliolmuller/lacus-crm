@@ -6,6 +6,8 @@ export const cadenceStep = z.object({
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'use HH:MM'),
   title: z.string().min(1),
   templateKey: z.string().optional(),
+  // ao concluir este passo sem resposta, sugere mudar o status do lead (ex.: no_response)
+  suggestStatus: z.enum(['no_response']).optional(),
 });
 
 export const cadence = z.array(cadenceStep).min(1);

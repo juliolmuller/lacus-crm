@@ -19,6 +19,10 @@ export type InteractionInput = {
   occurredAt?: Date;
   templateId?: number | null;
   createdBy?: (typeof interactions.$inferInsert)['createdBy'];
+  /** reunião marcada: data (AAAA-MM-DD) que ancora "Preparar diagnóstico" */
+  meetingOn?: string;
+  /** pediu para retomar depois: dias úteis até o lembrete (padrão da regra: 20) */
+  resumeInDays?: number;
 };
 
 const channelLabel: Partial<Record<InteractionInput['type'], string>> = {
@@ -97,6 +101,8 @@ export async function logInteraction(db: Db, input: InteractionInput) {
       interactionId: row!.id,
       leadId: lead.id,
       dealId,
+      meetingOn: input.meetingOn,
+      resumeInDays: input.resumeInDays,
     });
     return { interaction: row!, reminderIds };
   });

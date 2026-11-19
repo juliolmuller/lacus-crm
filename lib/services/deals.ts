@@ -199,12 +199,10 @@ export async function createDeal(
     } catch (e) {
       translate(e);
     }
-    await tx.insert(dealStageHistory).values({
-      dealId: deal.id,
-      fromStageId: null,
-      toStageId: stage.id,
-      source: input.source,
-    });
+    const [hist] = await tx
+      .insert(dealStageHistory)
+      .values({ dealId: deal.id, fromStageId: null, toStageId: stage.id, source: input.source })
+      .returning({ id: dealStageHistory.id });
     // a importação respeita o status que veio da planilha
     if (input.source !== 'import') await syncLeadStatus(tx, lead.id, stage);
     await applyRules(tx, {
@@ -212,6 +210,8 @@ export async function createDeal(
       dealId: deal.id,
       leadId: lead.id,
       stageId: stage.id,
+      historyId: hist!.id,
+      source: input.source,
     });
     return deal;
   });
@@ -257,12 +257,10 @@ async function moveTx(tx: Db, deal: Deal, to: Stage, n: Neighbors, source: Sourc
   if (needsRebalance(position)) await rebalance(tx, to.id);
   let reminderIds: string[] = [];
   if (changedStage) {
-    await tx.insert(dealStageHistory).values({
-      dealId: deal.id,
-      fromStageId: deal.stageId,
-      toStageId: to.id,
-      source,
-    });
+    const [hist] = await tx
+      .insert(dealStageHistory)
+      .values({ dealId: deal.id, fromStageId: deal.stageId, toStageId: to.id, source })
+      .returning({ id: dealStageHistory.id });
     await syncLeadStatus(tx, deal.leadId, to, reopened);
     reminderIds = await applyRules(tx, {
       type: 'deal_stage_entered',
@@ -270,6 +268,8 @@ async function moveTx(tx: Db, deal: Deal, to: Stage, n: Neighbors, source: Sourc
       leadId: deal.leadId,
       stageId: to.id,
       fromStageId: deal.stageId,
+      historyId: hist!.id,
+      source,
     });
   }
   return { deal: updated, fromStageId: deal.stageId, changedStage, reminderIds };
@@ -311,13 +311,12 @@ async function closeTx(
     })
     .where(eq(deals.id, deal.id))
     .returning();
-  if (changedStage)
-    await tx.insert(dealStageHistory).values({
-      dealId: deal.id,
-      fromStageId: deal.stageId,
-      toStageId: stage.id,
-      source: 'ui',
-    });
+  const [hist] = changedStage
+    ? await tx
+        .insert(dealStageHistory)
+        .values({ dealId: deal.id, fromStageId: deal.stageId, toStageId: stage.id, source: 'ui' })
+        .returning({ id: dealStageHistory.id })
+    : [];
   await syncLeadStatus(tx, deal.leadId, stage, true);
   await applyRules(tx, {
     type: 'deal_stage_entered',
@@ -325,6 +324,8 @@ async function closeTx(
     leadId: deal.leadId,
     stageId: stage.id,
     fromStageId: deal.stageId,
+    historyId: hist?.id,
+    source: 'ui',
   });
   return updated!;
 }
