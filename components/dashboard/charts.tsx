@@ -35,33 +35,35 @@ const lineConfig = {
 /** Resumo para leitores de tela: o gráfico é uma imagem e a tabela traz os mesmos números. */
 function DataTable({ caption, head, rows }: { caption: string; head: string[]; rows: string[][] }) {
   return (
-    <table className="sr-only">
-      <caption>{caption}</caption>
-      <thead>
-        <tr>
-          {head.map((h) => (
-            <th key={h} scope="col">
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r[0]}>
-            {r.map((c, i) =>
-              i ? (
-                <td key={i}>{c}</td>
-              ) : (
-                <th key={i} scope="row">
-                  {c}
-                </th>
-              ),
-            )}
+    <div className="sr-only">
+      <table>
+        <caption>{caption}</caption>
+        <thead>
+          <tr>
+            {head.map((h) => (
+              <th key={h} scope="col">
+                {h}
+              </th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r[0]}>
+              {r.map((c, i) =>
+                i ? (
+                  <td key={i}>{c}</td>
+                ) : (
+                  <th key={i} scope="row">
+                    {c}
+                  </th>
+                ),
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

@@ -30,6 +30,9 @@ test('painel: KPIs, blocos e filtros de período, nicho e região na URL', async
   ])
     await expect(page.getByRole('region', { name, exact: true })).toBeVisible();
 
+  // nada alarga a página (as tabelas sr-only dos gráficos já estouraram a largura no celular)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
   const filters = page.getByTestId('dashboard-filters');
   await expect(filters.getByRole('button', { name: '30 dias' })).toHaveAttribute(
     'aria-pressed',
