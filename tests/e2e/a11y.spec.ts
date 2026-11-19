@@ -3,8 +3,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { query, removeLeads, seedDeals } from './db';
 
 // SPEC 14: axe nas rotas principais, nos dois temas. Só serious/critical reprovam.
-async function scan(page: Page) {
-  const { violations } = await new AxeBuilder({ page }).analyze();
+async function scan(page: Page, include?: string) {
+  const axe = new AxeBuilder({ page });
+  const { violations } = await (include ? axe.include(include) : axe).analyze();
   const bad = violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
   expect(
     bad.map(
@@ -27,6 +28,7 @@ async function open(page: Page, theme: 'light' | 'dark', path: string, heading: 
 }
 
 const routes = [
+  ['/', 'Início', (p: Page) => p.getByTestId('kpis')],
   ['/leads', 'Leads', (p: Page) => p.getByRole('table')],
   ['/funil', 'Funil', (p: Page) => p.getByRole('list', { name: /^Cartões de/ }).first()],
   [
@@ -95,5 +97,15 @@ for (const theme of ['light', 'dark'] as const) {
       await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
     }
+  });
+}
+
+// Os demos novos do /design-system (KPI, gráficos, linha do tempo, navegação). A página inteira ainda
+// tem a linha esmaecida de "Não contatar" (opacity-60) e `text-subtle` sobre o --bg, dívida das fases 2 e 1.
+for (const theme of ['light', 'dark'] as const) {
+  test(`axe: demos do painel em /design-system no tema ${theme}`, async ({ page }) => {
+    await open(page, theme, '/design-system', 'Design System');
+    await page.locator('#painel').scrollIntoViewIfNeeded();
+    await scan(page, 'section[aria-labelledby="painel"]');
   });
 }

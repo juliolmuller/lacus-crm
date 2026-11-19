@@ -78,7 +78,7 @@ async function world(tx: Db) {
     regionId: region.id,
     ...o,
   });
-  const [L1, L2, L3, L4, L5, L6, L7] = await tx
+  const [L1, L2, L3, L4, L5, , L7] = await tx
     .insert(leads)
     .values([
       mk(1, A!, R1!, { contactStatus: 'contacted', score: 80, includedAt: '2026-11-10' }),
