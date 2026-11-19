@@ -6,7 +6,19 @@ export default async function warmup() {
     .getSetCookie()
     .map((c) => c.split(';')[0])
     .join('; ');
-  for (const path of ['/login', '/', '/mais', '/leads', '/design-system']) {
+  const nil = '00000000-0000-4000-8000-000000000000';
+  for (const path of [
+    '/login',
+    '/',
+    '/mais',
+    '/leads',
+    `/leads?lead=${nil}`,
+    `/leads/${nil}`,
+    '/leads/importar',
+    '/api/leads/export',
+    '/api/leads/import',
+    '/design-system',
+  ]) {
     await fetch(base + path, { headers: { cookie } });
   }
 }

@@ -6,9 +6,9 @@ export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
   globalSetup: './tests/e2e/warmup.ts',
-  timeout: 60_000, // máquina de dev carregada: o 1º page.goto do navegador chega a levar 25 s
+  timeout: 120_000, // máquina de dev carregada: o 1º page.goto do navegador chega a levar 25 s
   retries: 1, // a 1ª compilação do dev server pode recarregar a página no meio do teste
-  expect: { timeout: 10_000 },
+  expect: { timeout: 30_000 }, // 1ª chamada de cada Server Action compila no dev server
   reporter: 'list',
   use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure' },
   projects: [
