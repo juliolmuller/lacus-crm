@@ -15,6 +15,7 @@ export type RuleEvent =
  * Ponto de encaixe do motor de follow-ups (fase 4). Roda na mesma transação do evento e devolve os
  * ids dos lembretes criados. Na fase 3 não faz nada.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- assinatura estável para o motor da fase 4
 export async function applyRules(_tx: Db, _event: RuleEvent): Promise<string[]> {
   return [];
 }

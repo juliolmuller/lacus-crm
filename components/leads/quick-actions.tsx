@@ -20,6 +20,7 @@ import {
   registerApproachAction,
   setSessionUrl,
 } from '@/app/(app)/leads/actions';
+import { CreateDealButton } from '@/components/funnel/create-deal-button';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field, TextareaField } from '@/components/ui/field';
@@ -36,6 +37,7 @@ type Props = {
     pitch: string | null;
     sessionUrl: string | null;
     doNotContact: boolean;
+    hasOpenDeal: boolean;
   };
 };
 
@@ -70,7 +72,7 @@ function Item({
   );
 }
 
-/** Barra fixa do drawer (SPEC 6.2). Criar negociação e lembrete chegam nas fases 3 e 4. */
+/** Barra fixa do drawer (SPEC 6.2). Criar lembrete chega na fase 4. */
 export function QuickActions({ lead }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -144,6 +146,7 @@ export function QuickActions({ lead }: Props) {
         <ExternalLink className={icon} aria-hidden />
         {lead.sessionUrl ? 'Editar link da sessão' : 'Link da sessão'}
       </Button>
+      {!lead.doNotContact && !lead.hasOpenDeal && <CreateDealButton leadId={lead.id} />}
       {!lead.doNotContact && (
         <Button variant="secondary" size="sm" onClick={() => setDialog('dnc')}>
           <Ban className={icon} aria-hidden />

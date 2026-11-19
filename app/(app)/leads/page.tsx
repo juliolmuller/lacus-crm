@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { LeadDetail, LeadNotFound } from '@/components/leads/lead-detail';
-import { LeadDrawer } from '@/components/leads/lead-drawer';
 import { LeadsView } from '@/components/leads/leads-view';
+import { UrlDrawer } from '@/components/ui/url-drawer';
 import { getDb, schema } from '@/lib/db';
 import { parseFilters } from '@/lib/leads/filters-server';
 import { getCatalog } from '@/lib/services/catalog';
@@ -19,7 +19,7 @@ async function Drawer({ id }: { id: string }) {
   const db = getDb();
   const [d, cat] = await Promise.all([getLeadDetail(db, id), getCatalog(db)]);
   return (
-    <LeadDrawer title={d?.lead.name ?? 'Lead'}>
+    <UrlDrawer param="lead" title={d?.lead.name ?? 'Lead'}>
       {d ? (
         <LeadDetail
           d={d}
@@ -29,7 +29,7 @@ async function Drawer({ id }: { id: string }) {
       ) : (
         <LeadNotFound />
       )}
-    </LeadDrawer>
+    </UrlDrawer>
   );
 }
 

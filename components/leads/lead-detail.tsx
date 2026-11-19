@@ -1,36 +1,23 @@
 import { AlertTriangle, SearchX } from 'lucide-react';
+import Link from 'next/link';
 import { ScoreBadge, StatusBadge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
+import { formatWhen, formatMoney } from '@/lib/format';
 import { formatDate, leadToRow, spDate } from '@/lib/leads/csv';
 import { siteLabel } from '@/lib/leads/labels';
 import { formatCityNeighborhood } from '@/lib/normalize';
 import type { ScoreBreakdown as Breakdown } from '@/lib/score';
 import type { LeadDetail as Detail } from '@/lib/services/lead-detail';
+import { CreateDealButton } from '@/components/funnel/create-deal-button';
+import { InteractionForm } from '@/components/funnel/interaction-form';
+import { InteractionItem } from '@/components/funnel/timeline';
 import { LeadDataForm } from './lead-data-form';
 import { LeadTabs } from './lead-tabs';
 import { QuickActions } from './quick-actions';
 import { ScoreBreakdown } from './score-breakdown';
 
-const when = (d: Date) =>
-  new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-    timeZone: 'America/Sao_Paulo',
-  }).format(d);
-const money = (v: string | null) =>
-  v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-const interactionLabel = {
-  whatsapp: 'WhatsApp',
-  call: 'Ligação',
-  email: 'E-mail',
-  instagram_dm: 'Instagram',
-  in_person: 'Presencial',
-  meeting: 'Reunião',
-  proposal: 'Proposta',
-  note: 'Nota',
-  system: 'Sistema',
-} as const;
+const when = formatWhen;
+const money = formatMoney;
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -105,57 +92,57 @@ export function LeadDetail({
     </div>
   );
 
-  const interacoes = d.interactions.length ? (
-    <ol className="flex flex-col gap-3">
-      {d.interactions.map((i) => (
-        <li
-          key={i.id}
-          className="flex flex-col gap-0.5 rounded-md border border-border bg-surface-2 p-3"
-        >
-          <div className="flex justify-between gap-2 text-label text-text-muted">
-            <span>
-              {interactionLabel[i.type]} ·{' '}
-              {i.direction === 'outbound'
-                ? 'enviada'
-                : i.direction === 'inbound'
-                  ? 'recebida'
-                  : 'interna'}
-              {i.createdBy === 'import' ? ' · importada' : ''}
-            </span>
-            <time dateTime={i.occurredAt.toISOString()}>{when(i.occurredAt)}</time>
-          </div>
-          <p className="text-body">{i.summary}</p>
-          {i.body && <p className="text-body whitespace-pre-line text-text-muted">{i.body}</p>}
-        </li>
-      ))}
-    </ol>
-  ) : (
-    empty(
-      'Nenhuma interação registrada. Use as ações rápidas (por exemplo, WhatsApp) para começar a linha do tempo.',
-    )
+  const interacoes = (
+    <div className="flex flex-col gap-4">
+      <InteractionForm leadId={lead.id} />
+      {d.interactions.length ? (
+        <ol className="flex flex-col gap-3">
+          {d.interactions.map((i) => (
+            <InteractionItem key={i.id} i={i} />
+          ))}
+        </ol>
+      ) : (
+        empty('Nenhuma interação registrada ainda.')
+      )}
+    </div>
   );
 
-  const negociacao = d.deals.length ? (
-    <ul className="flex flex-col gap-3">
-      {d.deals.map(({ deal, stage }) => (
-        <li
-          key={deal.id}
-          className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-2 p-3"
-        >
-          <div className="min-w-0">
-            <p className="truncate text-body font-medium">{deal.title}</p>
-            <p className="text-label text-text-muted">
-              {stage.name} ·{' '}
-              {deal.status === 'open' ? 'aberta' : deal.status === 'won' ? 'ganha' : 'perdida'}
-              {deal.lostReason ? ` (${deal.lostReason})` : ''}
-            </p>
-          </div>
-          <span className="tabular text-body">{money(deal.value)}</span>
-        </li>
-      ))}
-    </ul>
-  ) : (
-    empty('Sem negociação. O funil e a criação de negociações chegam na fase 3.')
+  const hasOpenDeal = d.deals.some(({ deal }) => deal.status === 'open');
+  const negociacao = (
+    <div className="flex flex-col gap-3">
+      {d.deals.length ? (
+        <ul className="flex flex-col gap-3">
+          {d.deals.map(({ deal, stage }) => (
+            <li
+              key={deal.id}
+              className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-2 p-3"
+            >
+              <div className="min-w-0">
+                <Link
+                  href={`/funil?deal=${deal.id}`}
+                  className="truncate text-body font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  {deal.title}
+                </Link>
+                <p className="text-label text-text-muted">
+                  {stage.name} ·{' '}
+                  {deal.status === 'open' ? 'aberta' : deal.status === 'won' ? 'ganha' : 'perdida'}
+                  {deal.lostReason ? ` (${deal.lostReason})` : ''}
+                </p>
+              </div>
+              <span className="tabular text-body">{money(deal.value)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        empty('Sem negociação para este lead.')
+      )}
+      {!hasOpenDeal && !lead.doNotContact && (
+        <div>
+          <CreateDealButton leadId={lead.id} />
+        </div>
+      )}
+    </div>
   );
 
   const lembretes = d.reminders.length ? (
@@ -231,6 +218,7 @@ export function LeadDetail({
           pitch: lead.pitch,
           sessionUrl: lead.sessionUrl,
           doNotContact: lead.doNotContact,
+          hasOpenDeal,
         }}
       />
       <LeadTabs

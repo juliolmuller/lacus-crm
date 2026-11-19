@@ -21,7 +21,7 @@ export const listStages = (db: Db) =>
   db
     .select({
       stage: dealStages,
-      open: sql<number>`(select count(*)::int from ${deals} where ${deals.stageId} = ${dealStages.id})`,
+      open: sql<number>`(select count(*)::int from ${deals} where ${deals.stageId} = "deal_stages"."id")`,
     })
     .from(dealStages)
     .orderBy(asc(dealStages.sort));

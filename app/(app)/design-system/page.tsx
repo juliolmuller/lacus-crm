@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Copyright } from '@/components/brand/copyright';
 import { Logo } from '@/components/brand/logo';
+import { FunnelDemo } from '@/components/design-system/funnel-demo';
+import { LeadsDemo } from '@/components/design-system/leads-demo';
 import { ToastDemo } from '@/components/design-system/toast-demo';
 import {
   Badge,
@@ -302,6 +304,14 @@ export default function DesignSystemPage() {
             <SyncBadge status="error" />
           </div>
         </div>
+      </Section>
+
+      <Section id="leads" title="Leads: tabela, drawer, abas e estados">
+        <LeadsDemo />
+      </Section>
+
+      <Section id="funil" title="Funil: cartão, coluna e linha do tempo">
+        <FunnelDemo />
       </Section>
 
       <Section id="toast" title="Toast">

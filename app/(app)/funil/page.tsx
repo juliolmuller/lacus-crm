@@ -1,8 +1,36 @@
 import type { Metadata } from 'next';
-import { Placeholder } from '@/components/layout/placeholder';
+import { Suspense } from 'react';
+import { DealDetailView, DealNotFound } from '@/components/funnel/deal-detail';
+import { FunnelBoard } from '@/components/funnel/board';
+import { UrlDrawer } from '@/components/ui/url-drawer';
+import { getDb } from '@/lib/db';
+import { getDealDetail, listBoard } from '@/lib/services/deals';
 
 export const metadata: Metadata = { title: 'Funil' };
 
-export default function Page() {
-  return <Placeholder title="Funil" phase={3} />;
+type SP = Promise<Record<string, string | string[] | undefined>>;
+
+async function Drawer({ id }: { id: string }) {
+  const d = await getDealDetail(getDb(), id);
+  return (
+    <UrlDrawer param="deal" title={d?.deal.title ?? 'Negociação'}>
+      {d ? <DealDetailView d={d} /> : <DealNotFound />}
+    </UrlDrawer>
+  );
+}
+
+export default async function Page({ searchParams }: { searchParams: SP }) {
+  const { deal } = await searchParams;
+  const { stages, cards } = await listBoard(getDb());
+  return (
+    <section className="flex min-w-0 flex-col gap-4">
+      <h1 className="text-page">Funil</h1>
+      <FunnelBoard stages={stages} cards={cards} />
+      {typeof deal === 'string' && (
+        <Suspense>
+          <Drawer id={deal} />
+        </Suspense>
+      )}
+    </section>
+  );
 }

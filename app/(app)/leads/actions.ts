@@ -12,7 +12,6 @@ import { logInteraction } from '@/lib/services/interactions';
 import { prepareLeadInput } from '@/lib/services/lead-form';
 import { listLeads } from '@/lib/services/lead-list';
 import {
-  LeadError,
   changedFields,
   createLead,
   deleteLead,
