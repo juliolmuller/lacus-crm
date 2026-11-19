@@ -1,4 +1,14 @@
-import { bigserial, boolean, index, integer, jsonb, pgTable, serial, text, uuid } from 'drizzle-orm/pg-core';
+import {
+  bigserial,
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  serial,
+  text,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { createdAt, tstz, updatedAt } from './_helpers';
 import { googleStatus, viewScope } from './enums';
 

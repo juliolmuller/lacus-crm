@@ -56,7 +56,9 @@ export const interactions = pgTable(
     summary: text('summary').notNull(),
     body: text('body'),
     occurredAt: tstz('occurred_at').defaultNow().notNull(),
-    templateId: integer('template_id').references(() => messageTemplates.id, { onDelete: 'set null' }),
+    templateId: integer('template_id').references(() => messageTemplates.id, {
+      onDelete: 'set null',
+    }),
     createdBy: interactionCreatedBy('created_by').notNull().default('user'),
     createdAt: createdAt(),
   },

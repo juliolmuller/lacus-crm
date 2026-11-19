@@ -32,7 +32,9 @@ try {
     await client.query('BEGIN');
     try {
       await client.query(down);
-      await client.query('DELETE FROM drizzle.__drizzle_migrations WHERE created_at = $1', [entry.when]);
+      await client.query('DELETE FROM drizzle.__drizzle_migrations WHERE created_at = $1', [
+        entry.when,
+      ]);
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');

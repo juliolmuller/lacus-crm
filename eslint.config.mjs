@@ -8,5 +8,13 @@ export default defineConfig([
   ...nextTs,
   prettier,
   { rules: { '@typescript-eslint/no-explicit-any': 'error' } },
-  globalIgnores(['.next/**', 'out/**', 'next-env.d.ts', 'drizzle/**', 'playwright-report/**', 'test-results/**']),
+  { files: ['*.config.*'], rules: { 'import/no-anonymous-default-export': 'off' } },
+  globalIgnores([
+    '.next/**',
+    'out/**',
+    'next-env.d.ts',
+    'drizzle/**',
+    'playwright-report/**',
+    'test-results/**',
+  ]),
 ]);

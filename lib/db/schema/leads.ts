@@ -83,6 +83,8 @@ export const leads = pgTable(
     index('leads_phone_e164_idx').on(t.phoneE164),
     index('leads_name_normalized_trgm_idx').using('gin', sql`${t.nameNormalized} gin_trgm_ops`),
     index('leads_updated_at_idx').on(t.updatedAt.desc()),
-    index('leads_do_not_contact_idx').on(t.id).where(sql`${t.doNotContact}`),
+    index('leads_do_not_contact_idx')
+      .on(t.id)
+      .where(sql`${t.doNotContact}`),
   ],
 );

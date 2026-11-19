@@ -58,7 +58,9 @@ export const deals = pgTable(
     index('deals_stage_position_idx').on(t.stageId, t.position),
     index('deals_lead_id_idx').on(t.leadId),
     // no máximo uma negociação aberta por lead
-    uniqueIndex('deals_one_open_per_lead_idx').on(t.leadId).where(sql`${t.status} = 'open'`),
+    uniqueIndex('deals_one_open_per_lead_idx')
+      .on(t.leadId)
+      .where(sql`${t.status} = 'open'`),
   ],
 );
 

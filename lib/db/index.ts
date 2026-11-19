@@ -1,0 +1,29 @@
+import { attachDatabasePool } from '@vercel/functions';
+import { Pool as NeonPool } from '@neondatabase/serverless';
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
+import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
+import { Pool as PgPool } from 'pg';
+import { getEnv } from '@/lib/env';
+import * as schema from './schema';
+
+/** Neon usa o driver serverless (WebSocket, com transações); Postgres local usa node-postgres. */
+export const isNeon = (url: string) => new URL(url).hostname.endsWith('.neon.tech');
+
+function create() {
+  const url = getEnv().DATABASE_URL;
+  const pool = isNeon(url)
+    ? new NeonPool({ connectionString: url })
+    : new PgPool({ connectionString: url });
+  attachDatabasePool(pool);
+  return isNeon(url)
+    ? drizzleNeon(pool as NeonPool, { schema })
+    : drizzlePg(pool as PgPool, { schema });
+}
+
+type Db = ReturnType<typeof drizzlePg<typeof schema>>;
+
+const globalForDb = globalThis as unknown as { __db?: Db };
+
+/** Singleton (sobrevive ao HMR em dev). Os dois drivers expõem a mesma API do Drizzle. */
+export const getDb = (): Db => (globalForDb.__db ??= create() as unknown as Db);
+export { schema };

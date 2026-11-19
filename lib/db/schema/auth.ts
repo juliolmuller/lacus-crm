@@ -3,7 +3,10 @@ import { sql } from 'drizzle-orm';
 import { boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 const ts = (name: string) => timestamp(name, { withTimezone: true });
-const pk = () => uuid('id').default(sql`pg_catalog.gen_random_uuid()`).primaryKey();
+const pk = () =>
+  uuid('id')
+    .default(sql`pg_catalog.gen_random_uuid()`)
+    .primaryKey();
 
 export const auth_users = pgTable('auth_users', {
   id: pk(),
