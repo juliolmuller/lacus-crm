@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "schedules": {
+    "followups-hourly": {
+      "schedule": "0 7-21 * * *",
+      "timezone": "America/Sao_Paulo",
+      "path": "/api/jobs/followups",
+      "requestMethod": "POST"
+    }
+  },
+  "crons": [{ "path": "/api/jobs/followups", "schedule": "0 10 * * *" }]
+}
