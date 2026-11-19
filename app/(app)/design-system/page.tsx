@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Copyright } from '@/components/brand/copyright';
 import { Logo } from '@/components/brand/logo';
+import { DashboardDemo } from '@/components/design-system/dashboard-demo';
 import { FunnelDemo } from '@/components/design-system/funnel-demo';
 import { LeadsDemo } from '@/components/design-system/leads-demo';
 import { ToastDemo } from '@/components/design-system/toast-demo';
@@ -312,6 +313,10 @@ export default function DesignSystemPage() {
 
       <Section id="funil" title="Funil: cartão, coluna e linha do tempo">
         <FunnelDemo />
+      </Section>
+
+      <Section id="painel" title="Painel: KPI, gráficos, linha do tempo e navegação inferior">
+        <DashboardDemo />
       </Section>
 
       <Section id="toast" title="Toast">
