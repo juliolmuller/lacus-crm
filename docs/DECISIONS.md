@@ -70,7 +70,7 @@ Os Termos de Serviço da Vercel (seção 4, "Hobby Plan") dizem: "You shall only
 ### Dados reais (somente leitura no Sheets, tudo em `.data/`, fora do git)
 
 - A aba Leads tem **2 linhas de parâmetros do score** acima do cabeçalho (pontos e critérios mínimos); o CSV começa no cabeçalho. A planilha é viva (a rotina grava de 2 em 2 horas), então a contagem muda entre leituras: 52 leads na leitura final.
-- "Uso da API": limite diário **30** na planilha contra 150 semeado em `places_daily_budget` (PLAN, decisão 5: o Júlio confirma). A importação não muda a configuração.
+- "Uso da API": limite diário **30** na planilha. O seed de `places_daily_budget` passou de 150 para 30 na fase 3 (ver abaixo); a importação não muda a configuração.
 - Fila: o status "Sem resultados" vira `done` com 0 leads. Datas misturam `dd/mm/aaaa` e ISO.
 - Cidades: 6 linhas. As planilhas das outras cidades (Pato Branco, Toledo, Guarapuava, Jaraguá do Sul, Chapecó) só têm a fila, sem leads: não há o que importar delas hoje.
 - O Top leads cita um lead (**Pinturas Arcanjo Miguel**, ID `b34554fc-0251-48ec-b6aa-4cc186006794`, nicho Reformas e construção civil) que **não está na aba Leads**: o importador não o cria (falta nicho no Top leads) e o relata como erro. Pedir ao Júlio para conferir a planilha.
@@ -80,3 +80,7 @@ Os Termos de Serviço da Vercel (seção 4, "Hobby Plan") dizem: "You shall only
 - Mensagem do WhatsApp (`?text=`), "Copiar mensagem", "Criar negociação" e "Criar lembrete" dependem de modelos (fase 4), funil (fase 3) e lembretes (fase 4); a barra abre o WhatsApp sem texto. O aviso "Registrar como abordado?" é um toast com ação.
 - Mudar os pesos do score ainda não tem tela (Configurações é da fase 8): `recomputeAllScores` existe, testado, e fica pronto para essa tela e para o REST/MCP.
 - A aba Interações lista, mas não cria interações; a criação rápida entra com a fase 3.
+
+## Fase 3: Funil e interações
+
+1. **`places_daily_budget` = 30** (era 150). É o limite que a planilha do Júlio já usa; o PLAN chutava 150. Mudou só o default do seed (`lib/validation/settings.ts`); o seed nunca sobrescreve, então a base de desenvolvimento foi ajustada à mão (`30` no lugar de `150`, valor que ninguém havia editado). Continua editável em Configurações (fase 8).

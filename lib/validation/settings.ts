@@ -54,7 +54,7 @@ export const settingDefaults: { [K in SettingKey]: z.infer<(typeof settingSchema
     minReviews: 20,
     ticketPoints: { alto: 15, medio: 7.5, baixo: 0 },
   },
-  places_daily_budget: 150,
+  places_daily_budget: 30,
   calendar_defaults: { popupReminderMinutes: [10, 0] },
   business_calendar: { extraHolidays: [] },
   owner_profile: {},
