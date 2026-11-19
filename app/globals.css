@@ -21,6 +21,10 @@
   --warning: #e5a93b;
   --danger: #f0645a;
   --danger-fg: #0b0d10;
+  --primary-text: #6ab0f0;
+  --success-text: #3fb97a;
+  --warning-text: #e5a93b;
+  --danger-text: #f47b72;
   --logo-main: var(--primary);
   --logo-accent: var(--text);
 
@@ -75,6 +79,11 @@
   --warning: #9a6a0b;
   --danger: #c23a31;
   --danger-fg: #ffffff;
+  /* texto sobre fundo translúcido (badges): mais escuro que o token base para passar 4,5:1 */
+  --primary-text: #185da8;
+  --success-text: #17653d;
+  --warning-text: #7d5509;
+  --danger-text: #a82f27;
 
   --score-high-bg: #e3f5eb;
   --score-high-fg: #1a7347;
@@ -107,6 +116,10 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-danger-fg: var(--danger-fg);
+  --color-primary-text: var(--primary-text);
+  --color-success-text: var(--success-text);
+  --color-warning-text: var(--warning-text);
+  --color-danger-text: var(--danger-text);
   --color-logo-main: var(--logo-main);
   --color-logo-accent: var(--logo-accent);
   --color-score-high-bg: var(--score-high-bg);

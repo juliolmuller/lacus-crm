@@ -5,10 +5,10 @@ import { cn } from '@/lib/utils';
 
 const tones = {
   neutral: 'bg-surface-3 text-text-muted border-border',
-  primary: 'bg-primary/15 text-primary border-primary/30',
-  success: 'bg-success/15 text-success border-success/30',
-  warning: 'bg-warning/15 text-warning border-warning/30',
-  danger: 'bg-danger/15 text-danger border-danger/30',
+  primary: 'bg-primary/15 text-primary-text border-primary/30',
+  success: 'bg-success/15 text-success-text border-success/30',
+  warning: 'bg-warning/15 text-warning-text border-warning/30',
+  danger: 'bg-danger/15 text-danger-text border-danger/30',
 };
 
 export function Badge({

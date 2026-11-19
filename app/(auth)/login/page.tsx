@@ -28,13 +28,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         {message && (
           <p
             role="alert"
-            className="w-full rounded-md border border-danger/40 bg-danger/10 p-3 text-body text-danger"
+            className="w-full rounded-md border border-danger/40 bg-danger/10 p-3 text-body text-danger-text"
           >
             {message}
           </p>
         )}
         {dev && !configured && (
-          <p className="w-full rounded-md border border-warning/40 bg-warning/10 p-3 text-label text-warning">
+          <p className="w-full rounded-md border border-warning/40 bg-warning/10 p-3 text-label text-warning-text">
             Dev: preencha VERCEL_CLIENT_ID e VERCEL_CLIENT_SECRET no .env.local (veja o README).
           </p>
         )}
