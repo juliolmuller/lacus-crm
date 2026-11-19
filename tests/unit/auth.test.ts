@@ -39,4 +39,11 @@ describe('isE2EBypassActive', () => {
     expect(env('1', 'production')).toBe(false);
     expect(env('1', 'development', 'preview')).toBe(false);
   });
+
+  it('em build de produção exige também E2E_PROD_BUILD=1, e nunca na Vercel', () => {
+    vi.stubEnv('E2E_PROD_BUILD', '1');
+    expect(env('1', 'production')).toBe(true);
+    expect(env('1', 'production', 'production')).toBe(false);
+    expect(env('0', 'production')).toBe(false);
+  });
 });
