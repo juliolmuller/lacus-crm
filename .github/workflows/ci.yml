@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: lacus
+          POSTGRES_PASSWORD: lacus
+          POSTGRES_DB: lacus_crm
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lacus -d lacus_crm"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgres://lacus:lacus@localhost:5432/lacus_crm
+      # Valores descartáveis, só para passar na validação de env.
+      BETTER_AUTH_SECRET: ci-only-secret-ci-only-secret-ci-only
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      TOKEN_ENCRYPTION_KEY: ci-only-key-ci-only-key-ci-only-key
+      CRON_SECRET: ci-only-cron-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - name: Migrations up, down, up
+        run: |
+          pnpm db:migrate
+          pnpm db:rollback all
+          pnpm db:migrate
+      - run: pnpm db:seed
+      - name: Integração (triggers)
+        run: pnpm test:int
