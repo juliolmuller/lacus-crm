@@ -34,3 +34,54 @@ Depois de um deploy, o app instalado mostra o aviso "Nova versão disponível"; 
 
 - `pnpm e2e:pwa` faz o build e roda na porta 3101, contra produção, os testes de PWA (manifest, worker, offline, caches proibidos, logout, instalação) e o e2e do painel (desktop e celular).
 - Lighthouse (mobile) contra o build local: `next start` com `E2E_AUTH_BYPASS=1 E2E_PROD_BUILD=1` (mais as variáveis de produção de mentira que estão em `playwright.pwa.config.ts`), pegue o cookie em `/api/e2e/login?next=/` e passe em `--extra-headers`.
+
+## MCP e API REST
+
+Endereço de produção: `https://crm.lacus.solutions`. Toda chamada usa um token pessoal (PAT, `lcrm_...`) criado em **Configurações > Tokens de API e conectores**. O texto completo aparece uma única vez; no banco fica só o hash (SHA-256). Escopos: `read`, `write` (inclui `read`) e `prospecting` (fila e uso da API). Limite de 120 requisições por minuto por token.
+
+### Claude Code
+
+```bash
+export LACUS_CRM_TOKEN=lcrm_...   # token com read + write (+ prospecting, se quiser a fila)
+claude mcp add --transport http lacus-crm https://crm.lacus.solutions/api/mcp --scope user \
+  --header "Authorization: Bearer $LACUS_CRM_TOKEN"
+claude mcp list
+```
+
+Para versionar a configuração num projeto, use um `.mcp.json` (o token fica no ambiente; não use nomes reservados como `ANTHROPIC_*`):
+
+```json
+{
+  "mcpServers": {
+    "lacus-crm": {
+      "type": "http",
+      "url": "https://crm.lacus.solutions/api/mcp",
+      "headers": { "Authorization": "Bearer ${LACUS_CRM_TOKEN}" }
+    }
+  }
+}
+```
+
+`/api/mcp` expõe as 20 ferramentas da SPEC 9.1 (as que o escopo do token não cobre ficam fora da lista). `/api/mcp/prospecting` expõe só `queue_claim_next`, `queue_complete`, `api_usage_today`, `api_usage_log`, `crm_upsert_leads`, `niches_list` e `regions_list`. Sem token ou com token revogado/expirado a resposta é 401 (com `WWW-Authenticate` apontando o resource metadata); com escopo insuficiente, 403.
+
+### REST (`/api/v1`)
+
+Referência gerada dos schemas: `GET https://crm.lacus.solutions/api/v1/openapi.json`. Erros: `{"error": {"code", "message", "details?"}}`.
+
+```bash
+H="Authorization: Bearer $LACUS_CRM_TOKEN"; B=https://crm.lacus.solutions/api/v1
+curl -H "$H" "$B/leads?query=clinica&minScore=70&limit=10"
+curl -H "$H" "$B/leads/<uuid>"
+curl -H "$H" -X PATCH "$B/leads/<uuid>" -H 'content-type: application/json' \
+  -d '{"next_action":"Ligar na segunda","priority":1}'
+curl -H "$H" "$B/reminders?range=today"
+curl -H "$H" -X POST "$B/leads/<uuid>/interactions" -H 'content-type: application/json' \
+  -d '{"type":"whatsapp","direction":"outbound","summary":"Enviei a mensagem 1"}'
+curl -H "$H" -X POST "$B/queue/claim" -H 'content-type: application/json' -d '{"runId":"2026-11-20T09-pos12"}'
+curl -H "$H" "$B/api-usage/today"
+curl -H "$H" -X POST https://crm.lacus.solutions/api/jobs/followups -H 'X-Run-Id: manual-1'   # token com write
+```
+
+### Conectores OAuth (claude.ai)
+
+O claude.ai usa OAuth (Client ID Metadata Document, sem registro dinâmico): o login é o da Vercel, a tela `/consent` pede os escopos e o acesso aparece em **Configurações > Conectores autorizados**, onde dá para revogar (o acesso já emitido expira em até 15 minutos). Passo a passo em `docs/ROTINA.md`.
