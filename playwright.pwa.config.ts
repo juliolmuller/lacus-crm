@@ -4,16 +4,18 @@ import { defineConfig, devices } from '@playwright/test';
 const port = 3101;
 
 export default defineConfig({
-  testDir: 'tests/pwa',
+  testDir: 'tests',
   workers: 1, // os testes compartilham o mesmo servidor e o mesmo banco
   timeout: 90_000,
   expect: { timeout: 20_000 },
   reporter: 'list',
-  use: {
-    baseURL: `http://localhost:${port}`,
-    ...devices['Desktop Chrome'],
-    trace: 'retain-on-failure',
-  },
+  use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure' },
+  projects: [
+    { name: 'pwa', testMatch: 'pwa/**/*.spec.ts', use: devices['Desktop Chrome'] },
+    // o painel também roda no build de produção: lá o 1º toque no celular nunca cai antes da hidratação
+    { name: 'painel-desktop', testMatch: 'e2e/dashboard.spec.ts', use: devices['Desktop Chrome'] },
+    { name: 'painel-mobile', testMatch: 'e2e/dashboard.spec.ts', use: devices['Pixel 7'] },
+  ],
   webServer: {
     command: `pnpm exec next build && pnpm exec next start --port ${port}`,
     url: `http://localhost:${port}/login`,

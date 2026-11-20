@@ -9,6 +9,7 @@ Você vai construir o **Lacus CRM**, um CRM web pessoal de prospecção, para o 
 Hoje a prospecção roda em Google Sheets. Uma rotina agendada do Claude roda a cada 2 h: lê a próxima combinação "Pendente" de uma fila (216 combinações = 12 regiões × 18 nichos), consulta a Google Places API (New), aplica os filtros de qualificação F0–F8 e grava até 20 leads por execução, cada um com um UUID v4. O app substitui as planilhas **Leads** (39 colunas por cidade), **Top leads**, **Fila**, **Cidades**, **Uso da API** e **Nichos**, e passa a ser o destino da rotina.
 
 O que o app precisa fazer:
+
 1. **Dashboard** com métricas de prospecção.
 2. **Leads**: CRUD completo, busca, filtros, ordenação, importação e exportação de CSV.
 3. **Funil** (kanban de negociações), com histórico de interações, lembretes e automação de follow-ups.
@@ -18,6 +19,7 @@ O que o app precisa fazer:
 7. Design system dark-first, documentado e com guia vivo.
 
 Regras de negócio que valem para o app inteiro:
+
 - **LGPD**: os dados são B2B e públicos. O app registra a origem dos dados, respeita opt-out com `do_not_contact` e uma lista de supressão, e permite exportar e excluir um lead.
 - **Nunca enviar mensagens sozinho.** O app ajuda a abordar um lead por vez: abre `wa.me` com o texto preenchido, copia o texto para a área de transferência e registra a interação. Não use API de WhatsApp, disparo em massa ou envio automático de e-mail ou DM.
 - Cada lead guarda o link da sessão de conversa do Claude usada para planejar a abordagem (`session_url`).
@@ -44,9 +46,9 @@ Regras de negócio que valem para o app inteiro:
 </svg>
 ```
 
-  - **Cores**: tema escuro, moldura e quadrados em `#4C9EEB` e quadrado de destaque em `#E8EBF0`; tema claro, `#1F6FC5` e `#11151B`. Os tokens `--logo-main` e `--logo-accent` estão na seção 7.1. Em contexto monocromático (ícone monocromático do Android, impressão), use uma cor só, com o quadrado de destaque vazado.
-  - **Variantes** de `<Logo variant="mark|lockup" size={…} />`: `mark` é só o símbolo (sidebar recolhida, header mobile com 24 px, favicon); `lockup` é o símbolo + "Lacus CRM" em Geist 600 ao lado (login e sidebar expandida). Tamanho mínimo 16 px, área de respeito de 10% do tamanho em todos os lados. Não distorcer, não aplicar sombra ou efeito, não usar cores fora dos tokens.
-  - **Acessibilidade**: ao lado do nome, o símbolo é decorativo (`aria-hidden`); sozinho, leva `role="img"` e `aria-label="Lacus CRM"`.
+- **Cores**: tema escuro, moldura e quadrados em `#4C9EEB` e quadrado de destaque em `#E8EBF0`; tema claro, `#1F6FC5` e `#11151B`. Os tokens `--logo-main` e `--logo-accent` estão na seção 7.1. Em contexto monocromático (ícone monocromático do Android, impressão), use uma cor só, com o quadrado de destaque vazado.
+- **Variantes** de `<Logo variant="mark|lockup" size={…} />`: `mark` é só o símbolo (sidebar recolhida, header mobile com 24 px, favicon); `lockup` é o símbolo + "Lacus CRM" em Geist 600 ao lado (login e sidebar expandida). Tamanho mínimo 16 px, área de respeito de 10% do tamanho em todos os lados. Não distorcer, não aplicar sombra ou efeito, não usar cores fora dos tokens.
+- **Acessibilidade**: ao lado do nome, o símbolo é decorativo (`aria-hidden`); sozinho, leva `role="img"` e `aria-label="Lacus CRM"`.
 - **Ícones do app** (`scripts/generate-icons.ts`, com `sharp` como devDependency; commite os arquivos gerados). Fundo `#0B0D10` em todos:
   - `public/brand/icon-any.svg`: 512×512, retângulo de fundo com `rx="112"` e o logo com `translate(76 76) scale(1.2)`;
   - `public/brand/icon-maskable.svg`: 512×512, fundo preenchido até a borda e o logo com `translate(96 96) scale(1.0667)`, que o mantém dentro da zona segura de 80%;
@@ -66,27 +68,27 @@ Regras de negócio que valem para o app inteiro:
 
 ## 3. Stack e decisões fixas
 
-| Área | Escolha | Observação |
-|---|---|---|
-| Framework | **Next.js (última estável) + App Router + TypeScript `strict`** | No Next 16+ o arquivo de interceptação é `proxy.ts` (antes `middleware.ts`): verifique. Runtime **Node.js** em todas as rotas que usam banco. |
-| UI | **Tailwind CSS v4 + shadcn/ui** (Radix), ícones `lucide-react` | Tokens do design system em CSS variables (seção 7). |
-| Banco | **Neon Postgres** via Vercel Marketplace (`DATABASE_URL` injetada; usar `DATABASE_URL_UNPOOLED` para migrations, se existir: verificar) | |
-| ORM | **Drizzle ORM + drizzle-kit**, migrations SQL versionadas em `drizzle/` | Driver `drizzle-orm/neon-serverless` (Pool via WebSocket, com transações) quando o host for Neon; `drizzle-orm/node-postgres` quando for Postgres local (Docker), para dev e testes. Uma fábrica `db.ts` escolhe o driver pela URL. Verifique na doc da Vercel/Neon a recomendação atual para pools em Fluid Compute (ex.: `attachDatabasePool`). |
-| Auth | **Better Auth** + provedor `vercel` (Sign in with Vercel) + adapter Drizzle | Justificativa na seção 5. |
-| Validação | **Zod** (v4) em toda entrada: forms, Server Actions, REST, MCP | |
-| Dados no cliente | Server Components para leitura; mutações por **Server Actions** com wrapper que valida sessão e Zod; **TanStack Query** apenas onde há atualização otimista (board, lembretes) | |
-| Tabela | **TanStack Table + TanStack Virtual**, estado de filtros na URL (**nuqs**) | |
-| Drag & Drop | **dnd-kit** (decisão na seção 6.3) | |
-| Ordenação | **`fractional-indexing`** (chaves texto, coluna com `COLLATE "C"`) | |
-| Gráficos | Recharts via componentes `chart` do shadcn | |
-| Datas | `date-fns` + `@date-fns/tz` | |
-| CSV | Papa Parse | |
-| PWA | **Serwist** (`@serwist/turbopack` se o build usar Turbopack; verificar) | |
-| MCP | **`mcp-handler`** (Vercel) v2 + `@modelcontextprotocol/server` v2: verificar versões e peer deps | |
-| Google | `google-auth-library` (OAuth2Client) + chamadas REST à Calendar API v3 com `fetch` (evite o pacote `googleapis` inteiro) | |
-| Testes | **Vitest** (unit), **Playwright** + `@axe-core/playwright` (e2e e acessibilidade) | |
-| Gerenciador | **pnpm** | |
-| Deploy | Vercel, plano Hobby | |
+| Área             | Escolha                                                                                                                                                                        | Observação                                                                                                                                                                                                                                                                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework        | **Next.js (última estável) + App Router + TypeScript `strict`**                                                                                                                | No Next 16+ o arquivo de interceptação é `proxy.ts` (antes `middleware.ts`): verifique. Runtime **Node.js** em todas as rotas que usam banco.                                                                                                                                                                                                     |
+| UI               | **Tailwind CSS v4 + shadcn/ui** (Radix), ícones `lucide-react`                                                                                                                 | Tokens do design system em CSS variables (seção 7).                                                                                                                                                                                                                                                                                               |
+| Banco            | **Neon Postgres** via Vercel Marketplace (`DATABASE_URL` injetada; usar `DATABASE_URL_UNPOOLED` para migrations, se existir: verificar)                                        |                                                                                                                                                                                                                                                                                                                                                   |
+| ORM              | **Drizzle ORM + drizzle-kit**, migrations SQL versionadas em `drizzle/`                                                                                                        | Driver `drizzle-orm/neon-serverless` (Pool via WebSocket, com transações) quando o host for Neon; `drizzle-orm/node-postgres` quando for Postgres local (Docker), para dev e testes. Uma fábrica `db.ts` escolhe o driver pela URL. Verifique na doc da Vercel/Neon a recomendação atual para pools em Fluid Compute (ex.: `attachDatabasePool`). |
+| Auth             | **Better Auth** + provedor `vercel` (Sign in with Vercel) + adapter Drizzle                                                                                                    | Justificativa na seção 5.                                                                                                                                                                                                                                                                                                                         |
+| Validação        | **Zod** (v4) em toda entrada: forms, Server Actions, REST, MCP                                                                                                                 |                                                                                                                                                                                                                                                                                                                                                   |
+| Dados no cliente | Server Components para leitura; mutações por **Server Actions** com wrapper que valida sessão e Zod; **TanStack Query** apenas onde há atualização otimista (board, lembretes) |                                                                                                                                                                                                                                                                                                                                                   |
+| Tabela           | **TanStack Table + TanStack Virtual**, estado de filtros na URL (**nuqs**)                                                                                                     |                                                                                                                                                                                                                                                                                                                                                   |
+| Drag & Drop      | **dnd-kit** (decisão na seção 6.3)                                                                                                                                             |                                                                                                                                                                                                                                                                                                                                                   |
+| Ordenação        | **`fractional-indexing`** (chaves texto, coluna com `COLLATE "C"`)                                                                                                             |                                                                                                                                                                                                                                                                                                                                                   |
+| Gráficos         | Recharts via componentes `chart` do shadcn                                                                                                                                     |                                                                                                                                                                                                                                                                                                                                                   |
+| Datas            | `date-fns` + `@date-fns/tz`                                                                                                                                                    |                                                                                                                                                                                                                                                                                                                                                   |
+| CSV              | Papa Parse                                                                                                                                                                     |                                                                                                                                                                                                                                                                                                                                                   |
+| PWA              | **Serwist** (`@serwist/turbopack` se o build usar Turbopack; verificar)                                                                                                        |                                                                                                                                                                                                                                                                                                                                                   |
+| MCP              | **`mcp-handler`** (Vercel) v2 + `@modelcontextprotocol/server` v2: verificar versões e peer deps                                                                               |                                                                                                                                                                                                                                                                                                                                                   |
+| Google           | `google-auth-library` (OAuth2Client) + chamadas REST à Calendar API v3 com `fetch` (evite o pacote `googleapis` inteiro)                                                       |                                                                                                                                                                                                                                                                                                                                                   |
+| Testes           | **Vitest** (unit), **Playwright** + `@axe-core/playwright` (e2e e acessibilidade)                                                                                              |                                                                                                                                                                                                                                                                                                                                                   |
+| Gerenciador      | **pnpm**                                                                                                                                                                       |                                                                                                                                                                                                                                                                                                                                                   |
+| Deploy           | Vercel, plano Hobby                                                                                                                                                            |                                                                                                                                                                                                                                                                                                                                                   |
 
 Qualquer desvio desta tabela precisa de justificativa escrita em `docs/DECISIONS.md`.
 
@@ -101,6 +103,7 @@ Implemente exatamente estes nomes e tipos. Os campos marcados com ➕ são acré
 **`regions`**: `id serial pk`, `state char(2) not null`, `city text not null`, `neighborhood text null`, `label text unique not null` (formato `"PR - Curitiba - Xaxim"`; sem bairro: `"PR - <Cidade>"`), `source_sheet_id text null`.
 
 **`leads`**:
+
 - `id uuid pk` (reaproveita o UUID das planilhas; se vier vazio, gerar v4)
 - `name text not null`, `niche_id int fk→niches not null`, `region_id int fk→regions not null`
 - `phone text`, `has_whatsapp bool default false`, `email text`, `decision_maker_contact text`
@@ -124,39 +127,39 @@ Implemente exatamente estes nomes e tipos. Os campos marcados com ➕ são acré
 
 ### 4.2 Enum `contact_status`
 
-| Valor | Rótulo pt-BR | Mapeamento da planilha |
-|---|---|---|
-| `new` | Novo | "Novo" |
-| `to_contact` | A abordar | |
-| `contacted` | Abordado | |
-| `no_response` | Sem resposta | |
-| `replied` | Respondeu | |
-| `negotiating` | Em negociação | |
-| `client` | Cliente | |
-| `lost` | Perdido | |
-| `discarded` | Descartado | "Descartado" |
+| Valor         | Rótulo pt-BR  | Mapeamento da planilha |
+| ------------- | ------------- | ---------------------- |
+| `new`         | Novo          | "Novo"                 |
+| `to_contact`  | A abordar     |                        |
+| `contacted`   | Abordado      |                        |
+| `no_response` | Sem resposta  |                        |
+| `replied`     | Respondeu     |                        |
+| `negotiating` | Em negociação |                        |
+| `client`      | Cliente       |                        |
+| `lost`        | Perdido       |                        |
+| `discarded`   | Descartado    | "Descartado"           |
 
 Na importação, qualquer valor desconhecido vira `new`, e o valor original vai para `notes` com o prefixo `[status original: …]`.
 
 ### 4.3 Tabelas adicionais
 
-| Tabela | Colunas principais | Notas |
-|---|---|---|
-| `auth_users`, `auth_sessions`, `auth_accounts`, `auth_verifications` | Geradas pelo CLI do Better Auth para Drizzle, renomeadas via `modelName` | Verificar o comando atual de geração de schema. |
-| `settings` | `key text pk`, `value jsonb`, `updated_at` | Chaves: `score_weights`, `score_thresholds`, `places_daily_budget`, `calendar_defaults`, `business_calendar` (feriados extras), `owner_profile` (nome, assinatura, link do portfólio). Validar cada chave com Zod. |
-| `deal_stages` | `id serial`, `key text unique`, `name`, `color text` (token), `sort int`, `is_won bool`, `is_lost bool`, `default_probability int`, `archived_at` | Seed: ver `docs/PLAN.md` (D2). |
-| `deals` | `id uuid`, `lead_id fk not null on delete cascade`, `stage_id fk`, `title`, `position text collate "C" not null`, `value numeric(12,2) null`, `probability int null`, `service_type text`, `expected_close_on date null`, `status deal_status` (`open|won|lost`), `lost_reason text`, `won_at`, `lost_at`, `stage_entered_at`, `notes`, `created_at`, `updated_at` | Índice único parcial `(lead_id) where status='open'`: no máximo uma negociação aberta por lead. |
-| `deal_stage_history` | `id`, `deal_id fk cascade`, `from_stage_id null`, `to_stage_id`, `moved_at`, `source` (`ui|mcp|rule|import`) | Base das métricas de conversão por etapa. |
-| `interactions` | `id uuid`, `lead_id fk not null cascade`, `deal_id fk null set null`, `type` (`whatsapp|call|email|instagram_dm|in_person|meeting|proposal|note|system`), `direction` (`outbound|inbound|internal`), `outcome null` (`no_answer|replied|interested|not_interested|asked_later|meeting_set|proposal_requested|opt_out`), `summary text not null`, `body text`, `occurred_at timestamptz`, `template_id null`, `created_by` (`user|mcp|rule|import`), `created_at` | |
-| `reminders` | `id uuid`, `lead_id fk not null cascade`, `deal_id fk null cascade`, `title`, `notes`, `due_at timestamptz`, `duration_min int default 15`, `status` (`open|done|canceled`), `completed_at`, `snooze_count int default 0`, `source` (`manual|rule|mcp`), `rule_id fk null`, `dedupe_key text unique null`, `google_calendar_id text`, `google_event_id text`, `sync_status` (`pending|synced|error|disabled`), `sync_attempts int`, `sync_error text`, `synced_at`, `created_at`, `updated_at` | Se `deal_id` estiver preenchido, `lead_id` = `deals.lead_id` (garantido por trigger). |
-| `followup_rules` | `id serial`, `name`, `active bool`, `trigger` (`deal_created|deal_stage_entered|interaction_logged`), `stage_id null`, `interaction_outcome null`, `interaction_direction null`, `cadence jsonb` (`[{offsetBusinessDays, time:"09:30", title, templateKey?}]`), `cancel_on jsonb` (ex.: `{"inboundInteraction":true,"stageLeft":true}`), `sort int` | Validar `cadence` com Zod. |
-| `message_templates` | `id serial`, `key text unique`, `name`, `channel` (`whatsapp|email|instagram`), `niche_id null`, `stage_id null`, `body text`, `active bool` | Variáveis na seção 11. |
-| `api_tokens` | `id uuid`, `name`, `token_prefix text` (8 caracteres, exibível), `token_hash text unique` (SHA-256 hex), `scopes text[]` (`read`, `write`, `prospecting`), `last_used_at`, `expires_at null`, `revoked_at null`, `created_at` | O token completo aparece **uma única vez**, na criação. |
-| `google_connections` | `id serial`, `google_email`, `refresh_token_enc text`, `access_token_enc text`, `access_token_expires_at`, `scope text`, `calendar_id text`, `status` (`active|needs_reauth|revoked`), `last_error`, `connected_at`, `updated_at` | Uma linha só. Tokens cifrados com AES-256-GCM (`TOKEN_ENCRYPTION_KEY`, prefixo de versão de chave). |
-| `job_runs` | `id uuid`, `job text`, `execution_id text unique null`, `started_at`, `finished_at`, `status`, `stats jsonb`, `error text` | Idempotência de cron e schedules. |
-| `saved_views` | `id serial`, `scope` (`leads|deals`), `name`, `params jsonb`, `is_default bool`, `sort int` | Filtros salvos. |
-| `suppression_list` | `id serial`, `place_id null`, `phone_e164_hash null`, `name_region_hash null`, `reason`, `created_at` | Impede que um lead excluído ou com opt-out seja reimportado pela rotina. Hash SHA-256. |
-| `audit_log` | `id bigserial`, `entity`, `entity_id`, `action`, `actor` (`user|mcp:<tokenId>|rule|job`), `diff jsonb`, `at` | Registra mutações vindas de MCP/REST e regras. |
+| Tabela                                                               | Colunas principais                                                                                                                                                                                                                                    | Notas                                                                                                                                                                                                              |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `auth_users`, `auth_sessions`, `auth_accounts`, `auth_verifications` | Geradas pelo CLI do Better Auth para Drizzle, renomeadas via `modelName`                                                                                                                                                                              | Verificar o comando atual de geração de schema.                                                                                                                                                                    |
+| `settings`                                                           | `key text pk`, `value jsonb`, `updated_at`                                                                                                                                                                                                            | Chaves: `score_weights`, `score_thresholds`, `places_daily_budget`, `calendar_defaults`, `business_calendar` (feriados extras), `owner_profile` (nome, assinatura, link do portfólio). Validar cada chave com Zod. |
+| `deal_stages`                                                        | `id serial`, `key text unique`, `name`, `color text` (token), `sort int`, `is_won bool`, `is_lost bool`, `default_probability int`, `archived_at`                                                                                                     | Seed: ver `docs/PLAN.md` (D2).                                                                                                                                                                                     |
+| `deals`                                                              | `id uuid`, `lead_id fk not null on delete cascade`, `stage_id fk`, `title`, `position text collate "C" not null`, `value numeric(12,2) null`, `probability int null`, `service_type text`, `expected_close_on date null`, `status deal_status` (`open | won                                                                                                                                                                                                                | lost`), `lost_reason text`, `won_at`, `lost_at`, `stage_entered_at`, `notes`, `created_at`, `updated_at`                                                                                                                                                          | Índice único parcial `(lead_id) where status='open'`: no máximo uma negociação aberta por lead.     |
+| `deal_stage_history`                                                 | `id`, `deal_id fk cascade`, `from_stage_id null`, `to_stage_id`, `moved_at`, `source` (`ui                                                                                                                                                            | mcp                                                                                                                                                                                                                | rule                                                                                                                                                                                                                                                              | import`)                                                                                            | Base das métricas de conversão por etapa.                                                                                           |
+| `interactions`                                                       | `id uuid`, `lead_id fk not null cascade`, `deal_id fk null set null`, `type` (`whatsapp                                                                                                                                                               | call                                                                                                                                                                                                               | email                                                                                                                                                                                                                                                             | instagram_dm                                                                                        | in_person                                                                                                                           | meeting | proposal | note                                                                                        | system`), `direction` (`outbound                                                      | inbound | internal`), `outcome null` (`no_answer | replied | interested | not_interested | asked_later | meeting_set | proposal_requested | opt_out`), `summary text not null`, `body text`, `occurred_at timestamptz`, `template_id null`, `created_by` (`user | mcp | rule | import`), `created_at` |     |
+| `reminders`                                                          | `id uuid`, `lead_id fk not null cascade`, `deal_id fk null cascade`, `title`, `notes`, `due_at timestamptz`, `duration_min int default 15`, `status` (`open                                                                                           | done                                                                                                                                                                                                               | canceled`), `completed_at`, `snooze_count int default 0`, `source` (`manual                                                                                                                                                                                       | rule                                                                                                | mcp`), `rule_id fk null`, `dedupe_key text unique null`, `google_calendar_id text`, `google_event_id text`, `sync_status` (`pending | synced  | error    | disabled`), `sync_attempts int`, `sync_error text`, `synced_at`, `created_at`, `updated_at` | Se `deal_id` estiver preenchido, `lead_id` = `deals.lead_id` (garantido por trigger). |
+| `followup_rules`                                                     | `id serial`, `name`, `active bool`, `trigger` (`deal_created                                                                                                                                                                                          | deal_stage_entered                                                                                                                                                                                                 | interaction_logged`), `stage_id null`, `interaction_outcome null`, `interaction_direction null`, `cadence jsonb` (`[{offsetBusinessDays, time:"09:30", title, templateKey?}]`), `cancel_on jsonb`(ex.:`{"inboundInteraction":true,"stageLeft":true}`), `sort int` | Validar `cadence` com Zod.                                                                          |
+| `message_templates`                                                  | `id serial`, `key text unique`, `name`, `channel` (`whatsapp                                                                                                                                                                                          | email                                                                                                                                                                                                              | instagram`), `niche_id null`, `stage_id null`, `body text`, `active bool`                                                                                                                                                                                         | Variáveis na seção 11.                                                                              |
+| `api_tokens`                                                         | `id uuid`, `name`, `token_prefix text` (8 caracteres, exibível), `token_hash text unique` (SHA-256 hex), `scopes text[]` (`read`, `write`, `prospecting`), `last_used_at`, `expires_at null`, `revoked_at null`, `created_at`                         | O token completo aparece **uma única vez**, na criação.                                                                                                                                                            |
+| `google_connections`                                                 | `id serial`, `google_email`, `refresh_token_enc text`, `access_token_enc text`, `access_token_expires_at`, `scope text`, `calendar_id text`, `status` (`active                                                                                        | needs_reauth                                                                                                                                                                                                       | revoked`), `last_error`, `connected_at`, `updated_at`                                                                                                                                                                                                             | Uma linha só. Tokens cifrados com AES-256-GCM (`TOKEN_ENCRYPTION_KEY`, prefixo de versão de chave). |
+| `job_runs`                                                           | `id uuid`, `job text`, `execution_id text unique null`, `started_at`, `finished_at`, `status`, `stats jsonb`, `error text`                                                                                                                            | Idempotência de cron e schedules.                                                                                                                                                                                  |
+| `saved_views`                                                        | `id serial`, `scope` (`leads                                                                                                                                                                                                                          | deals`), `name`, `params jsonb`, `is_default bool`, `sort int`                                                                                                                                                     | Filtros salvos.                                                                                                                                                                                                                                                   |
+| `suppression_list`                                                   | `id serial`, `place_id null`, `phone_e164_hash null`, `name_region_hash null`, `reason`, `created_at`                                                                                                                                                 | Impede que um lead excluído ou com opt-out seja reimportado pela rotina. Hash SHA-256.                                                                                                                             |
+| `audit_log`                                                          | `id bigserial`, `entity`, `entity_id`, `action`, `actor` (`user                                                                                                                                                                                       | mcp:<tokenId>                                                                                                                                                                                                      | rule                                                                                                                                                                                                                                                              | job`), `diff jsonb`, `at`                                                                           | Registra mutações vindas de MCP/REST e regras.                                                                                      |
 
 ### 4.4 Índices e integridade
 
@@ -192,14 +195,14 @@ Na importação, qualquer valor desconhecido vira `new`, e o valor original vai 
 
 ### 4.6 Score (função pura `computeScore(lead, niche, settings)`)
 
-| Critério | Pontos (peso editável) |
-|---|---|
-| `website_status ∈ {none, social_only, bad}` | `website` (30) |
-| `maps_rating ≥ minRating` **e** `maps_reviews ≥ minReviews` | `reputation` (20) |
-| `has_active_ads` **ou** `instagram_active` | `marketing` (15) |
-| `niche.ticket`: alto 15 · medio 7,5 · baixo 0 (escala proporcional ao peso `ticket`) | `ticket` |
-| `has_whatsapp` **ou** `decision_maker_contact` não vazio | `directContact` (10) |
-| `strong_local_competition` | `competition` (10) |
+| Critério                                                                             | Pontos (peso editável) |
+| ------------------------------------------------------------------------------------ | ---------------------- |
+| `website_status ∈ {none, social_only, bad}`                                          | `website` (30)         |
+| `maps_rating ≥ minRating` **e** `maps_reviews ≥ minReviews`                          | `reputation` (20)      |
+| `has_active_ads` **ou** `instagram_active`                                           | `marketing` (15)       |
+| `niche.ticket`: alto 15 · medio 7,5 · baixo 0 (escala proporcional ao peso `ticket`) | `ticket`               |
+| `has_whatsapp` **ou** `decision_maker_contact` não vazio                             | `directContact` (10)   |
+| `strong_local_competition`                                                           | `competition` (10)     |
 
 - O resultado é `Math.round(soma)`, limitado a 0..100. O detalhamento por critério vai em `score_breakdown`.
 - Faixas: **≥ 70 verde**, **40–69 amarelo**, **< 40 vermelho**.
@@ -211,8 +214,8 @@ Na importação, qualquer valor desconhecido vira `new`, e o valor original vai 
 ### 5.1 Desenho (validado na documentação da Vercel em nov/2026)
 
 - **Deployment Protection não substitui o login do app.**
-  - *Standard Protection* protege previews e URLs geradas, mas **não** os domínios de produção.
-  - *All Deployments* protege a produção também, mas não existe em `localhost`, não entrega a identidade do usuário ao app e bloqueia chamadores automáticos (MCP, rotina, cron externo).
+  - _Standard Protection_ protege previews e URLs geradas, mas **não** os domínios de produção.
+  - _All Deployments_ protege a produção também, mas não existe em `localhost`, não entrega a identidade do usuário ao app e bloqueia chamadores automáticos (MCP, rotina, cron externo).
   - Um relato conhecido diz que o `manifest` da PWA recebe 401 em deploy protegido. Mitigação: `<link rel="manifest" crossorigin="use-credentials">`, que precisa ser testada.
 - **Camada obrigatória: auth dentro do app** com **Sign in with Vercel** (OAuth 2.0/OIDC, PKCE S256, escopos `openid email profile`), usando **Better Auth** com o provedor `vercel` nativo.
 - **Por que Better Auth e não Auth.js**: provedor `vercel` oficial com PKCE; adapter Drizzle e sessões no banco com cache em cookie; hooks para allowlist; o Auth.js passou a ser mantido pela equipe do Better Auth.
@@ -226,11 +229,11 @@ Na importação, qualquer valor desconhecido vira `new`, e o valor original vai 
 
 ### 5.2 Callbacks e ambientes
 
-| Ambiente | Callback registrada no Vercel App | `BETTER_AUTH_URL` |
-|---|---|---|
-| Local | `http://localhost:3000/api/auth/callback/vercel` | `http://localhost:3000` |
-| Preview | Selecionar o projeto Vercel no campo de callback (verificar) | Derivar de `VERCEL_BRANCH_URL` e incluir em `trustedOrigins` |
-| Produção | `https://crm.lacus.solutions/api/auth/callback/vercel` | `https://crm.lacus.solutions` |
+| Ambiente | Callback registrada no Vercel App                            | `BETTER_AUTH_URL`                                            |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Local    | `http://localhost:3000/api/auth/callback/vercel`             | `http://localhost:3000`                                      |
+| Preview  | Selecionar o projeto Vercel no campo de callback (verificar) | Derivar de `VERCEL_BRANCH_URL` e incluir em `trustedOrigins` |
+| Produção | `https://crm.lacus.solutions/api/auth/callback/vercel`       | `https://crm.lacus.solutions`                                |
 
 Confirme o caminho exato da callback na doc do Better Auth.
 
@@ -247,6 +250,7 @@ Confirme o caminho exato da callback na doc do Better Auth.
 ## 6. Telas e comportamento
 
 **Layout geral**:
+
 - **Mobile-first.** No celular, navegação inferior fixa com 5 itens: **Início**, **Leads**, **Funil**, **Lembretes**, **Mais** (Fila, Configurações, Design System). Alvos de toque ≥ 44 px, respeitando `safe-area-inset`.
 - **Desktop (≥ 1024 px)**: sidebar recolhível e paleta de comandos `⌘K`/`Ctrl+K` (cmdk) para buscar lead por nome, telefone ou bairro e para ações rápidas.
 - Toda lista tem skeleton, empty state com ação primária e tratamento de erro com "Tentar novamente".
@@ -256,16 +260,16 @@ Confirme o caminho exato da callback na doc do Better Auth.
 
 Filtro de período (7/30/90 dias/tudo) e filtros por nicho e região. Agregações em poucas queries SQL no servidor, sem N+1.
 
-| Bloco | Definição |
-|---|---|
-| KPIs (cards) | Leads novos no período · Abordados no período · **Taxa de resposta** = leads com ≥1 interação `inbound` ÷ leads com ≥1 `outbound` · **Taxa de ganho** = ganhos ÷ (ganhos + perdidos) · **Valor em aberto** (soma de `value` dos deals abertos) e **valor ponderado** (× probabilidade) · **Score médio** dos leads `new`/`to_contact` |
-| Follow-ups | Atrasados (vermelho), Hoje, Próximos 7 dias; cada item com "Concluir" e "Adiar" |
-| Funil | Barras com deals por etapa (quantidade e R$) e **conversão por etapa** = deals que chegaram à etapa N+1 ÷ deals que chegaram à etapa N (via `deal_stage_history`) |
-| Distribuições | Leads por status (barra horizontal), por nicho (top 10), por região, e por faixa de score |
-| Prospecção | Requisições da API hoje ÷ orçamento (`places_daily_budget`), leads gravados hoje, sparkline de 14 dias, fila (pendentes/feitas/erro/puladas) e próximo item |
-| Melhores próximos | Top 5 leads `new`/`to_contact` sem `do_not_contact`, ordenados por `priority` e depois `score`, com botão "Abordar" |
-| Atividade recente | Últimas 15 interações, movimentações de deal e leads criados por MCP |
-| Alertas | Banner se o Google estiver em `needs_reauth`, se houver lembretes com `sync_status=error`, se a fila tiver itens em `error` ou se o uso da API passar do orçamento |
+| Bloco             | Definição                                                                                                                                                                                                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| KPIs (cards)      | Leads novos no período · Abordados no período · **Taxa de resposta** = leads com ≥1 interação `inbound` ÷ leads com ≥1 `outbound` · **Taxa de ganho** = ganhos ÷ (ganhos + perdidos) · **Valor em aberto** (soma de `value` dos deals abertos) e **valor ponderado** (× probabilidade) · **Score médio** dos leads `new`/`to_contact` |
+| Follow-ups        | Atrasados (vermelho), Hoje, Próximos 7 dias; cada item com "Concluir" e "Adiar"                                                                                                                                                                                                                                                       |
+| Funil             | Barras com deals por etapa (quantidade e R$) e **conversão por etapa** = deals que chegaram à etapa N+1 ÷ deals que chegaram à etapa N (via `deal_stage_history`)                                                                                                                                                                     |
+| Distribuições     | Leads por status (barra horizontal), por nicho (top 10), por região, e por faixa de score                                                                                                                                                                                                                                             |
+| Prospecção        | Requisições da API hoje ÷ orçamento (`places_daily_budget`), leads gravados hoje, sparkline de 14 dias, fila (pendentes/feitas/erro/puladas) e próximo item                                                                                                                                                                           |
+| Melhores próximos | Top 5 leads `new`/`to_contact` sem `do_not_contact`, ordenados por `priority` e depois `score`, com botão "Abordar"                                                                                                                                                                                                                   |
+| Atividade recente | Últimas 15 interações, movimentações de deal e leads criados por MCP                                                                                                                                                                                                                                                                  |
+| Alertas           | Banner se o Google estiver em `needs_reauth`, se houver lembretes com `sync_status=error`, se a fila tiver itens em `error` ou se o uso da API passar do orçamento                                                                                                                                                                    |
 
 ### 6.2 Leads (`/leads`, `/leads/[id]`)
 
@@ -330,33 +334,33 @@ Escreva `DESIGN.md` na raiz e crie a rota **`/design-system`** (atrás do login)
 
 ### 7.1 Cores (hex; todas as combinações texto/fundo listadas passam WCAG AA)
 
-| Token | Escuro (padrão) | Claro |
-|---|---|---|
-| `--bg` | `#0B0D10` | `#F7F8FA` |
-| `--surface-1` (cards) | `#12151A` | `#FFFFFF` |
-| `--surface-2` (drawer, popover) | `#181C22` | `#FFFFFF` |
-| `--surface-3` (input, hover) | `#1F242C` | `#EEF1F5` |
-| `--border` | `#2A303A` | `#DDE2E8` |
-| `--border-strong` | `#3A424F` | `#C5CCD6` |
-| `--text` | `#E8EBF0` | `#11151B` |
-| `--text-muted` | `#A3ABB8` | `#4A5361` |
-| `--text-subtle` (só ≥ 12 px, nunca em ações) | `#7F8896` | `#6B7482` |
-| `--primary` | `#4C9EEB` (texto `#0B0D10`) | `#1F6FC5` (texto `#FFFFFF`) |
-| `--primary-hover` | `#6AB0F0` | `#185DA8` |
-| `--focus-ring` | `#7CC0FF` (2 px + offset 2 px) | `#1F6FC5` |
-| `--success` | `#3FB97A` | `#1E7F4F` |
-| `--warning` | `#E5A93B` | `#9A6A0B` |
-| `--danger` | `#F0645A` | `#C23A31` |
-| `--logo-main` | `#4C9EEB` (= `--primary`) | `#1F6FC5` (= `--primary`) |
-| `--logo-accent` | `#E8EBF0` (= `--text`) | `#11151B` (= `--text`) |
+| Token                                        | Escuro (padrão)                | Claro                       |
+| -------------------------------------------- | ------------------------------ | --------------------------- |
+| `--bg`                                       | `#0B0D10`                      | `#F7F8FA`                   |
+| `--surface-1` (cards)                        | `#12151A`                      | `#FFFFFF`                   |
+| `--surface-2` (drawer, popover)              | `#181C22`                      | `#FFFFFF`                   |
+| `--surface-3` (input, hover)                 | `#1F242C`                      | `#EEF1F5`                   |
+| `--border`                                   | `#2A303A`                      | `#DDE2E8`                   |
+| `--border-strong`                            | `#3A424F`                      | `#C5CCD6`                   |
+| `--text`                                     | `#E8EBF0`                      | `#11151B`                   |
+| `--text-muted`                               | `#A3ABB8`                      | `#4A5361`                   |
+| `--text-subtle` (só ≥ 12 px, nunca em ações) | `#7F8896`                      | `#6B7482`                   |
+| `--primary`                                  | `#4C9EEB` (texto `#0B0D10`)    | `#1F6FC5` (texto `#FFFFFF`) |
+| `--primary-hover`                            | `#6AB0F0`                      | `#185DA8`                   |
+| `--focus-ring`                               | `#7CC0FF` (2 px + offset 2 px) | `#1F6FC5`                   |
+| `--success`                                  | `#3FB97A`                      | `#1E7F4F`                   |
+| `--warning`                                  | `#E5A93B`                      | `#9A6A0B`                   |
+| `--danger`                                   | `#F0645A`                      | `#C23A31`                   |
+| `--logo-main`                                | `#4C9EEB` (= `--primary`)      | `#1F6FC5` (= `--primary`)   |
+| `--logo-accent`                              | `#E8EBF0` (= `--text`)         | `#11151B` (= `--text`)      |
 
 **Score (badge)**: o número com fundo e texto do token, nunca só cor (inclua também o rótulo no `aria-label`).
 
-| Faixa | Fundo | Texto | Rótulo acessível |
-|---|---|---|---|
-| ≥ 70 | `#133A27` | `#6EE0A2` | "Score alto" |
-| 40–69 | `#3A2F12` | `#F2C55C` | "Score médio" |
-| < 40 | `#3D1A18` | `#FF8A80` | "Score baixo" |
+| Faixa | Fundo     | Texto     | Rótulo acessível |
+| ----- | --------- | --------- | ---------------- |
+| ≥ 70  | `#133A27` | `#6EE0A2` | "Score alto"     |
+| 40–69 | `#3A2F12` | `#F2C55C` | "Score médio"    |
+| < 40  | `#3D1A18` | `#FF8A80` | "Score baixo"    |
 
 No tema claro, use fundo `#E3F5EB`/`#FBF0D5`/`#FBE4E2` e texto `#1E7F4F`/`#8A5D00`/`#B3261E`.
 
@@ -377,18 +381,18 @@ No tema claro, use fundo `#E3F5EB`/`#FBF0D5`/`#FBE4E2` e texto `#1E7F4F`/`#8A5D0
 
 ### 7.3 Componentes e estados obrigatórios (todos demonstrados em `/design-system`)
 
-| Componente | Estados e variantes |
-|---|---|
-| Botão | primary, secondary, ghost, destructive, link; tamanhos sm/md/lg; default, hover, active, focus-visible, disabled e loading (spinner + texto mantido, `aria-busy`) |
-| Input, Select, Combobox, Textarea, DatePicker | Rótulo sempre visível, ajuda, erro (borda `--danger` + mensagem com `aria-describedby`), desabilitado, somente leitura |
-| Tabela | Cabeçalho sticky, ordenação com ícone e `aria-sort`, linha hover/selecionada, célula editável, skeleton de 8 linhas, empty state |
-| Badge | Neutro, status (um por `contact_status`), score (3 faixas), sync (synced/pending/error) |
-| Carta do kanban | Repouso, hover, foco, arrastando (`drag`), placeholder (borda tracejada `--border-strong`), atrasado (barra esquerda `--danger`) |
-| Drawer | Lateral à direita (desktop, 480 px) e bottom sheet (mobile, 92vh com alça); foco preso e Esc fecha |
-| Toast | success, error, info, com ação (Desfazer); vida de 5 s (8 s com ação); `aria-live="polite"` |
-| Empty state | Ícone 40 px, título, frase, ação primária |
-| Skeleton | Pulso de 1,2 s; desligado com reduced-motion |
-| KPI card, gráfico, timeline, bottom nav, command palette | Demonstrados com dados fictícios |
+| Componente                                               | Estados e variantes                                                                                                                                               |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Botão                                                    | primary, secondary, ghost, destructive, link; tamanhos sm/md/lg; default, hover, active, focus-visible, disabled e loading (spinner + texto mantido, `aria-busy`) |
+| Input, Select, Combobox, Textarea, DatePicker            | Rótulo sempre visível, ajuda, erro (borda `--danger` + mensagem com `aria-describedby`), desabilitado, somente leitura                                            |
+| Tabela                                                   | Cabeçalho sticky, ordenação com ícone e `aria-sort`, linha hover/selecionada, célula editável, skeleton de 8 linhas, empty state                                  |
+| Badge                                                    | Neutro, status (um por `contact_status`), score (3 faixas), sync (synced/pending/error)                                                                           |
+| Carta do kanban                                          | Repouso, hover, foco, arrastando (`drag`), placeholder (borda tracejada `--border-strong`), atrasado (barra esquerda `--danger`)                                  |
+| Drawer                                                   | Lateral à direita (desktop, 480 px) e bottom sheet (mobile, 92vh com alça); foco preso e Esc fecha                                                                |
+| Toast                                                    | success, error, info, com ação (Desfazer); vida de 5 s (8 s com ação); `aria-live="polite"`                                                                       |
+| Empty state                                              | Ícone 40 px, título, frase, ação primária                                                                                                                         |
+| Skeleton                                                 | Pulso de 1,2 s; desligado com reduced-motion                                                                                                                      |
+| KPI card, gráfico, timeline, bottom nav, command palette | Demonstrados com dados fictícios                                                                                                                                  |
 
 **Regras**: nunca transmitir informação só por cor; contraste mínimo AA (4,5:1 para texto, 3:1 para ícones e bordas de foco); foco sempre visível; nenhum texto menor que 12 px.
 
@@ -411,23 +415,23 @@ No tema claro, use fundo `#E3F5EB`/`#FBF0D5`/`#FBE4E2` e texto `#1E7F4F`/`#8A5D0
 - `app/api/mcp/route.ts` (Streamable HTTP, stateless), validando PAT **ou** token OAuth (PLAN D1), `runtime = "nodejs"` e `maxDuration` adequado ao Hobby (verificar). `app/api/mcp/prospecting/route.ts` expõe só as ferramentas de prospecção.
 - Toda ferramenta devolve `structuredContent` e um texto curto. Listas limitadas a 50 itens, com cursor.
 
-| Ferramenta | Escopo | Entrada (resumo) | Saída (resumo) |
-|---|---|---|---|
-| `crm_search_leads` | read | `query?`, `status?[]`, `nicheId?`, `regionLabel?`, `minScore?`, `hasOpenDeal?`, `limit≤50`, `cursor?` | `{items: LeadSummary[], nextCursor}` |
-| `crm_get_lead` | read | `id` ou `placeId` | Lead completo + deal aberto + 20 últimas interações + lembretes abertos |
-| `crm_upsert_leads` | write ou prospecting | `{runId, queuePosition?, leads: LeadInput[≤20]}` | `{created[], updated[], skipped[{ref, reason}]}` |
-| `crm_update_lead` | write | `id`, `patch` (lista branca de campos, incluindo `session_url`, `next_action`, `pitch`, `priority`, `contact_status`) | Lead |
-| `crm_set_do_not_contact` | write | `id`, `reason`, `optOut: bool` | Resultado do fluxo 4.4 |
-| `crm_log_interaction` | write | `leadId`, `dealId?`, `type`, `direction`, `outcome?`, `summary`, `occurredAt?` | Interação + lembretes criados/cancelados |
-| `crm_create_deal` / `crm_move_deal` | write | `leadId`, `title`, `value?`, `stageKey?` / `dealId`, `stageKey`, `placement: top\|bottom`, `lostReason?` | Deal + efeitos das regras |
-| `crm_list_reminders` | read | `range: overdue\|today\|next7` | Lembretes |
-| `crm_create_reminder` / `crm_complete_reminder` / `crm_snooze_reminder` | write | Usuais | Lembrete |
-| `crm_render_message` | read | `leadId`, `templateKey` | `{text, waLink}` (nunca envia) |
-| `crm_dashboard_summary` | read | `period?` | KPIs da 6.1 |
-| `queue_claim_next` | prospecting | `{runId}` | Próximo item `pending`, não pulado e sem lease ativo (ordem `sort_order`), com `regionLabel`, `nicheName` e dados do nicho; marca `claimed_at`. `null` se a fila estiver vazia |
-| `queue_complete` | prospecting | `{position, runId, status: done\|error, leadsAdded, notes}` | Item atualizado (idempotente) |
-| `api_usage_today` / `api_usage_log` | prospecting | — / `{runId, queuePosition?, requests, leadsSaved, note}` | `{requestsToday, budget, remaining}` / registro (único por `runId`) |
-| `niches_list`, `regions_list` | read (e prospecting) | — | Listas |
+| Ferramenta                                                              | Escopo               | Entrada (resumo)                                                                                                      | Saída (resumo)                                                                                                                                                                 |
+| ----------------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `crm_search_leads`                                                      | read                 | `query?`, `status?[]`, `nicheId?`, `regionLabel?`, `minScore?`, `hasOpenDeal?`, `limit≤50`, `cursor?`                 | `{items: LeadSummary[], nextCursor}`                                                                                                                                           |
+| `crm_get_lead`                                                          | read                 | `id` ou `placeId`                                                                                                     | Lead completo + deal aberto + 20 últimas interações + lembretes abertos                                                                                                        |
+| `crm_upsert_leads`                                                      | write ou prospecting | `{runId, queuePosition?, leads: LeadInput[≤20]}`                                                                      | `{created[], updated[], skipped[{ref, reason}]}`                                                                                                                               |
+| `crm_update_lead`                                                       | write                | `id`, `patch` (lista branca de campos, incluindo `session_url`, `next_action`, `pitch`, `priority`, `contact_status`) | Lead                                                                                                                                                                           |
+| `crm_set_do_not_contact`                                                | write                | `id`, `reason`, `optOut: bool`                                                                                        | Resultado do fluxo 4.4                                                                                                                                                         |
+| `crm_log_interaction`                                                   | write                | `leadId`, `dealId?`, `type`, `direction`, `outcome?`, `summary`, `occurredAt?`                                        | Interação + lembretes criados/cancelados                                                                                                                                       |
+| `crm_create_deal` / `crm_move_deal`                                     | write                | `leadId`, `title`, `value?`, `stageKey?` / `dealId`, `stageKey`, `placement: top\|bottom`, `lostReason?`              | Deal + efeitos das regras                                                                                                                                                      |
+| `crm_list_reminders`                                                    | read                 | `range: overdue\|today\|next7`                                                                                        | Lembretes                                                                                                                                                                      |
+| `crm_create_reminder` / `crm_complete_reminder` / `crm_snooze_reminder` | write                | Usuais                                                                                                                | Lembrete                                                                                                                                                                       |
+| `crm_render_message`                                                    | read                 | `leadId`, `templateKey`                                                                                               | `{text, waLink}` (nunca envia)                                                                                                                                                 |
+| `crm_dashboard_summary`                                                 | read                 | `period?`                                                                                                             | KPIs da 6.1                                                                                                                                                                    |
+| `queue_claim_next`                                                      | prospecting          | `{runId}`                                                                                                             | Próximo item `pending`, não pulado e sem lease ativo (ordem `sort_order`), com `regionLabel`, `nicheName` e dados do nicho; marca `claimed_at`. `null` se a fila estiver vazia |
+| `queue_complete`                                                        | prospecting          | `{position, runId, status: done\|error, leadsAdded, notes}`                                                           | Item atualizado (idempotente)                                                                                                                                                  |
+| `api_usage_today` / `api_usage_log`                                     | prospecting          | — / `{runId, queuePosition?, requests, leadsSaved, note}`                                                             | `{requestsToday, budget, remaining}` / registro (único por `runId`)                                                                                                            |
+| `niches_list`, `regions_list`                                           | read (e prospecting) | —                                                                                                                     | Listas                                                                                                                                                                         |
 
 ### 9.2 Upsert idempotente de leads (o mesmo serviço para MCP e REST)
 
@@ -457,6 +461,7 @@ claude mcp add --transport http lacus-crm https://crm.lacus.solutions/api/mcp --
 Para versionar, use um `.mcp.json` com `"headers": {"Authorization": "Bearer ${LACUS_CRM_TOKEN}"}`. Não use nomes de variável reservados, como `ANTHROPIC_*`.
 
 **Rotina agendada** (tarefa agendada no claude.ai, conector OAuth em `/api/mcp/prospecting`). Fluxo:
+
 1. `queue_claim_next`
 2. `api_usage_today` (aborta se `remaining` for insuficiente)
 3. Places API + filtros F0–F8 (a lógica continua na rotina, não no app)
@@ -482,20 +487,20 @@ Todos os passos levam o mesmo `runId` (ex.: `2026-11-18T14:00Z-pos37`), e um ret
 - **Dias úteis**: segunda a sexta, menos feriados nacionais (fixos e móveis via Páscoa: Carnaval, Sexta-feira Santa, Corpus Christi), Curitiba (8/set) e os extras de `settings.business_calendar`. Função pura `addBusinessDays(date, n, calendar)` com testes.
 - **Cadências padrão (seed, adaptadas ao funil D2)**:
 
-| Regra | Gatilho | Cadência | Cancela quando |
-|---|---|---|---|
+| Regra                      | Gatilho                                                                       | Cadência                                                                                                   | Cancela quando                          |
+| -------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------- |
 | Sem resposta ao 1º contato | `interaction_logged` (outbound, sem outcome positivo) com lead em `contacted` | +2, +5 e +10 dias úteis às 09:30 ("Follow-up 1/2/3"). Ao concluir o 3º sem resposta, sugerir `no_response` | Interação `inbound` ou mudança de etapa |
-| Proposta enviada | `interaction_logged` com `interaction_type = proposal` (PLAN D2) | +2, +5 e +10 dias úteis às 10:00 | Inbound ou etapa deixada |
-| Pediu para retomar depois | outcome `asked_later` | +20 dias úteis (editável no momento) | Inbound |
-| Reunião marcada | outcome `meeting_set` | Data informada − 1 dia útil, "Preparar diagnóstico" | — |
-| Negociação parada | Job diário: deal aberto há > 10 dias úteis na mesma etapa sem lembrete aberto | "Destravar negociação" | — |
-| Ganho | `deal_stage_entered` = Ganho | +1 dia útil "Onboarding: coletar materiais" | — |
+| Proposta enviada           | `interaction_logged` com `interaction_type = proposal` (PLAN D2)              | +2, +5 e +10 dias úteis às 10:00                                                                           | Inbound ou etapa deixada                |
+| Pediu para retomar depois  | outcome `asked_later`                                                         | +20 dias úteis (editável no momento)                                                                       | Inbound                                 |
+| Reunião marcada            | outcome `meeting_set`                                                         | Data informada − 1 dia útil, "Preparar diagnóstico"                                                        | —                                       |
+| Negociação parada          | Job diário: deal aberto há > 10 dias úteis na mesma etapa sem lembrete aberto | "Destravar negociação"                                                                                     | —                                       |
+| Ganho                      | `deal_stage_entered` = Ganho                                                  | +1 dia útil "Onboarding: coletar materiais"                                                                | —                                       |
 
 - **Efeitos de status do lead**: ver PLAN D3 (sincronia só para frente). 1ª outbound → `contacted` + `last_contact_at`; inbound → `replied`; ganho → `client`; perdido → `lost`; outcome `opt_out` → fluxo "Não contatar".
 - **Idempotência**: `dedupe_key = rule:{ruleId}:step:{i}:anchor:{interactionId|dealStageHistoryId}`.
 - **Modelos de mensagem**: variáveis `{{nome_negocio}}`, `{{nicho}}`, `{{bairro}}`, `{{cidade}}`, `{{nota_maps}}`, `{{avaliacoes}}`, `{{situacao_site}}`, `{{argumento}}` (pitch), `{{meu_nome}}`, `{{link_portfolio}}`, `{{saudacao}}`. Variável ausente → aviso na prévia; texto final não pode conter `{{` (bloqueia "Abrir WhatsApp"). Seeds: "Primeiro contato – WhatsApp", "Follow-up 1", "Follow-up 2 (último)", "Envio de proposta", "Retomada". O primeiro contato termina com: "Se preferir não receber mensagens minhas, é só avisar que não entro mais em contato." Textos genéricos, sem dados reais.
 - **Jobs**: `POST /api/jobs/followups` reaplica regras pendentes, cria "negociação parada", reprocessa sync `pending`/`error`, libera leases vencidos da fila e grava `job_runs`. Idempotência por `execution_id` (header `ce-id` dos Schedules ou `X-Run-Id`).
-- **Agendamento no Hobby**: preferência por Vercel Schedule de alvo *path* a cada hora entre 7h e 21h `America/Sao_Paulo`, autenticado por `CRON_SECRET`; fallback cron diário às 10:00 UTC. Verificar disponibilidade e sintaxe. Também aceita disparo externo com PAT.
+- **Agendamento no Hobby**: preferência por Vercel Schedule de alvo _path_ a cada hora entre 7h e 21h `America/Sao_Paulo`, autenticado por `CRON_SECRET`; fallback cron diário às 10:00 UTC. Verificar disponibilidade e sintaxe. Também aceita disparo externo com PAT.
 
 ## 12. Estrutura do repositório e `.env.example`
 
@@ -534,16 +539,16 @@ Valide as variáveis no boot com Zod (`lib/env.ts`), com mensagens claras dizend
 
 ## 13. Fases de execução
 
-| # | Fase | Entregáveis | Critérios de aceite |
-|---|---|---|---|
-| 1 | Fundação + auth + banco | Scaffold; tokens e shell (sidebar, bottom nav, tema); marca (logo, favicon, ícones) e rodapé; schema completo + triggers + down migrations; seeds; Better Auth + allowlist; `proxy.ts` + DAL; `/design-system` inicial; CI (GitHub Actions: typecheck, lint, unit) | Login com Vercel funciona em localhost; conta fora da allowlist é recusada; `db:migrate` → `db:rollback` → `db:migrate` roda limpo; triggers de `do_not_contact` testados; deploy de preview abre `/login`; logo e rodapé aparecem no login e no shell |
-| 2 | Leads | Tabela, filtros, views salvas, drawer, CRUD, score, ações rápidas, "Não contatar", importação/exportação CSV (+ importadores de nichos, regiões, fila, uso da API, top leads) | Importar CSV de exemplo com os 39 cabeçalhos cria/atualiza corretamente (reimportar não muda nada); exportar e reimportar dá o mesmo resultado; duplicata detectada; score = 85; e2e "criar → editar → marcar Não contatar" |
-| 3 | Funil + interações | Board dnd-kit, CRUD de etapas, deals, timeline, ganho/perda, histórico de etapas | Arrastar com mouse, teclado e toque persiste a ordem após reload; erro simulado faz rollback; uma negociação aberta por lead; e2e "criar deal → mover → ganhar" |
-| 4 | Lembretes + Calendar + follow-ups | Tela de lembretes, OAuth Google, calendário dedicado, outbox, motor de regras, dias úteis, modelos, `/api/jobs/followups`, schedule/cron | Interação Proposta cria 3 lembretes nas datas úteis corretas (com feriado); inbound cancela os pendentes; reexecutar o job não duplica; evento aparece, muda e some no Calendar (teste manual documentado); `invalid_grant` simulado mostra o banner |
-| 5 | Dashboard | Blocos da 6.1 | Números batem com fixtures SQL; 5.000 leads < 1,5 s no servidor com banco aquecido |
-| 6 | PWA | Manifest, ícones, Serwist, `/~offline`, snapshot, instrução iOS, toast de atualização | Critérios da seção 8 |
-| 7 | MCP/API + Fila | Tokens, OAuth MCP, `/api/mcp`, `/api/mcp/prospecting`, `/api/v1`, OpenAPI, tela da Fila, docs de operação e rotina | `claude mcp add` conecta e lista as ferramentas; fluxo da rotina roda 2× com o mesmo `runId` sem duplicar; token `prospecting` recebe 403 em `crm_update_lead`; token revogado recebe 401 |
-| 8 | Polimento + deploy | Paleta ⌘K, revisão de acessibilidade, estados vazios e de erro, README, checklist de deploy | Suíte e2e verde; axe sem violações serious/critical; Lighthouse da seção 8; deploy validado pelo Júlio |
+| #   | Fase                              | Entregáveis                                                                                                                                                                                                                                                        | Critérios de aceite                                                                                                                                                                                                                                    |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Fundação + auth + banco           | Scaffold; tokens e shell (sidebar, bottom nav, tema); marca (logo, favicon, ícones) e rodapé; schema completo + triggers + down migrations; seeds; Better Auth + allowlist; `proxy.ts` + DAL; `/design-system` inicial; CI (GitHub Actions: typecheck, lint, unit) | Login com Vercel funciona em localhost; conta fora da allowlist é recusada; `db:migrate` → `db:rollback` → `db:migrate` roda limpo; triggers de `do_not_contact` testados; deploy de preview abre `/login`; logo e rodapé aparecem no login e no shell |
+| 2   | Leads                             | Tabela, filtros, views salvas, drawer, CRUD, score, ações rápidas, "Não contatar", importação/exportação CSV (+ importadores de nichos, regiões, fila, uso da API, top leads)                                                                                      | Importar CSV de exemplo com os 39 cabeçalhos cria/atualiza corretamente (reimportar não muda nada); exportar e reimportar dá o mesmo resultado; duplicata detectada; score = 85; e2e "criar → editar → marcar Não contatar"                            |
+| 3   | Funil + interações                | Board dnd-kit, CRUD de etapas, deals, timeline, ganho/perda, histórico de etapas                                                                                                                                                                                   | Arrastar com mouse, teclado e toque persiste a ordem após reload; erro simulado faz rollback; uma negociação aberta por lead; e2e "criar deal → mover → ganhar"                                                                                        |
+| 4   | Lembretes + Calendar + follow-ups | Tela de lembretes, OAuth Google, calendário dedicado, outbox, motor de regras, dias úteis, modelos, `/api/jobs/followups`, schedule/cron                                                                                                                           | Interação Proposta cria 3 lembretes nas datas úteis corretas (com feriado); inbound cancela os pendentes; reexecutar o job não duplica; evento aparece, muda e some no Calendar (teste manual documentado); `invalid_grant` simulado mostra o banner   |
+| 5   | Dashboard                         | Blocos da 6.1                                                                                                                                                                                                                                                      | Números batem com fixtures SQL; 5.000 leads < 1,5 s no servidor com banco aquecido                                                                                                                                                                     |
+| 6   | PWA                               | Manifest, ícones, Serwist, `/~offline`, snapshot, instrução iOS, toast de atualização                                                                                                                                                                              | Critérios da seção 8                                                                                                                                                                                                                                   |
+| 7   | MCP/API + Fila                    | Tokens, OAuth MCP, `/api/mcp`, `/api/mcp/prospecting`, `/api/v1`, OpenAPI, tela da Fila, docs de operação e rotina                                                                                                                                                 | `claude mcp add` conecta e lista as ferramentas; fluxo da rotina roda 2× com o mesmo `runId` sem duplicar; token `prospecting` recebe 403 em `crm_update_lead`; token revogado recebe 401                                                              |
+| 8   | Polimento + deploy                | Paleta ⌘K, revisão de acessibilidade, estados vazios e de erro, README, checklist de deploy                                                                                                                                                                        | Suíte e2e verde; axe sem violações serious/critical; Lighthouse da seção 8; deploy validado pelo Júlio                                                                                                                                                 |
 
 ## 14. Testes e qualidade
 
@@ -558,11 +563,11 @@ Valide as variáveis no boot com Zod (`lib/env.ts`), com mensagens claras dizend
 
 **Fora do v1**: chamar a Places API pelo app; envio automático de WhatsApp/e-mail/DM; multiusuário; Web Push; edição offline; sincronização bidirecional com o Calendar.
 
-| Risco | Mitigação |
-|---|---|
-| Hobby é para uso não comercial | Verificar os termos; pode ser preciso migrar para Pro |
-| Cron diário ±59 min; Schedules em beta | Lembretes com hora vivem no Calendar; job idempotente; fallback diário |
-| Cold start do Neon | `cookieCache`, skeletons, queries agregadas |
-| Limites do plano grátis do Neon | Volume pequeno; verificar limites |
-| Refresh token do Google expira em Testing | Publicar em produção; `invalid_grant` com banner |
-| Banimento de WhatsApp | Só `wa.me` manual, uma abordagem por vez |
+| Risco                                     | Mitigação                                                              |
+| ----------------------------------------- | ---------------------------------------------------------------------- |
+| Hobby é para uso não comercial            | Verificar os termos; pode ser preciso migrar para Pro                  |
+| Cron diário ±59 min; Schedules em beta    | Lembretes com hora vivem no Calendar; job idempotente; fallback diário |
+| Cold start do Neon                        | `cookieCache`, skeletons, queries agregadas                            |
+| Limites do plano grátis do Neon           | Volume pequeno; verificar limites                                      |
+| Refresh token do Google expira em Testing | Publicar em produção; `invalid_grant` com banner                       |
+| Banimento de WhatsApp                     | Só `wa.me` manual, uma abordagem por vez                               |
