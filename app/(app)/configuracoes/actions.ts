@@ -7,6 +7,9 @@ import { getDb } from '@/lib/db';
 import { syncContext } from '@/lib/google/context';
 import { revokeGoogleToken } from '@/lib/google/oauth';
 import { disconnectGoogle, resyncAll } from '@/lib/services/calendar-sync';
+import { recomputeAllScores } from '@/lib/services/leads';
+import { previewBandChanges, saveScoreSettings } from '@/lib/services/score-settings';
+import { scoreThresholds, scoreWeights } from '@/lib/validation/settings';
 import { revokeConnector } from '@/lib/services/connectors';
 import { createToken, revokeToken } from '@/lib/services/tokens';
 import { SCOPES } from '@/lib/auth/mcp-resources';
@@ -188,6 +191,43 @@ export async function revokeConnectorAction(clientId: string): Promise<Result> {
   try {
     await revokeConnector(getDb(), clientId);
     return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+const scoreInput = z.object({ weights: scoreWeights, thresholds: scoreThresholds });
+
+export async function previewScoreAction(
+  input: unknown,
+): Promise<Result<{ changed: number; total: number }>> {
+  await requireOwner();
+  const p = scoreInput.safeParse(input);
+  if (!p.success) return { ok: false, error: 'Valores inválidos' };
+  try {
+    return { ok: true, ...(await previewBandChanges(getDb(), p.data)) };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function saveScoreAction(input: unknown): Promise<Result> {
+  await requireOwner();
+  try {
+    await saveScoreSettings(getDb(), scoreInput.parse(input));
+    return { ok: true };
+  } catch (e) {
+    return e instanceof Error && !(e instanceof ZodError)
+      ? { ok: false, error: e.message }
+      : zerr(e);
+  }
+}
+
+/** Recalcula o score de todos os leads (lotes de 500 por transação). */
+export async function recomputeScoresAction(): Promise<Result<{ changed: number }>> {
+  await requireOwner();
+  try {
+    return { ok: true, changed: await recomputeAllScores(getDb()) };
   } catch (e) {
     return fail(e);
   }

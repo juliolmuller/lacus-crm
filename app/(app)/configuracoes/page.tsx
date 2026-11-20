@@ -4,8 +4,15 @@ import { StageSettings } from '@/components/funnel/stage-settings';
 import { FollowupSettings } from '@/components/settings/followup-settings';
 import { GoogleSettings } from '@/components/settings/google-settings';
 import { ProfileSettings } from '@/components/settings/profile-settings';
+import { AppearanceSettings } from '@/components/settings/appearance-settings';
+import { DataSettings } from '@/components/settings/data-settings';
+import { ScoreSettingsForm } from '@/components/settings/score-settings';
 import { TemplateSettings } from '@/components/settings/template-settings';
 import { TokenSettings } from '@/components/settings/token-settings';
+import pkg from '@/package.json';
+import { Copyright } from '@/components/brand/copyright';
+import { getScoreSettings } from '@/lib/services/leads';
+import { listSuppression } from '@/lib/services/suppression';
 import { listConnectors } from '@/lib/services/connectors';
 import { listTokens } from '@/lib/services/tokens';
 import { getDb, schema } from '@/lib/db';
@@ -44,6 +51,8 @@ export default async function Page({
     overview,
     tokens,
     connectors,
+    scoreSettings,
+    suppression,
     previewLeads,
   ] = await Promise.all([
     listStages(db),
@@ -55,6 +64,8 @@ export default async function Page({
     syncOverview(db),
     listTokens(db),
     listConnectors(db),
+    getScoreSettings(db),
+    listSuppression(db),
     db
       .select({
         id: leads.id,
@@ -99,6 +110,15 @@ export default async function Page({
   return (
     <section className="flex max-w-4xl flex-col gap-8">
       <h1 className="text-page">Configurações</h1>
+
+      <div className="flex flex-col gap-3">
+        <H id="score">Score</H>
+        <p className={lede}>
+          Pesos e limiares do score dos leads. A prévia mostra quantos leads mudam de faixa; os
+          valores só chegam aos leads ao clicar em Recalcular.
+        </p>
+        <ScoreSettingsForm initial={scoreSettings} />
+      </div>
 
       <div className="flex flex-col gap-3">
         <H id="funil">Funil</H>
@@ -197,7 +217,24 @@ export default async function Page({
         />
       </div>
 
-      <p className={lede}>Score, dados e aparência chegam nas fases 5 a 8.</p>
+      <div className="flex flex-col gap-3">
+        <H id="dados">Dados</H>
+        <DataSettings suppression={suppression} />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <H id="aparencia">Aparência</H>
+        <p className={lede}>
+          Tema e densidade das tabelas. O padrão é confortável no celular e compacto no desktop.
+        </p>
+        <AppearanceSettings />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <H id="sobre">Sobre</H>
+        <p className="text-body">Lacus CRM, versão {pkg.version}</p>
+        <Copyright />
+      </div>
     </section>
   );
 }

@@ -193,6 +193,10 @@
 @layer base {
   html {
     background: var(--bg);
+    --row-h: 44px; /* Confortável */
+  }
+  html[data-density='compact'] {
+    --row-h: 36px;
   }
   body {
     background: var(--bg);

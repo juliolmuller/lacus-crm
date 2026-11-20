@@ -56,7 +56,8 @@ const SORT_OF: Partial<Record<TableColumn, Sort>> = {
   contact: 'contact',
   priority: 'priority',
 };
-const ROW_H = 48;
+/** Estimativa (Confortável); as linhas reais usam `--row-h` (densidade) e `measureElement` corrige. Fixa para não divergir entre servidor e cliente. */
+const ROW_H = 44;
 
 /** Tabela virtualizada: só as linhas visíveis existem no DOM; o fim da rolagem pede a próxima página (cursor). */
 export function LeadsTable(p: LeadsTableProps) {
@@ -167,6 +168,8 @@ export function LeadsTable(p: LeadsTableProps) {
             return (
               <div
                 key={r.id}
+                ref={virt.measureElement}
+                data-index={v.index}
                 role="row"
                 aria-rowindex={v.index + 2}
                 data-testid="lead-row"
@@ -174,7 +177,7 @@ export function LeadsTable(p: LeadsTableProps) {
                   'absolute inset-x-0 grid items-center border-b border-border text-table hover:bg-surface-2',
                 )}
                 style={{
-                  height: ROW_H,
+                  height: 'var(--row-h)',
                   transform: `translateY(${v.start}px)`,
                   gridTemplateColumns: template,
                 }}
