@@ -2,7 +2,7 @@ import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import type { Prospecting } from '@/lib/services/dashboard';
 import { cn } from '@/lib/utils';
-import { Sparkline } from './lazy-charts';
+import { Sparkline } from './charts';
 import { Panel } from './panel';
 
 const dm = (ymd: string) => `${ymd.slice(8)}/${ymd.slice(5, 7)}`;
