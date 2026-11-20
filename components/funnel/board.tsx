@@ -127,16 +127,18 @@ function Column({
           aria-label={`Cartões de ${stage.name}`}
           className="flex max-h-[calc(100dvh-17rem)] min-h-24 flex-col gap-2 overflow-y-auto p-2"
         >
-          {ids.map((id) => (
-            <DealCard
-              key={id}
-              card={cards.get(id)!}
-              stages={stages}
-              dragging={dragging}
-              onOpen={onOpen}
-              onMoveTo={onMoveTo}
-            />
-          ))}
+          {ids
+            .filter((id) => cards.has(id)) // outro cartão pode ter sumido do servidor durante um movimento
+            .map((id) => (
+              <DealCard
+                key={id}
+                card={cards.get(id)!}
+                stages={stages}
+                dragging={dragging}
+                onOpen={onOpen}
+                onMoveTo={onMoveTo}
+              />
+            ))}
           {!ids.length && (
             <li className="grid flex-1 place-items-center p-4 text-center text-label text-text-muted">
               {closed ? 'Solte aqui para encerrar' : 'Nenhuma negociação'}
@@ -159,10 +161,13 @@ export function FunnelBoard({ stages, cards }: { stages: Stage[]; cards: BoardCa
   const stageById = new Map(stages.map((s) => [colId(s.id), s]));
   const [cols, setCols] = useState<Cols>(() => group(stages, cards));
   const [source, setSource] = useState(cards);
+  const [saving, setSaving] = useState(0); // movimentos ainda indo para o servidor
   if (cards !== source) {
-    // dados novos do servidor (depois de router.refresh): a verdade volta a ser o banco
+    // dados novos do servidor (depois de router.refresh): a verdade volta a ser o banco. Com um
+    // movimento em andamento eles são anteriores a ele e o desfariam na tela; o persist() termina
+    // com um refresh que traz o estado certo.
     setSource(cards);
-    setCols(group(stages, cards));
+    if (!saving) setCols(group(stages, cards));
   }
   const [active, setActive] = useState<string | null>(null);
   const [closing, setClosing] = useState<Closing | null>(null);
@@ -233,12 +238,14 @@ export function FunnelBoard({ stages, cards }: { stages: Stage[]; cards: BoardCa
     const to = containerOf(next, id)!;
     const list = next[to]!;
     const i = list.indexOf(id);
+    setSaving((n) => n + 1);
     const r = await moveDealAction({
       dealId: id,
       stageId: stageOf(to),
       prevId: list[i - 1] ?? null,
       nextId: list[i + 1] ?? null,
     }).catch(() => ({ ok: false as const, error: 'Sem conexão. A negociação voltou ao lugar.' }));
+    setSaving((n) => n - 1);
     if (!r.ok) {
       setCols(rollback);
       return void toast.error(r.error);
