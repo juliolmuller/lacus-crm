@@ -27,8 +27,8 @@ test('paleta ⌘K: abre com Ctrl+K, acha lead por nome, executa ação e fecha c
     await expect(page).toHaveURL(new RegExp(`lead=${lead!.id}`));
 
     // o drawer do lead é um <dialog> modal: a paleta não abre por cima dele
-    await page.keyboard.press('Control+k');
     await expect(page.getByRole('dialog', { name: lead!.name })).toBeVisible();
+    await page.keyboard.press('Control+k');
     await expect(palette).toBeHidden();
     await page.keyboard.press('Escape');
     await expect(page).toHaveURL(/\/leads$/);
