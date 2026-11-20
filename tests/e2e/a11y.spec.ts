@@ -42,6 +42,7 @@ const routes = [
     'Configurações',
     (p: Page) => p.getByRole('heading', { name: 'Perfil', level: 2 }),
   ],
+  ['/design-system', 'Design System', (p: Page) => p.getByRole('heading', { level: 1 })],
 ] as const;
 
 for (const [route, heading, ready] of routes) {
@@ -52,6 +53,23 @@ for (const [route, heading, ready] of routes) {
         .or(page.getByRole('list', { name: /^Cartões de/ }).first())
         .first()
         .waitFor();
+      await scan(page);
+    });
+  }
+}
+
+// rotas públicas (sem sessão)
+for (const [route, heading] of [
+  ['/login', 'Entrar'],
+  ['/~offline', 'Você está offline'],
+] as const) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`axe: ${route} no tema ${theme}`, async ({ page }) => {
+      await page.addInitScript((t) => localStorage.setItem('theme', t), theme);
+      await page.goto(route);
+      await expect(page.getByRole('heading', { name: heading, level: 1 }).first()).toBeVisible();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await page.addStyleTag({ content: '*,*::before,*::after{transition:none!important}' });
       await scan(page);
     });
   }
