@@ -36,6 +36,7 @@ const routes = [
     'Lembretes',
     (p: Page) => p.getByRole('navigation', { name: 'Filtro de lembretes' }),
   ],
+  ['/fila', 'Fila', (p: Page) => p.getByRole('table')],
   [
     '/configuracoes',
     'Configurações',
