@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import { pointToE2eDatabase } from './tests/e2e/env';
+
+const db = pointToE2eDatabase(); // build/servidor e testes usam `<banco>_e2e`
 
 // PWA contra o build de produção (o service worker só roda assim). `pnpm e2e:pwa`.
 const port = 3101;
@@ -17,11 +20,12 @@ export default defineConfig({
     { name: 'painel-mobile', testMatch: 'e2e/dashboard.spec.ts', use: devices['Pixel 7'] },
   ],
   webServer: {
-    command: `pnpm exec next build && pnpm exec next start --port ${port}`,
+    command: `pnpm exec tsx tests/e2e/setup-db.ts && pnpm exec next build && pnpm exec next start --port ${port}`,
     url: `http://localhost:${port}/login`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 600_000,
     env: {
+      ...db,
       E2E_AUTH_BYPASS: '1',
       E2E_PROD_BUILD: '1',
       // valores de mentira: só destravam a validação de ambiente de produção

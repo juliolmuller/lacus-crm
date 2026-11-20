@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { config } from 'dotenv';
 import { generateKeyBetween } from 'fractional-indexing';
 import { Client } from 'pg';
 
-config({ path: '.env.local', quiet: true });
+import { pointToE2eDatabase } from './env';
+
+pointToE2eDatabase(); // nunca o banco de desenvolvimento
 
 /** Cria um lead (e, se pedido, uma negociação aberta no fim da etapa) direto no banco: rápido e sem depender da UI. */
 export async function seedDeals(names: string[], stageKey: string | null) {

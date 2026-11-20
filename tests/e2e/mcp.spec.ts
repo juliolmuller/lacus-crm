@@ -1,20 +1,25 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { expect, test } from '@playwright/test';
-import { config } from 'dotenv';
+import { pointToE2eDatabase } from './env';
 import { Pool } from 'pg';
 import { createHash, randomBytes } from 'node:crypto';
 
-config({ path: '.env.local', quiet: true });
+pointToE2eDatabase();
 
 /** HTTP real contra o app: autenticação, escopos e conectores do MCP. Só leitura e tokens próprios. */
-const db = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
+// sem afterAll/end(): o mesmo worker roda o arquivo nos dois projetos; o pool ocioso fecha sozinho
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 1,
+  idleTimeoutMillis: 1000,
+  allowExitOnIdle: true,
+});
 // limpa tokens de execuções anteriores (não os desta: há dois workers em paralelo)
 test.beforeAll(() =>
   db.query(
     "delete from api_tokens where name like 'e2e-%' and created_at < now() - interval '10 minutes'",
   ),
 );
-test.afterAll(() => db.end());
 
 async function pat(scopes: string[], revoked = false) {
   const token = `lcrm_${randomBytes(32).toString('base64url')}`;

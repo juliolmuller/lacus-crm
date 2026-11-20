@@ -181,7 +181,8 @@ if (fresh.length) {
 // --- Nichos: só do CSV exportado da aba "Nichos" (.data/ fica fora do git) ---
 const csvPath = join(import.meta.dirname, '..', '.data', 'nichos.csv');
 let nichesNote = 'PENDENTE: .data/nichos.csv não encontrado, nichos não importados';
-if (existsSync(csvPath)) {
+if (process.env.SEED_SKIP_NICHES) nichesNote = 'nichos ignorados (SEED_SKIP_NICHES)';
+else if (existsSync(csvPath)) {
   const rows = parseNichesCsv(readFileSync(csvPath, 'utf8'));
   await db.insert(s.niches).values(rows).onConflictDoNothing({ target: s.niches.name });
   nichesNote = `${rows.length} nichos lidos de .data/nichos.csv`;

@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import { pointToE2eDatabase } from './tests/e2e/env';
+
+const db = pointToE2eDatabase(); // servidor e testes usam `<banco>_e2e`, nunca o de desenvolvimento
 
 const port = 3100;
 
@@ -17,11 +20,12 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: `pnpm exec next dev --port ${port}`,
+    command: `pnpm exec tsx tests/e2e/setup-db.ts && pnpm exec next dev --port ${port}`,
     url: `http://localhost:${port}/login`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    reuseExistingServer: false, // um servidor já aberto apontaria para o banco de desenvolvimento
+    timeout: 240_000, // recria o banco e2e, semeia e sobe o dev server (lento no WSL)
     env: {
+      ...db,
       E2E_AUTH_BYPASS: '1',
       NEXT_PUBLIC_APP_URL: `http://localhost:${port}`,
       BETTER_AUTH_URL: `http://localhost:${port}`,
