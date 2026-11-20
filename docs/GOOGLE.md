@@ -20,7 +20,7 @@ Use o projeto Google Cloud que você já tem (não crie outro).
    - **Acesso a dados (Data Access)**: **Adicionar ou remover escopos** e marque `.../auth/calendar.app.created`. Os escopos `openid` e `email` já são básicos.
 3. **Clientes (Clients) → Criar cliente**: tipo **Aplicativo da Web**, nome "Lacus CRM". Em **URIs de redirecionamento autorizados** informe exatamente:
    - `http://localhost:3000/api/google/callback`
-   - `https://crm.lacus.solutions/api/google/callback`
+   - `https://lacuscrm.juliolmuller.com/api/google/callback`
 
    Sem curinga: por isso a conexão só funciona em local e em produção (em preview a tela mostra "Disponível apenas em produção").
 

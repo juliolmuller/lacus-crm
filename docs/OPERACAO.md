@@ -37,13 +37,13 @@ Depois de um deploy, o app instalado mostra o aviso "Nova versão disponível"; 
 
 ## MCP e API REST
 
-Endereço de produção: `https://crm.lacus.solutions`. Toda chamada usa um token pessoal (PAT, `lcrm_...`) criado em **Configurações > Tokens de API e conectores**. O texto completo aparece uma única vez; no banco fica só o hash (SHA-256). Escopos: `read`, `write` (inclui `read`) e `prospecting` (fila e uso da API). Limite de 120 requisições por minuto por token.
+Endereço de produção: `https://lacuscrm.juliolmuller.com`. Toda chamada usa um token pessoal (PAT, `lcrm_...`) criado em **Configurações > Tokens de API e conectores**. O texto completo aparece uma única vez; no banco fica só o hash (SHA-256). Escopos: `read`, `write` (inclui `read`) e `prospecting` (fila e uso da API). Limite de 120 requisições por minuto por token.
 
 ### Claude Code
 
 ```bash
 export LACUS_CRM_TOKEN=lcrm_...   # token com read + write (+ prospecting, se quiser a fila)
-claude mcp add --transport http lacus-crm https://crm.lacus.solutions/api/mcp --scope user \
+claude mcp add --transport http lacus-crm https://lacuscrm.juliolmuller.com/api/mcp --scope user \
   --header "Authorization: Bearer $LACUS_CRM_TOKEN"
 claude mcp list
 ```
@@ -55,7 +55,7 @@ Para versionar a configuração num projeto, use um `.mcp.json` (o token fica no
   "mcpServers": {
     "lacus-crm": {
       "type": "http",
-      "url": "https://crm.lacus.solutions/api/mcp",
+      "url": "https://lacuscrm.juliolmuller.com/api/mcp",
       "headers": { "Authorization": "Bearer ${LACUS_CRM_TOKEN}" }
     }
   }
@@ -66,10 +66,10 @@ Para versionar a configuração num projeto, use um `.mcp.json` (o token fica no
 
 ### REST (`/api/v1`)
 
-Referência gerada dos schemas: `GET https://crm.lacus.solutions/api/v1/openapi.json`. Erros: `{"error": {"code", "message", "details?"}}`.
+Referência gerada dos schemas: `GET https://lacuscrm.juliolmuller.com/api/v1/openapi.json`. Erros: `{"error": {"code", "message", "details?"}}`.
 
 ```bash
-H="Authorization: Bearer $LACUS_CRM_TOKEN"; B=https://crm.lacus.solutions/api/v1
+H="Authorization: Bearer $LACUS_CRM_TOKEN"; B=https://lacuscrm.juliolmuller.com/api/v1
 curl -H "$H" "$B/leads?query=clinica&minScore=70&limit=10"
 curl -H "$H" "$B/leads/<uuid>"
 curl -H "$H" -X PATCH "$B/leads/<uuid>" -H 'content-type: application/json' \
@@ -79,7 +79,7 @@ curl -H "$H" -X POST "$B/leads/<uuid>/interactions" -H 'content-type: applicatio
   -d '{"type":"whatsapp","direction":"outbound","summary":"Enviei a mensagem 1"}'
 curl -H "$H" -X POST "$B/queue/claim" -H 'content-type: application/json' -d '{"runId":"2026-11-20T09-pos12"}'
 curl -H "$H" "$B/api-usage/today"
-curl -H "$H" -X POST https://crm.lacus.solutions/api/jobs/followups -H 'X-Run-Id: manual-1'   # token com write
+curl -H "$H" -X POST https://lacuscrm.juliolmuller.com/api/jobs/followups -H 'X-Run-Id: manual-1'   # token com write
 ```
 
 ### Conectores OAuth (claude.ai)

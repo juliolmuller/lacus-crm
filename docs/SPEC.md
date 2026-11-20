@@ -233,7 +233,7 @@ Na importação, qualquer valor desconhecido vira `new`, e o valor original vai 
 | -------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | Local    | `http://localhost:3000/api/auth/callback/vercel`             | `http://localhost:3000`                                      |
 | Preview  | Selecionar o projeto Vercel no campo de callback (verificar) | Derivar de `VERCEL_BRANCH_URL` e incluir em `trustedOrigins` |
-| Produção | `https://crm.lacus.solutions/api/auth/callback/vercel`       | `https://crm.lacus.solutions`                                |
+| Produção | `https://lacuscrm.juliolmuller.com/api/auth/callback/vercel` | `https://lacuscrm.juliolmuller.com`                          |
 
 Confirme o caminho exato da callback na doc do Better Auth.
 
@@ -454,7 +454,7 @@ Erros no formato `{error: {code, message, details?}}`. Publique `GET /api/v1/ope
 
 ```bash
 # Claude Code (interativo) – token com escopos read+write
-claude mcp add --transport http lacus-crm https://crm.lacus.solutions/api/mcp --scope user \
+claude mcp add --transport http lacus-crm https://lacuscrm.juliolmuller.com/api/mcp --scope user \
   --header "Authorization: Bearer <PAT>"
 ```
 
@@ -473,7 +473,7 @@ Todos os passos levam o mesmo `runId` (ex.: `2026-11-18T14:00Z-pos37`), e um ret
 
 ## 10. Google Calendar
 
-- **Configuração no Google Cloud** (passo a passo em `docs/GOOGLE.md`, sem IDs reais): usar o projeto já existente; ativar a Calendar API; no Google Auth Platform: Branding, Audience **External**, Data Access; OAuth Client **Web application** com redirect URIs exatas `http://localhost:3000/api/google/callback` e `https://crm.lacus.solutions/api/google/callback`. Sem curinga → conectar o Google só funciona em local e produção; em preview, a tela mostra "Disponível apenas em produção".
+- **Configuração no Google Cloud** (passo a passo em `docs/GOOGLE.md`, sem IDs reais): usar o projeto já existente; ativar a Calendar API; no Google Auth Platform: Branding, Audience **External**, Data Access; OAuth Client **Web application** com redirect URIs exatas `http://localhost:3000/api/google/callback` e `https://lacuscrm.juliolmuller.com/api/google/callback`. Sem curinga → conectar o Google só funciona em local e produção; em preview, a tela mostra "Disponível apenas em produção".
 - **Escopo mínimo**: `https://www.googleapis.com/auth/calendar.app.created` + `openid email`. Use `calendar.events` apenas se necessário; justifique em DECISIONS.
 - **Fluxo**: `GET /api/google/connect` (requer sessão) gera `state` + PKCE em cookie e redireciona com `access_type=offline`, `prompt=consent`, `include_granted_scopes=true`. `GET /api/google/callback` valida `state`, troca o code, cifra e salva os tokens, e cria (ou reaproveita pela `summary`) o calendário **"Lacus CRM – Follow-ups"** com `timeZone: America/Sao_Paulo`.
 - **Modo Testing**: refresh tokens expiram em 7 dias → publicar o app ("In production"); tela "app não verificado" é aceitável para uso pessoal. Verifique a política atual e documente.

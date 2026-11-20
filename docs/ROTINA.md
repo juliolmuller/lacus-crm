@@ -4,13 +4,13 @@ A rotina é uma tarefa agendada no claude.ai que prospecta uma região e um nich
 
 ## 1. Adicionar os conectores personalizados
 
-Pré-requisito: o app publicado em `https://crm.lacus.solutions` e você logado nele (login Vercel).
+Pré-requisito: o app publicado em `https://lacuscrm.juliolmuller.com` e você logado nele (login Vercel).
 
 1. No claude.ai, abra **Configurações > Conectores** (em planos de equipe, só o dono da organização adiciona).
 2. Clique em **Adicionar conector personalizado**.
-3. Conector completo: nome `Lacus CRM`, URL `https://crm.lacus.solutions/api/mcp`. Deixe client ID e secret em branco (o CRM usa Client ID Metadata Document). Clique em **Adicionar**.
+3. Conector completo: nome `Lacus CRM`, URL `https://lacuscrm.juliolmuller.com/api/mcp`. Deixe client ID e secret em branco (o CRM usa Client ID Metadata Document). Clique em **Adicionar**.
 4. O claude.ai abre a tela de login (Vercel) e depois a tela **Autorizar acesso** do CRM com os escopos `read`, `write` e `prospecting`. Clique em **Permitir**.
-5. Repita para o conector da rotina: nome `Lacus CRM Prospecção`, URL `https://crm.lacus.solutions/api/mcp/prospecting`. Aqui o acesso é só `prospecting`.
+5. Repita para o conector da rotina: nome `Lacus CRM Prospecção`, URL `https://lacuscrm.juliolmuller.com/api/mcp/prospecting`. Aqui o acesso é só `prospecting`.
 6. Confira em **Configurações do CRM > Conectores autorizados**: os dois devem aparecer. Para cortar o acesso, clique em Revogar (vale em até 15 minutos).
 7. Teste numa conversa com o conector ligado: "Use `api_usage_today` e diga quanto resta". Deve responder `{requestsToday, budget, remaining}`.
 

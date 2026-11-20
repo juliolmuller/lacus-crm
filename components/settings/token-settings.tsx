@@ -66,7 +66,7 @@ const Snippet = ({ label, code }: { label: string; code: string }) => (
   </div>
 );
 
-const BASE = 'https://crm.lacus.solutions';
+const BASE = 'https://lacuscrm.juliolmuller.com';
 
 export function TokenSettings({
   tokens,
