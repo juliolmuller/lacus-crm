@@ -48,6 +48,8 @@ export type Op<S extends z.ZodType = z.ZodType> = {
 const op = <S extends z.ZodType>(o: Op<S>) => o;
 
 const id = z.uuid();
+/** ISO 8601 com fuso; texto puro para o JSON Schema do MCP. */
+const when = z.iso.datetime({ offset: true });
 const limit = z.number().int().min(1).max(50).default(50);
 const cursor = z.string().optional().describe('`nextCursor` da página anterior');
 
@@ -340,12 +342,13 @@ export const logInteractionOp = op({
       ])
       .optional(),
     summary: z.string().min(1),
-    occurredAt: z.coerce.date().optional(),
+    occurredAt: when.optional(),
   }),
   async run(a, { db, actor }) {
     return db.transaction(async (tx) => {
       const r = await logInteraction(tx, {
         ...a,
+        occurredAt: a.occurredAt ? new Date(a.occurredAt) : undefined,
         type: a.type as Parameters<typeof logInteraction>[1]['type'],
         createdBy: 'mcp',
       });
@@ -451,12 +454,12 @@ export const createReminderOp = op({
     dealId: id.nullable().optional(),
     title: z.string().min(1),
     notes: z.string().nullable().optional(),
-    dueAt: z.coerce.date(),
+    dueAt: when,
     durationMin: z.number().int().min(1).optional(),
   }),
   async run(a, { db, actor }) {
     return db.transaction(async (tx) => {
-      const r = await createReminder(tx, { ...a, source: 'mcp' });
+      const r = await createReminder(tx, { ...a, dueAt: new Date(a.dueAt), source: 'mcp' });
       await audit(tx, { entity: 'reminder', entityId: r.id, action: 'create', actor });
       return r;
     });
@@ -482,11 +485,11 @@ export const snoozeReminderOp = op({
   description: 'Adia um lembrete: `preset` (1h, tomorrow, plus2bd) ou `until` (data/hora).',
   scopes: ['write'],
   input: z
-    .object({ id, preset: z.enum(snoozePresets).optional(), until: z.coerce.date().optional() })
+    .object({ id, preset: z.enum(snoozePresets).optional(), until: when.optional() })
     .refine((v) => v.preset || v.until, { message: 'Informe preset ou until' }),
   async run(a, { db, actor }) {
     return db.transaction(async (tx) => {
-      const r = await snoozeReminder(tx, a.id, a.until ? { at: a.until } : a.preset!);
+      const r = await snoozeReminder(tx, a.id, a.until ? { at: new Date(a.until) } : a.preset!);
       await audit(tx, { entity: 'reminder', entityId: a.id, action: 'snooze', actor });
       return r;
     });
