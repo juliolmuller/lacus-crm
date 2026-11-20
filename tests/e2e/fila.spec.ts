@@ -77,7 +77,11 @@ test('reordenar por teclado persiste; mover para o topo; pular e reativar; marca
   await expect(row(page, 1)).toBeVisible();
   expect(await mine(page)).toEqual([pos(2), pos(1), pos(3)]);
 
-  await row(page, 3).getByRole('button', { name: 'Mover para o topo' }).click();
+  // depois do reload o HTML do servidor já aparece, mas o clique só vale depois da hidratação: repete até pegar
+  await expect(async () => {
+    await row(page, 3).getByRole('button', { name: 'Mover para o topo' }).click();
+    await expect(page.getByText('Movido para o topo')).toBeVisible({ timeout: 3000 });
+  }).toPass();
   await expect.poll(() => mine(page)).toEqual([pos(3), pos(2), pos(1)]);
 
   await row(page, 2).getByRole('button', { name: 'Pular' }).click();
@@ -91,8 +95,10 @@ test('reordenar por teclado persiste; mover para o topo; pular e reativar; marca
   );
   await page.reload();
   await expect(row(page, 1).getByText('Com erro')).toBeVisible();
-  await row(page, 1).getByRole('button', { name: 'Marcar como pendente' }).click();
-  await expect(row(page, 1).getByText('Pendente')).toBeVisible();
+  await expect(async () => {
+    await row(page, 1).getByRole('button', { name: 'Marcar como pendente' }).click();
+    await expect(row(page, 1).getByText('Pendente')).toBeVisible({ timeout: 3000 });
+  }).toPass();
 });
 
 test('filtros por status e nicho; painel de uso da API', async ({ page }) => {

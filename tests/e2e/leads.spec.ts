@@ -96,14 +96,18 @@ test('tabela virtualizada, busca e edição inline persistem', async ({ page, is
   await expect(page).toHaveURL(/q=/);
   const row = page.getByTestId('lead-row').filter({ hasText: name });
   await expect(row).toHaveCount(1);
-  const saved = () => page.waitForResponse((r) => r.request().method() === 'POST');
-  let done = saved();
-  await row.getByLabel(`Status de ${name}`).selectOption('Abordado');
-  await done;
-  done = saved();
-  await row.getByLabel(`Prioridade de ${name}`).fill('7');
-  await row.getByLabel(`Prioridade de ${name}`).blur();
-  await done;
+  // antes da hidratação a edição não dispara a Server Action: repete até o POST sair
+  const saves = (edit: () => Promise<unknown>) =>
+    expect(async () => {
+      const done = page.waitForResponse((r) => r.request().method() === 'POST', { timeout: 3000 });
+      await edit();
+      await done;
+    }).toPass();
+  await saves(() => row.getByLabel(`Status de ${name}`).selectOption('Abordado'));
+  await saves(async () => {
+    await row.getByLabel(`Prioridade de ${name}`).fill('7');
+    await row.getByLabel(`Prioridade de ${name}`).blur();
+  });
 
   await page.reload();
   const again = page.getByTestId('lead-row').filter({ hasText: name });

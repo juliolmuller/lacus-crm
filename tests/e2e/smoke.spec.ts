@@ -28,8 +28,10 @@ test('com o bypass, o shell renderiza e o rodapé aparece', async ({ page, isMob
     await expect(nav.getByRole('link', { name: label })).toBeVisible();
   }
   if (isMobile) {
-    await nav.getByRole('link', { name: 'Mais' }).click();
-    await expect(page).toHaveURL(/\/mais$/);
+    await expect(async () => {
+      await nav.getByRole('link', { name: 'Mais' }).click(); // antes da hidratação o clique pode se perder
+      await expect(page).toHaveURL(/\/mais$/, { timeout: 3000 });
+    }).toPass();
   }
   await expect(page.getByText(copyright).locator('visible=true')).toBeVisible();
 });
