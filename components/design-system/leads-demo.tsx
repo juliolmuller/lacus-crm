@@ -28,6 +28,8 @@ const sample: LeadListRow[] = [
   lastContactAt: i === 1 ? new Date('2026-11-15T15:00:00Z') : null,
   priority: priority as number | null,
   doNotContact: i === 2,
+  phone: null,
+  placeId: null,
   nicheName: 'Clínicas odontológicas',
   regionLabel: 'PR - Curitiba - Xaxim',
   sortValue: '',

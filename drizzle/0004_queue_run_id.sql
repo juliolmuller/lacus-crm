@@ -1,0 +1,1 @@
+ALTER TABLE "prospecting_queue" ADD COLUMN "claimed_run_id" text;

@@ -20,6 +20,7 @@ export const prospectingQueue = pgTable(
     sortOrder: integer('sort_order').notNull(), // ordem de execução; reordenar mexe aqui, nunca em position
     skippedAt: tstz('skipped_at'),
     claimedAt: tstz('claimed_at'), // lease de 30 min
+    claimedRunId: text('claimed_run_id'), // `runId` da rotina que pegou o item: refazer o claim devolve o mesmo
     attempts: integer('attempts').default(0),
   },
   (t) => [
