@@ -57,7 +57,10 @@ const Snippet = ({ label, code }: { label: string; code: string }) => (
         <Copy className="size-4" aria-hidden /> Copiar
       </Button>
     </div>
-    <pre className="overflow-x-auto rounded-md border border-border bg-surface-1 p-3 text-label">
+    <pre
+      tabIndex={0}
+      className="overflow-x-auto rounded-md border border-border bg-surface-1 p-3 text-label"
+    >
       {code}
     </pre>
   </div>

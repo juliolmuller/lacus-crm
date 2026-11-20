@@ -23,7 +23,7 @@ test.beforeEach(async ({}, info) => {
     ]);
     await query(
       `insert into prospecting_queue (position, region_id, niche_id, sort_order) values ($1, $2, $3, $4)`,
-      [pos(i), regionId, nn!.id, -900_000 + i],
+      [pos(i), regionId, nn!.id, -1_000_000_000 + (base - 800_000_000) + i],
     );
   }
 });
