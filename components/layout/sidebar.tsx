@@ -1,6 +1,6 @@
 'use client';
 
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -40,6 +40,23 @@ export function Sidebar({ footer }: { footer: ReactNode }) {
         <Link href="/" aria-label="Lacus CRM, início">
           <Logo variant={collapsed ? 'mark' : 'lockup'} size={24} />
         </Link>
+      </div>
+      <div className="px-2">
+        <button
+          type="button"
+          onClick={() => dispatchEvent(new Event('open-palette'))}
+          title={collapsed ? 'Buscar (Ctrl+K)' : undefined}
+          aria-label={collapsed ? 'Buscar (Ctrl+K)' : undefined}
+          className="flex h-11 w-full items-center gap-3 rounded-md border border-border px-3 text-body text-text-muted hover:bg-surface-3 hover:text-text"
+        >
+          <Search className="size-5 shrink-0" aria-hidden />
+          {!collapsed && (
+            <>
+              Buscar
+              <kbd className="ml-auto text-label">Ctrl K</kbd>
+            </>
+          )}
+        </button>
       </div>
       <nav aria-label="Principal" className="flex flex-1 flex-col gap-1 px-2 py-2">
         {desktopNav.map(({ href, label, Icon }) => (

@@ -5,6 +5,7 @@ import { BottomNav } from '@/components/layout/bottom-nav';
 import { GoogleBanner } from '@/components/layout/google-banner';
 import { IosInstallHint } from '@/components/pwa/ios-install-hint';
 import { SnapshotWarmer } from '@/components/pwa/snapshot-warmer';
+import { CommandPalette } from '@/components/layout/command-palette';
 import { Sidebar } from '@/components/layout/sidebar';
 import { requireOwner } from '@/lib/auth/dal';
 
@@ -25,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </main>
       </div>
       <BottomNav />
+      <CommandPalette />
       <SnapshotWarmer />
       <IosInstallHint />
     </div>
