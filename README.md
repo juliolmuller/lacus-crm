@@ -2,9 +2,9 @@ Copyright (c) 2026 Lacus Solutions
 
 # Lacus CRM
 
-CRM web pessoal de prospecção da Lacus Solutions (Curitiba/PR): leads, funil, lembretes no Google Calendar, follow-ups que nunca enviam nada sozinhos e acesso por MCP/REST. Especificação em `docs/SPEC.md`, decisões e desvios em `docs/PLAN.md` e `docs/DECISIONS.md`, design em `DESIGN.md`.
+CRM web pessoal de prospecção da Lacus Solutions (Curitiba/PR). Reúne leads (importados da planilha ou criados pela rotina de prospecção), funil de negociações, lembretes sincronizados com o Google Calendar, follow-ups que **nunca enviam nada sozinhos**, fila de prospecção e acesso por MCP e REST. É um app de um único usuário (o dono), instalável como PWA.
 
-Estado: **fase 1** (fundação, auth, banco). Leads, funil, lembretes, dashboard, PWA e MCP chegam nas fases 2 a 8.
+Especificação em `docs/SPEC.md`; decisões e desvios por fase em `docs/DECISIONS.md` e `docs/PLAN.md`; design em `DESIGN.md`.
 
 ## Requisitos
 
@@ -23,7 +23,7 @@ pnpm dev                        # http://localhost:3000
 
 ### Variáveis de ambiente (`.env.local`)
 
-Gere `BETTER_AUTH_SECRET`, `TOKEN_ENCRYPTION_KEY` (`openssl rand -base64 32`) e `CRON_SECRET` (`openssl rand -hex 24`). `DATABASE_URL=postgres://lacus:lacus@localhost:54329/lacus_crm` para o Docker local. O app valida tudo no boot (`lib/env.ts`) e diz o que falta.
+Gere `BETTER_AUTH_SECRET`, `TOKEN_ENCRYPTION_KEY` (`openssl rand -base64 32`) e `CRON_SECRET` (`openssl rand -hex 24`). `DATABASE_URL=postgres://lacus:lacus@localhost:54329/lacus_crm` para o Docker local. O app valida tudo no boot (`lib/env.ts`) e diz o que falta. A lista completa, por ambiente, está em `docs/DEPLOY.md`.
 
 ### Login com Vercel (precisa de você)
 
@@ -32,30 +32,46 @@ Gere `BETTER_AUTH_SECRET`, `TOKEN_ENCRYPTION_KEY` (`openssl rand -base64 32`) e 
 3. Copie o Client ID e o Client Secret para `VERCEL_CLIENT_ID` e `VERCEL_CLIENT_SECRET`.
 4. Entre uma vez: em dev, o acesso negado mostra o `sub` recebido. Coloque-o em `OWNER_VERCEL_USER_ID` (ou, como alternativa, o e-mail verificado em `OWNER_EMAIL`) e entre de novo.
 
-### Nichos
+### Nichos e dados reais
 
-O seed lê `.data/nichos.csv` (fora do git) exportado da aba "Nichos" da planilha. Sem o arquivo, a etapa é ignorada.
-
-### Dados reais (fase 2)
-
-Os CSVs ficam em `.data/` (fora do git), gerados a partir da planilha por leitura. `pnpm db:import` importa na ordem nichos, cidades, fila, leads, top leads e uso da API, é idempotente e grava `.data/import-report.json` e `.data/dnc-candidates.md` (candidatos a "Não contatar", **nunca aplicados**). Na interface: `/leads/importar` (mapeamento, simulação, relatório e confirmação) e **Exportar** na tela de leads.
+O seed lê `.data/nichos.csv` (fora do git), exportado da aba "Nichos" da planilha; sem o arquivo, a etapa é ignorada. Os demais CSVs também ficam em `.data/`. `pnpm db:import` importa na ordem nichos, cidades, fila, leads, top leads e uso da API; é idempotente e grava `.data/import-report.json` e `.data/dnc-candidates.md` (candidatos a "Não contatar", **nunca aplicados**). Na interface: `/leads/importar` e **Exportar** na tela de leads.
 
 ## Scripts
 
-| Script                                       | O que faz                                                                           |
-| -------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `pnpm dev` / `build` / `start`               | Next.js (Turbopack)                                                                 |
-| `pnpm check`                                 | typecheck + lint + testes unitários                                                 |
-| `pnpm test:int`                              | integração num banco `<nome>_test` do Postgres do Docker (criado e migrado sozinho) |
-| `pnpm e2e`                                   | Playwright (desktop e Pixel 7); usa a rota de bypass com `E2E_AUTH_BYPASS=1`        |
-| `pnpm db:generate`                           | gera migration do schema Drizzle                                                    |
-| `pnpm db:migrate` / `db:rollback [n\|all]`   | aplica / desfaz migrations (`drizzle/down/*.down.sql`)                              |
-| `pnpm db:seed`                               | seeds idempotentes                                                                  |
-| `pnpm db:import [--insert-only] [--dry-run]` | importa os CSVs de `.data/` (nichos, cidades, fila, leads, top leads, uso da API)   |
-| `pnpm icons`                                 | regenera os ícones em `public/brand`                                                |
+| Script                                       | O que faz                                                                                                              |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev` / `build` / `start`               | Next.js (Turbopack)                                                                                                    |
+| `pnpm check`                                 | typecheck + lint + testes unitários                                                                                    |
+| `pnpm test:int`                              | integração num banco `<nome>_test` (criado e migrado sozinho)                                                          |
+| `pnpm e2e`                                   | Playwright (desktop e Pixel 7) contra `next dev`, num banco `<nome>_e2e` **recriado a cada execução** (nunca o de dev) |
+| `pnpm e2e:pwa`                               | PWA, painel e MCP contra o build de produção (porta 3101), também no banco `<nome>_e2e`                                |
+| `pnpm db:generate`                           | gera migration do schema Drizzle                                                                                       |
+| `pnpm db:migrate` / `db:rollback [n\|all]`   | aplica / desfaz migrations (`drizzle/down/*.down.sql`)                                                                 |
+| `pnpm db:seed`                               | seeds idempotentes                                                                                                     |
+| `pnpm db:import [--insert-only] [--dry-run]` | importa os CSVs de `.data/`                                                                                            |
+| `pnpm icons`                                 | regenera os ícones em `public/brand`                                                                                   |
 
-Commits seguem Conventional Commits (commitlint + husky).
+Commits seguem Conventional Commits (commitlint + husky). Atalho no app: `Ctrl+K` / `⌘K` abre a paleta (busca de leads e ações rápidas) no desktop.
 
-## Antes de migrar produção
+## Mapa da arquitetura
 
-Crie um branch de backup no Neon (painel do Neon > Branches > Create branch a partir de main) antes de rodar `pnpm db:migrate`.
+| Pasta                           | O que tem                                                                                               |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `app/(app)/`                    | telas protegidas: painel, leads, funil, lembretes, fila, configurações, design system                   |
+| `app/api/`                      | `auth` (Better Auth), `mcp` e `mcp/prospecting` (MCP), `v1` (REST + OpenAPI), `jobs`, `google`, `leads` |
+| `app/.well-known/`              | metadados OAuth do MCP (RFC 8414 e 9728)                                                                |
+| `lib/services/`                 | **toda a regra de negócio**; Server Actions, REST e MCP são adaptadores finos                           |
+| `lib/api/`                      | `ops.ts`: operações compartilhadas por MCP e REST; `rest.ts`: rotas, auth de PAT e OpenAPI              |
+| `lib/auth/`, `proxy.ts`         | Better Auth (Vercel + OAuth do MCP), DAL `requireOwner`, CSP e checagem otimista de sessão              |
+| `lib/db/`, `drizzle/`           | schema Drizzle, migrations e `down/` para rollback                                                      |
+| `lib/followups/`, `lib/google/` | motor de regras e dias úteis; Google Calendar (outbox)                                                  |
+| `components/`                   | UI por área; `components/ui` são os primitivos do design system                                         |
+| `tests/`                        | `unit`, `int` (banco `_test`), `e2e` e `pwa` (banco `_e2e`)                                             |
+
+## Documentação
+
+- `docs/DEPLOY.md`: checklist de produção, variáveis por ambiente, DNS, callbacks, Google, Schedule e smoke pós-deploy.
+- `docs/OPERACAO.md`: PWA, MCP e REST (exemplos `claude mcp add` e `curl`).
+- `docs/ROTINA.md`: conectores do claude.ai e o prompt da rotina agendada.
+- `docs/GOOGLE.md`: configuração do Google Calendar.
+- `docs/DECISIONS.md`: decisões e desvios de cada fase.
