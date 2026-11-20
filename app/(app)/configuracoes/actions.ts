@@ -1,12 +1,15 @@
 'use server';
 
-import { ZodError } from 'zod';
+import { z, ZodError } from 'zod';
 import { fail, type Result } from '@/lib/action-result';
 import { requireOwner } from '@/lib/auth/dal';
 import { getDb } from '@/lib/db';
 import { syncContext } from '@/lib/google/context';
 import { revokeGoogleToken } from '@/lib/google/oauth';
 import { disconnectGoogle, resyncAll } from '@/lib/services/calendar-sync';
+import { revokeConnector } from '@/lib/services/connectors';
+import { createToken, revokeToken } from '@/lib/services/tokens';
+import { SCOPES } from '@/lib/auth/mcp-resources';
 import {
   deleteRule,
   deleteTemplate,
@@ -143,6 +146,48 @@ export async function resyncGoogleAction(): Promise<
   try {
     const s = await resyncAll(getDb(), syncContext());
     return { ok: true, synced: s.synced, deleted: s.deleted, errors: s.errors };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+const tokenInput = z.object({
+  name: z.string().trim().min(1, 'Dê um nome ao token').max(80),
+  scopes: z.array(z.enum(SCOPES)).min(1, 'Escolha ao menos um escopo'),
+  expiresInDays: z.number().int().min(1).max(3650).nullable(),
+});
+
+/** Devolve o token completo só desta vez; no banco fica apenas o hash. */
+export async function createTokenAction(input: unknown): Promise<Result<{ token: string }>> {
+  await requireOwner();
+  try {
+    const p = tokenInput.parse(input);
+    const { token } = await createToken(getDb(), {
+      name: p.name,
+      scopes: p.scopes,
+      expiresAt: p.expiresInDays ? new Date(Date.now() + p.expiresInDays * 86_400_000) : null,
+    });
+    return { ok: true, token };
+  } catch (e) {
+    return zerr(e);
+  }
+}
+
+export async function revokeTokenAction(id: string): Promise<Result> {
+  await requireOwner();
+  try {
+    await revokeToken(getDb(), id);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function revokeConnectorAction(clientId: string): Promise<Result> {
+  await requireOwner();
+  try {
+    await revokeConnector(getDb(), clientId);
+    return { ok: true };
   } catch (e) {
     return fail(e);
   }

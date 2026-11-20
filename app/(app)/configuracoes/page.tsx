@@ -5,6 +5,9 @@ import { FollowupSettings } from '@/components/settings/followup-settings';
 import { GoogleSettings } from '@/components/settings/google-settings';
 import { ProfileSettings } from '@/components/settings/profile-settings';
 import { TemplateSettings } from '@/components/settings/template-settings';
+import { TokenSettings } from '@/components/settings/token-settings';
+import { listConnectors } from '@/lib/services/connectors';
+import { listTokens } from '@/lib/services/tokens';
 import { getDb, schema } from '@/lib/db';
 import { spYmd } from '@/lib/followups/business-days';
 import { googleAvailable, googleConfigured } from '@/lib/google/oauth';
@@ -31,33 +34,45 @@ export default async function Page({
 }) {
   const { google } = await searchParams;
   const db = getDb();
-  const [rows, rules, templates, profile, calendar, popup, overview, previewLeads] =
-    await Promise.all([
-      listStages(db),
-      listRules(db),
-      listTemplates(db),
-      getSetting(db, 'owner_profile'),
-      getSetting(db, 'business_calendar'),
-      getSetting(db, 'calendar_defaults'),
-      syncOverview(db),
-      db
-        .select({
-          id: leads.id,
-          name: leads.name,
-          mapsRating: leads.mapsRating,
-          mapsReviews: leads.mapsReviews,
-          websiteStatus: leads.websiteStatus,
-          pitch: leads.pitch,
-          niche: niches.name,
-          city: regions.city,
-          neighborhood: regions.neighborhood,
-        })
-        .from(leads)
-        .innerJoin(niches, eq(niches.id, leads.nicheId))
-        .innerJoin(regions, eq(regions.id, leads.regionId))
-        .orderBy(desc(leads.score))
-        .limit(30),
-    ]);
+  const [
+    rows,
+    rules,
+    templates,
+    profile,
+    calendar,
+    popup,
+    overview,
+    tokens,
+    connectors,
+    previewLeads,
+  ] = await Promise.all([
+    listStages(db),
+    listRules(db),
+    listTemplates(db),
+    getSetting(db, 'owner_profile'),
+    getSetting(db, 'business_calendar'),
+    getSetting(db, 'calendar_defaults'),
+    syncOverview(db),
+    listTokens(db),
+    listConnectors(db),
+    db
+      .select({
+        id: leads.id,
+        name: leads.name,
+        mapsRating: leads.mapsRating,
+        mapsReviews: leads.mapsReviews,
+        websiteStatus: leads.websiteStatus,
+        pitch: leads.pitch,
+        niche: niches.name,
+        city: regions.city,
+        neighborhood: regions.neighborhood,
+      })
+      .from(leads)
+      .innerJoin(niches, eq(niches.id, leads.nicheId))
+      .innerJoin(regions, eq(regions.id, leads.regionId))
+      .orderBy(desc(leads.score))
+      .limit(30),
+  ]);
   const stages = rows.map(({ stage }) => ({ id: stage.id, name: stage.name }));
   const validRules = rules.flatMap((r) => {
     const c = cadence.safeParse(r.cadence);
@@ -167,7 +182,22 @@ export default async function Page({
         <ProfileSettings profile={profile} />
       </div>
 
-      <p className={lede}>Score, tokens de API, dados e aparência chegam nas fases 5 a 8.</p>
+      <div className="flex flex-col gap-3">
+        <H id="tokens">Tokens de API e conectores</H>
+        <p className={lede}>
+          Tokens pessoais (PAT) para o Claude Code, scripts e a rotina. O texto completo aparece uma
+          única vez; no banco fica só o hash.
+        </p>
+        <TokenSettings
+          tokens={tokens.map((t) => ({
+            ...t,
+            expired: !!t.expiresAt && t.expiresAt <= new Date(),
+          }))}
+          connectors={connectors}
+        />
+      </div>
+
+      <p className={lede}>Score, dados e aparência chegam nas fases 5 a 8.</p>
     </section>
   );
 }

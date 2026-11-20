@@ -94,6 +94,7 @@ function buildOptions() {
         resource: resources.main,
         resources: [resources.prospecting],
         scopes: [...SCOPES, 'offline_access'],
+        accessTokenExpiresIn: 900, // revogar um conector vale em até 15 min (o JWT é verificado sem ir ao banco)
         // DCR desligado: o claude.ai e o Claude Code usam CIMD (docs da Anthropic).
       }),
       cimd({ fetchClientMetadataResource, metadataProfile: 'mcp-2026-07-28' }),

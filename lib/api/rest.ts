@@ -204,9 +204,7 @@ export function openApi(baseUrl: string) {
       required: true,
       schema: { type: m[1] === 'position' ? 'integer' : 'string' },
     }));
-    const schema = r.op
-      ? z.toJSONSchema(r.op.input, { io: 'input' })
-      : null;
+    const schema = r.op ? z.toJSONSchema(r.op.input, { io: 'input' }) : null;
     const isQuery = r.method === 'GET';
     (paths[p] ??= {})[r.method.toLowerCase()] = {
       summary: r.summary,
