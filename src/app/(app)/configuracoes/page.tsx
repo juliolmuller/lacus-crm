@@ -9,7 +9,7 @@ import { DataSettings } from '@/components/settings/data-settings';
 import { ScoreSettingsForm } from '@/components/settings/score-settings';
 import { TemplateSettings } from '@/components/settings/template-settings';
 import { TokenSettings } from '@/components/settings/token-settings';
-import pkg from '@/package.json';
+import pkg from '../../../../package.json';
 import { Copyright } from '@/components/brand/copyright';
 import { getScoreSettings } from '@/lib/services/leads';
 import { listSuppression } from '@/lib/services/suppression';

@@ -61,9 +61,9 @@ next 16.4.6 · better-auth 1.7.26 (+ `@better-auth/mcp`) · drizzle-orm 0.45.4 /
 
 ## Arquitetura (resumo)
 
-- A estrutura de pastas é a da seção 12. Toda regra de negócio fica em `lib/services/*`, e as Server Actions, o REST (`/api/v1`) e o MCP são adaptadores finos (Zod + `audit_log`).
-- Funções puras com teste unitário: `computeScore`, `addBusinessDays`, motor de regras (`lib/rules`), renderização de modelos, normalização de telefone e nome, parser de "Cidade / bairro", mapeamento CSV, cifra AES-GCM, hash de PAT.
-- Banco: Postgres 17 em Docker para dev e testes (o Docker já está instalado) e Neon em preview e produção. `lib/db/index.ts` escolhe o driver pela URL.
+- A estrutura de pastas é a da seção 12. Toda regra de negócio fica em `src/lib/services/*`, e as Server Actions, o REST (`/api/v1`) e o MCP são adaptadores finos (Zod + `audit_log`).
+- Funções puras com teste unitário: `computeScore`, `addBusinessDays`, motor de regras (`src/lib/rules`), renderização de modelos, normalização de telefone e nome, parser de "Cidade / bairro", mapeamento CSV, cifra AES-GCM, hash de PAT.
+- Banco: Postgres 17 em Docker para dev e testes (o Docker já está instalado) e Neon em preview e produção. `src/lib/db/index.ts` escolhe o driver pela URL.
 - Triggers (`do_not_contact`, `lead_id` do lembrete, `updated_at`) ficam numa migration custom, e cada migration tem um `.down.sql` escrito à mão.
 
 ## Fases

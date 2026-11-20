@@ -26,7 +26,7 @@ const manifest: MetadataRoute.Manifest = {
   ].map((s) => ({ ...s, icons: [{ src: '/brand/icon-192.png', sizes: '192x192' }] })),
 };
 
-// Rota em vez de app/manifest.ts: a convenção de arquivo injeta o próprio <link rel="manifest"> sem
+// Rota em vez de src/app/manifest.ts: a convenção de arquivo injeta o próprio <link rel="manifest"> sem
 // crossorigin (só em preview da Vercel), e o SPEC 8 pede use-credentials; o link fica no layout.
 export const dynamic = 'force-static';
 

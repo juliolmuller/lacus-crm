@@ -27,7 +27,7 @@ const summary = (r: unknown) => {
   return 'ok';
 };
 
-/** Uma ferramenta = uma operação de negócio (`lib/api/ops.ts`); o MCP só valida, chama e formata. */
+/** Uma ferramenta = uma operação de negócio (`src/lib/api/ops.ts`); o MCP só valida, chama e formata. */
 function buildServer(kind: Kind, p: Principal) {
   const server = new McpServer({ name: 'lacus-crm', version: '1.0.0' });
   for (const o of visible(kind)) {

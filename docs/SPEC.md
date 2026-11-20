@@ -240,7 +240,7 @@ Confirme o caminho exato da callback na doc do Better Auth.
 ### 5.3 Proteção de rotas
 
 - **`proxy.ts`**: só a checagem otimista do cookie de sessão. Sem cookie, redireciona para `/login`. Exceções: `/login`, `/api/auth/*`, `/api/mcp`, `/api/v1/*`, `/api/jobs/*`, `/api/google/callback` (o handler checa a sessão), `/~offline`, assets estáticos, o manifest, os ícones, as rotas do service worker (`/serwist/*`) e os endpoints `.well-known` do OAuth/MCP.
-- **DAL** `lib/auth/dal.ts` com `requireOwner()`. Toda Server Action, Route Handler e Server Component com dados chama essa função. Nunca confie só no proxy.
+- **DAL** `src/lib/auth/dal.ts` com `requireOwner()`. Toda Server Action, Route Handler e Server Component com dados chama essa função. Nunca confie só no proxy.
 - **`/api/mcp` e `/api/v1/*`**: `Authorization: Bearer <PAT>` (MCP também aceita token OAuth, ver PLAN D1); hash + busca em `api_tokens` (não revogado, não expirado) + checagem de escopo; `last_used_at` com throttle de 1×/min; rate limit por token (120 req/min) em memória com fallback no banco. 401 sem token, 403 com escopo insuficiente.
 - **`/api/jobs/*`**: `Authorization: Bearer ${CRON_SECRET}` **ou** PAT com escopo `write`.
 - **Server Actions**: proteção de origem padrão do Next. Nenhuma ação aceita `lead_id` sem checar a existência.
@@ -330,7 +330,7 @@ Filtro de período (7/30/90 dias/tudo) e filtros por nicho e região. Agregaçõ
 
 ## 7. Design System
 
-Escreva `DESIGN.md` na raiz e crie a rota **`/design-system`** (atrás do login) mostrando todos os tokens, componentes e estados. Os tokens ficam em `app/globals.css` como CSS variables, mapeados no `@theme` do Tailwind v4. O tema escuro é o padrão. O claro fica disponível via `data-theme="light"` com seletor em Configurações (Sistema/Escuro/Claro).
+Escreva `DESIGN.md` na raiz e crie a rota **`/design-system`** (atrás do login) mostrando todos os tokens, componentes e estados. Os tokens ficam em `src/app/globals.css` como CSS variables, mapeados no `@theme` do Tailwind v4. O tema escuro é o padrão. O claro fica disponível via `data-theme="light"` com seletor em Configurações (Sistema/Escuro/Claro).
 
 ### 7.1 Cores (hex; todas as combinações texto/fundo listadas passam WCAG AA)
 
@@ -398,7 +398,7 @@ No tema claro, use fundo `#E3F5EB`/`#FBF0D5`/`#FBE4E2` e texto `#1E7F4F`/`#8A5D0
 
 ## 8. PWA
 
-- **Manifest** (`app/manifest.ts`): `name`/`short_name` "Lacus CRM", `display: standalone`, `start_url: "/?source=pwa"`, `scope: "/"`; `background_color #0B0D10`, `theme_color #0B0D10`, `lang pt-BR`; ícones 192/512 `any` e 192/512 `maskable`; `apple-touch-icon` 180 px; shortcuts "Novo lead", "Lembretes de hoje", "Funil". Link com `crossorigin="use-credentials"`.
+- **Manifest** (`src/app/manifest.ts`): `name`/`short_name` "Lacus CRM", `display: standalone`, `start_url: "/?source=pwa"`, `scope: "/"`; `background_color #0B0D10`, `theme_color #0B0D10`, `lang pt-BR`; ícones 192/512 `any` e 192/512 `maskable`; `apple-touch-icon` 180 px; shortcuts "Novo lead", "Lembretes de hoje", "Funil". Link com `crossorigin="use-credentials"`.
 - **Service worker (Serwist)**: precache do shell e dos assets estáticos; `NetworkFirst` (timeout de 3 s) **somente** para `GET /api/offline/snapshot`, que devolve um JSON mínimo (lembretes de hoje e atrasados, os 50 leads com maior prioridade/score com nome, telefone, próxima ação, status e score, e a data do snapshot); fallback de navegação para `/~offline`, que renderiza esse snapshot em modo leitura com o aviso "Você está offline: dados de dd/mm hh:mm". **Nunca cachear**: `/api/auth/*`, `/api/mcp*`, `/api/v1/*`, `/api/jobs/*`, `/api/google/*`, `.well-known/*`, POSTs, Server Actions e páginas HTML autenticadas. No logout, o SW recebe uma mensagem e limpa todos os caches de runtime.
 - **Instalação**: Android/Chrome com botão "Instalar app" (`beforeinstallprompt`) em "Mais"; iOS com tela de instrução (Compartilhar → Adicionar à Tela de Início) mostrada uma vez, quando `navigator.standalone` for falso.
 - **Atualização**: toast "Nova versão disponível" com "Atualizar".
@@ -408,11 +408,11 @@ No tema claro, use fundo `#E3F5EB`/`#FBF0D5`/`#FBE4E2` e texto `#1E7F4F`/`#8A5D0
 
 ## 9. MCP e API REST
 
-**Arquitetura**: toda regra de negócio vive em `lib/services/*`, usada por Server Actions, REST e MCP. REST e MCP são só adaptadores finos com Zod e `audit_log`.
+**Arquitetura**: toda regra de negócio vive em `src/lib/services/*`, usada por Server Actions, REST e MCP. REST e MCP são só adaptadores finos com Zod e `audit_log`.
 
 ### 9.1 Endpoint MCP
 
-- `app/api/mcp/route.ts` (Streamable HTTP, stateless), validando PAT **ou** token OAuth (PLAN D1), `runtime = "nodejs"` e `maxDuration` adequado ao Hobby (verificar). `app/api/mcp/prospecting/route.ts` expõe só as ferramentas de prospecção.
+- `src/app/api/mcp/route.ts` (Streamable HTTP, stateless), validando PAT **ou** token OAuth (PLAN D1), `runtime = "nodejs"` e `maxDuration` adequado ao Hobby (verificar). `src/app/api/mcp/prospecting/route.ts` expõe só as ferramentas de prospecção.
 - Toda ferramenta devolve `structuredContent` e um texto curto. Listas limitadas a 50 itens, com cursor.
 
 | Ferramenta                                                              | Escopo               | Entrada (resumo)                                                                                                      | Saída (resumo)                                                                                                                                                                 |
@@ -505,13 +505,13 @@ Todos os passos levam o mesmo `runId` (ex.: `2026-11-18T14:00Z-pos37`), e um ret
 ## 12. Estrutura do repositório e `.env.example`
 
 ```
-app/
+src/app/
   (auth)/login/  (app)/page.tsx  (app)/leads/  (app)/funil/  (app)/lembretes/
   (app)/fila/  (app)/configuracoes/  (app)/design-system/  ~offline/
   api/auth/[...all]/  api/mcp/  api/v1/…  api/jobs/followups/  api/google/{connect,callback}/
   api/offline/snapshot/  manifest.ts  sw.ts
-components/{ui,brand,leads,deals,reminders,dashboard,layout}/
-lib/{db/{schema/*.ts,index.ts},auth/{auth.ts,dal.ts},services/*,score/,rules/,business-days/,
+src/components/{ui,brand,leads,deals,reminders,dashboard,layout}/
+src/lib/{db/{schema/*.ts,index.ts},auth/{auth.ts,dal.ts},services/*,score/,rules/,business-days/,
      google/,crypto/,csv/,mcp/tools/*,validation/*,format/}
 drizzle/{NNNN_*.sql,down/,meta/}   scripts/{seed.ts,import/*.ts,rollback.ts,generate-icons.ts}
 tests/{unit,e2e}   docs/{DECISIONS.md,OPERACAO.md,GOOGLE.md,ROTINA.md}   DESIGN.md  README.md
@@ -535,7 +535,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 E2E_AUTH_BYPASS=0
 ```
 
-Valide as variáveis no boot com Zod (`lib/env.ts`), com mensagens claras dizendo o que falta.
+Valide as variáveis no boot com Zod (`src/lib/env.ts`), com mensagens claras dizendo o que falta.
 
 ## 13. Fases de execução
 

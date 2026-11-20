@@ -23,7 +23,7 @@ pnpm dev                        # http://localhost:3000
 
 ### Variáveis de ambiente (`.env.local`)
 
-Gere `BETTER_AUTH_SECRET`, `TOKEN_ENCRYPTION_KEY` (`openssl rand -base64 32`) e `CRON_SECRET` (`openssl rand -hex 24`). `DATABASE_URL=postgres://lacus:lacus@localhost:54329/lacus_crm` para o Docker local. O app valida tudo no boot (`lib/env.ts`) e diz o que falta. A lista completa, por ambiente, está em `docs/DEPLOY.md`.
+Gere `BETTER_AUTH_SECRET`, `TOKEN_ENCRYPTION_KEY` (`openssl rand -base64 32`) e `CRON_SECRET` (`openssl rand -hex 24`). `DATABASE_URL=postgres://lacus:lacus@localhost:54329/lacus_crm` para o Docker local. O app valida tudo no boot (`src/lib/env.ts`) e diz o que falta. A lista completa, por ambiente, está em `docs/DEPLOY.md`.
 
 ### Login com Vercel (precisa de você)
 
@@ -55,18 +55,18 @@ Commits seguem Conventional Commits (commitlint + husky). Atalho no app: `Ctrl+K
 
 ## Mapa da arquitetura
 
-| Pasta                           | O que tem                                                                                               |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `app/(app)/`                    | telas protegidas: painel, leads, funil, lembretes, fila, configurações, design system                   |
-| `app/api/`                      | `auth` (Better Auth), `mcp` e `mcp/prospecting` (MCP), `v1` (REST + OpenAPI), `jobs`, `google`, `leads` |
-| `app/.well-known/`              | metadados OAuth do MCP (RFC 8414 e 9728)                                                                |
-| `lib/services/`                 | **toda a regra de negócio**; Server Actions, REST e MCP são adaptadores finos                           |
-| `lib/api/`                      | `ops.ts`: operações compartilhadas por MCP e REST; `rest.ts`: rotas, auth de PAT e OpenAPI              |
-| `lib/auth/`, `proxy.ts`         | Better Auth (Vercel + OAuth do MCP), DAL `requireOwner`, CSP e checagem otimista de sessão              |
-| `lib/db/`, `drizzle/`           | schema Drizzle, migrations e `down/` para rollback                                                      |
-| `lib/followups/`, `lib/google/` | motor de regras e dias úteis; Google Calendar (outbox)                                                  |
-| `components/`                   | UI por área; `components/ui` são os primitivos do design system                                         |
-| `tests/`                        | `unit`, `int` (banco `_test`), `e2e` e `pwa` (banco `_e2e`)                                             |
+| Pasta                                   | O que tem                                                                                               |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `src/app/(app)/`                        | telas protegidas: painel, leads, funil, lembretes, fila, configurações, design system                   |
+| `src/app/api/`                          | `auth` (Better Auth), `mcp` e `mcp/prospecting` (MCP), `v1` (REST + OpenAPI), `jobs`, `google`, `leads` |
+| `src/app/.well-known/`                  | metadados OAuth do MCP (RFC 8414 e 9728)                                                                |
+| `src/lib/services/`                     | **toda a regra de negócio**; Server Actions, REST e MCP são adaptadores finos                           |
+| `src/lib/api/`                          | `ops.ts`: operações compartilhadas por MCP e REST; `rest.ts`: rotas, auth de PAT e OpenAPI              |
+| `src/lib/auth/`, `src/proxy.ts`         | Better Auth (Vercel + OAuth do MCP), DAL `requireOwner`, CSP e checagem otimista de sessão              |
+| `src/lib/db/`, `drizzle/`               | schema Drizzle, migrations e `down/` para rollback                                                      |
+| `src/lib/followups/`, `src/lib/google/` | motor de regras e dias úteis; Google Calendar (outbox)                                                  |
+| `src/components/`                       | UI por área; `src/components/ui` são os primitivos do design system                                     |
+| `tests/`                                | `unit`, `int` (banco `_test`), `e2e` e `pwa` (banco `_e2e`)                                             |
 
 ## Documentação
 

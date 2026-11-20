@@ -1,6 +1,6 @@
 # Design System: Lacus CRM
 
-Guia vivo em `/design-system` (atrás do login). Fonte dos tokens: `app/globals.css` (variáveis CSS, mapeadas no `@theme` do Tailwind v4). Escuro é o padrão; o claro entra com `data-theme="light"` (Configurações > Aparência: Sistema, Escuro, Claro). Referência completa: `docs/SPEC.md` seções 7.1 a 7.3.
+Guia vivo em `/design-system` (atrás do login). Fonte dos tokens: `src/app/globals.css` (variáveis CSS, mapeadas no `@theme` do Tailwind v4). Escuro é o padrão; o claro entra com `data-theme="light"` (Configurações > Aparência: Sistema, Escuro, Claro). Referência completa: `docs/SPEC.md` seções 7.1 a 7.3.
 
 ## Princípios
 
