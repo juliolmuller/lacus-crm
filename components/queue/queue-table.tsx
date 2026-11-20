@@ -17,7 +17,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, ListChecks } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 import { toast } from 'sonner';
@@ -28,7 +29,8 @@ import {
   skipQueueAction,
 } from '@/app/(app)/fila/actions';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { bareControl } from '@/components/ui/field';
 import { formatWhen } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -304,18 +306,38 @@ export function QueueTable({ rows }: { rows: QueueRow[] }) {
                     canDrag={!filtered && !pending}
                   />
                 ))}
-                {!shown.length && (
-                  <tr>
-                    <td colSpan={9} className="px-2 py-6 text-center text-text-muted">
-                      Nenhum item na fila.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </SortableContext>
         </DndContext>
       </div>
+      {!shown.length && (
+        <EmptyState
+          icon={ListChecks}
+          title={filtered ? 'Nenhum item com esses filtros' : 'A fila está vazia'}
+          action={
+            filtered ? (
+              <Button
+                onClick={() => {
+                  setStatus('');
+                  setCity('');
+                  setNiche('');
+                }}
+              >
+                Limpar filtros
+              </Button>
+            ) : (
+              <Link href="/configuracoes#tokens" className={buttonVariants()}>
+                Conectar a rotina
+              </Link>
+            )
+          }
+        >
+          {filtered
+            ? 'Ajuste os filtros para ver os itens.'
+            : 'A rotina de prospecção preenche a fila; os tokens e conectores ficam em Configurações.'}
+        </EmptyState>
+      )}
     </div>
   );
 }
