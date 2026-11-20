@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { query } from './db';
 
 const stamp = () => `${Date.now()}${Math.floor(Math.random() * 1000)}`;
 const phone = () => `(41) 9${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`;
@@ -96,18 +97,32 @@ test('tabela virtualizada, busca e edição inline persistem', async ({ page, is
   await expect(page).toHaveURL(/q=/);
   const row = page.getByTestId('lead-row').filter({ hasText: name });
   await expect(row).toHaveCount(1);
-  // antes da hidratação a edição não dispara a Server Action: repete até o POST sair
-  const saves = (edit: () => Promise<unknown>) =>
+  // antes da hidratação a edição não dispara a Server Action: repete até o banco refletir
+  const saves = (edit: () => Promise<unknown>, col: string, want: unknown) =>
     expect(async () => {
-      const done = page.waitForResponse((r) => r.request().method() === 'POST', { timeout: 3000 });
       await edit();
-      await done;
+      await expect
+        .poll(
+          async () => (await query(`select ${col} as v from leads where name = $1`, [name]))[0]?.v,
+          {
+            timeout: 3000,
+          },
+        )
+        .toBe(want);
     }).toPass();
-  await saves(() => row.getByLabel(`Status de ${name}`).selectOption('Abordado'));
-  await saves(async () => {
-    await row.getByLabel(`Prioridade de ${name}`).fill('7');
-    await row.getByLabel(`Prioridade de ${name}`).blur();
-  });
+  await saves(
+    () => row.getByLabel(`Status de ${name}`).selectOption('Abordado'),
+    'contact_status',
+    'contacted',
+  );
+  await saves(
+    async () => {
+      await row.getByLabel(`Prioridade de ${name}`).fill('7');
+      await row.getByLabel(`Prioridade de ${name}`).blur();
+    },
+    'priority',
+    7,
+  );
 
   await page.reload();
   const again = page.getByTestId('lead-row').filter({ hasText: name });
