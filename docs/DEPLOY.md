@@ -5,13 +5,15 @@ Domínio de produção: `https://lacuscrm.juliolmuller.com`. Todo push em `main`
 **Estado em 21/11/2026**
 
 - Feito: projeto na Vercel e Neon (passo 1) com migrations, seed e importação dos dados reais (53 leads, 20 negociações, 216 itens de fila); variáveis de ambiente (passo 2) e `OWNER_VERCEL_USER_ID`; domínio (passo 3); Vercel App com as callbacks de produção (passo 4); deploy de produção; Schedule `followups-hourly` ativo (passo 6); login e painel funcionando em produção.
-- Pendente: Google Calendar (passo 5), tokens e conectores do claude.ai (passo 7), os itens restantes do smoke (passo 8) e a decisão Hobby x Pro (passo 0).
+- Pendente: Google Calendar (passo 5), tokens e conectores do claude.ai (passo 7), e os itens restantes do smoke (passo 8). O plano Hobby foi decidido (passo 0).
 
 Os passos abaixo seguem como roteiro de referência (por exemplo, para refazer o ambiente).
 
-## 0. Plano da Vercel (Hobby x Pro)
+## 0. Plano da Vercel: Hobby (decidido)
 
-Os Termos da Vercel limitam o plano **Hobby** a uso pessoal e não comercial. O CRM sustenta a atividade comercial da Lacus Solutions, então **Pro** é o enquadramento seguro (decisão de negócio do Júlio; ver "Hobby da Vercel" em `docs/DECISIONS.md`). Tecnicamente tudo cabe no Hobby: funções com `maxDuration = 60` (limite do Hobby: 300 s) e o agendamento por Schedule (Hobby: intervalo mínimo de 15 min e 5.000 execuções por mês; o `vercel.json` usa 15 por dia). No Pro o jitter do Schedule é menor.
+**Decisão do Júlio (21/11/2026): o projeto permanece no plano Hobby.** Os Termos da Vercel limitam o Hobby a uso pessoal e não comercial; o Júlio não interpreta o uso do CRM como comercial e **assume o risco** dessa escolha. Assunto encerrado, sem nova ação. Se a Vercel restringir a conta ou os termos mudarem, o caminho é migrar para o Pro (mesma configuração).
+
+Tecnicamente tudo cabe no Hobby: funções com `maxDuration = 60` (limite do Hobby: 300 s) e o agendamento por Schedule (Hobby: intervalo mínimo de 15 min e 5.000 execuções por mês; o `vercel.json` usa 15 por dia). No Pro o jitter do Schedule é menor.
 
 ## 1. Projeto na Vercel e banco no Neon
 

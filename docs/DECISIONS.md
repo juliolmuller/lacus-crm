@@ -38,6 +38,8 @@ next 16.4.6, react 19.3.1, better-auth 1.7.26, drizzle-orm 0.45.4, drizzle-kit 0
 
 Os Termos de Serviço da Vercel (seção 4, "Hobby Plan") dizem: "You shall only use the Services under a Hobby plan for your personal or non-commercial use." O Lacus CRM sustenta uma atividade comercial (prospecção de clientes da Lacus Solutions), então o plano **Pro** é o enquadramento seguro para produção (US$ 20 por assento de desenvolvedor por mês). Decisão de negócio do Júlio. Limites úteis do Hobby: funções até 300 s, 100 deploys por dia, logs de runtime de 1 hora, 1.000.000 invocações por mês.
 
+**Decisão (21/11/2026): permanece no plano Hobby.** O Júlio não interpreta o uso do CRM como comercial e assume o risco dessa escolha; o assunto está encerrado. A recomendação acima fica registrada só como histórico.
+
 ### Pendências da fase 1
 
 - Criar o Vercel App (Client ID/Secret) e preencher `OWNER_VERCEL_USER_ID`/`OWNER_EMAIL`: sem isso o login real e a recusa de conta fora da allowlist não puderam ser exercitados contra a Vercel.
