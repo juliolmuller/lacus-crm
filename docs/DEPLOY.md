@@ -1,6 +1,13 @@
 # Deploy em produção (checklist)
 
-Nada aqui foi executado: o deploy espera o Júlio. Siga na ordem. Domínio de produção: `https://lacuscrm.juliolmuller.com`.
+Domínio de produção: `https://lacuscrm.juliolmuller.com`. Todo push em `main` gera um deploy de produção (projeto Vercel ligado ao GitHub); branches e PRs geram previews.
+
+**Estado em 21/11/2026**
+
+- Feito: projeto na Vercel e Neon (passo 1) com migrations, seed e importação dos dados reais (53 leads, 20 negociações, 216 itens de fila); variáveis de ambiente (passo 2) e `OWNER_VERCEL_USER_ID`; domínio (passo 3); Vercel App com as callbacks de produção (passo 4); deploy de produção; Schedule `followups-hourly` ativo (passo 6); login e painel funcionando em produção.
+- Pendente: Google Calendar (passo 5), tokens e conectores do claude.ai (passo 7), os itens restantes do smoke (passo 8) e a decisão Hobby x Pro (passo 0).
+
+Os passos abaixo seguem como roteiro de referência (por exemplo, para refazer o ambiente).
 
 ## 0. Plano da Vercel (Hobby x Pro)
 
@@ -107,3 +114,11 @@ O `vercel.json` já declara o Schedule `followups-hourly` (`0 7-21 * * *`, `Amer
 - [ ] No celular: instalar o app (Android: menu "Instalar app"; iOS: Compartilhar > Adicionar à Tela de Início); abrir offline mostra `/~offline` com os dados do último snapshot.
 - [ ] Uma execução manual da rotina (`docs/ROTINA.md`): item da Fila vira "Concluído" e o painel de uso da API conta as requisições.
 - [ ] Vercel > Logs sem erros 5xx depois dessas chamadas.
+
+## 9. Problemas conhecidos
+
+- **`/login?error=invalid_scope`**: faltam os escopos **Email** e **Profile** habilitados em Manage no app da Vercel (passo 4).
+- **`Acesso negado. sub recebido: …`**: `OWNER_VERCEL_USER_ID` (ou `OWNER_EMAIL`) não confere ou está vazia. Em desenvolvimento a tela mostra o `sub`; copie-o para o `.env.local` e para a Vercel (Production e Preview) e reinicie o `bun run dev` (o `.env.local` só é lido na subida).
+- **`bun run dev` devolve 500 em todas as rotas com `Turbopack Error … task is missing in memory or persistent storage`**: cache do Turbopack corrompido (acontece depois de interromper o servidor durante a escrita ou de mover pastas). Pare o servidor, apague `.next` (só cache) e suba de novo.
+- **`Variáveis de ambiente inválidas` nos logs da Vercel**: o deploy foi criado antes de as variáveis existirem. Variáveis novas só valem em deploys novos; faça um redeploy (`vercel redeploy <url-do-deploy> --scope <time>`).
+- **`vercel env rm` não remove**: a CLI pede confirmação explícita. Mostre o efeito a quem decide e rode o comando indicado, com `--confirm-name <NOME>`.
