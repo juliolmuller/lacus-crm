@@ -9,7 +9,7 @@ Os Termos da Vercel limitam o plano **Hobby** a uso pessoal e não comercial. O 
 ## 1. Projeto na Vercel e banco no Neon
 
 1. Importe o repositório como projeto Vercel (framework Next.js; build `bun run build`, Node 24).
-2. Em **Storage**, adicione o **Neon** pela integração da Vercel. Ela cria `DATABASE_URL` (pooled) e `DATABASE_URL_UNPOOLED` (conexão direta) no projeto. Confirme que existem em **Production** (e em Preview, se quiser banco nos previews; use um branch do Neon para isso, nunca o de produção).
+2. Em **Storage**, adicione o **Neon** pela integração da Vercel. Ela cria `DATABASE_URL` (pooled) e `DATABASE_URL_UNPOOLED` (conexão direta) no projeto. Confirme que existem em **Production** (e em Preview, se quiser banco nos previews; use um branch do Neon para isso, nunca o de produção). No assistente do Neon: marque só **Production e Preview** (Development não: um `vercel env pull` poderia levar as credenciais reais para o `.env.local`), deixe **Neon Auth**, **Data API** e **Realtime** desligados (o login é o Better Auth e o app não usa realtime) e escolha a região próxima das funções (padrão da Vercel: `iad1`/`us-east-1`; em `sa-east-1`, ajuste a região das funções para `gru1`). Se a integração criar `VITE_NEON_AUTH_URL` e `NEON_AUTH_BASE_URL`, o app não as usa; podem ser removidas. Não sobrescreva `DATABASE_URL`/`DATABASE_URL_UNPOOLED` à mão: elas são geridas pela integração, e **Preview e Production apontam para o mesmo banco** enquanto o branch por deploy de preview não for ativado.
 3. **Backup**: só é obrigatório quando o banco **já tem dados** (antes de importar leads reais sobre um banco em uso, antes de migrations que mexam em tabelas com dados e, depois, de tempos em tempos, com `pg_dump` da conexão unpooled guardado fora do Neon e do repositório). Num banco recém-criado e vazio, pule: migrations e seed se refazem em minutos e os leads vêm dos CSVs. Para criar o backup: no painel do Neon, **Branches > Create branch** a partir de `main` (nome sugerido `backup-AAAA-MM-DD`, "Current data"). Confira também a janela de restauração por ponto no tempo do seu plano (Settings > Storage).
 4. Migrar e semear com a conexão direta, da sua máquina:
 
@@ -39,6 +39,10 @@ Os Termos da Vercel limitam o plano **Hobby** a uso pessoal e não comercial. O 
 | `APP_TIMEZONE`                            | `America/Sao_Paulo`       | idem                                                             | idem                                                                           |
 | `E2E_AUTH_BYPASS`                         | `0` (ou `1` só em testes) | **nunca**                                                        | **nunca**                                                                      |
 
+**Preview:** `BETTER_AUTH_URL` e `NEXT_PUBLIC_APP_URL` precisam ser **URLs válidas**; o texto `VERCEL_BRANCH_URL` não vale (o app só usa `VERCEL_BRANCH_URL` para ampliar as origens confiáveis, não para derivar a URL base). Sem elas, um deploy de preview falha na validação do ambiente. Defina uma URL fixa para o preview ou ajuste o código antes de usar previews.
+
+Variáveis com o mesmo valor em Preview e Production (`APP_TIMEZONE`, `VERCEL_CLIENT_ID`, `VERCEL_CLIENT_SECRET`, `OWNER_VERCEL_USER_ID`) ficam numa única entrada com os dois ambientes marcados. Segredos (`*_SECRET`, `TOKEN_ENCRYPTION_KEY`, `CRON_SECRET`) entram como **Sensitive**: depois de salvos não podem ser lidos, então guarde uma cópia no `.env.production`/`.env.preview` local (ignorados pelo git).
+
 `E2E_AUTH_BYPASS` e `E2E_PROD_BUILD` existem só para os testes; o bypass é recusado quando `VERCEL_ENV` está definido. O app valida o ambiente no boot e lista o que falta.
 
 ## 3. Domínio e DNS
@@ -57,7 +61,7 @@ No app **Lacus CRM** (Settings > Apps), registre as callbacks:
 | Produção | `https://lacuscrm.juliolmuller.com/api/auth/callback/vercel`                                          |
 | Preview  | selecione o projeto Vercel no campo de callback (a doc diz que cobre os previews; confirme no painel) |
 
-Escopos `openid email profile`. Se possível, em "Sign-In Access" restrinja a "Members of the team". No primeiro login em produção, preencha `OWNER_VERCEL_USER_ID` com o `sub` (em produção o acesso negado não o mostra; pegue-o no login local, que mostra) e faça redeploy.
+Use **um app só** para local, produção e preview (as três callbacks acima, no mesmo app; as credenciais e o `OWNER_VERCEL_USER_ID` são iguais nos ambientes). Na página **Manage** do app, habilite os escopos **Email** e **Profile** (`openid` já vem ativo): se faltarem, o login volta para `/login?error=invalid_scope`. O app pede `openid email profile`. Se possível, em "Sign-In Access" restrinja a "Members of the team". No primeiro login em produção, preencha `OWNER_VERCEL_USER_ID` com o `sub` (em produção o acesso negado não o mostra; pegue-o no login local, que mostra: com `OWNER_VERCEL_USER_ID` e `OWNER_EMAIL` vazias, entre em `http://localhost:3000/login` e copie o valor de "Acesso negado. sub recebido: …") e faça redeploy.
 
 ## 5. Google Calendar
 
