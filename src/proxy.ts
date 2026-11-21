@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 // Rotas que não exigem cookie de sessão (SPEC 5.3). Cada handler faz a própria checagem.
 const PUBLIC = [
   /^\/login(\/|$)/,
+  /^\/(sobre|privacidade|termos)$/, // páginas públicas exigidas pelo OAuth do Google
   /^\/api\/auth(\/|$)/,
   /^\/api\/mcp(\/|$)/,
   /^\/api\/v1(\/|$)/,
