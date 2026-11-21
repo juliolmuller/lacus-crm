@@ -10,7 +10,7 @@ Os Termos da Vercel limitam o plano **Hobby** a uso pessoal e não comercial. O 
 
 1. Importe o repositório como projeto Vercel (framework Next.js; build `bun run build`, Node 24).
 2. Em **Storage**, adicione o **Neon** pela integração da Vercel. Ela cria `DATABASE_URL` (pooled) e `DATABASE_URL_UNPOOLED` (conexão direta) no projeto. Confirme que existem em **Production** (e em Preview, se quiser banco nos previews; use um branch do Neon para isso, nunca o de produção).
-3. **Backup antes de migrar**: no painel do Neon, **Branches > Create branch** a partir de `main` (nome sugerido `backup-AAAA-MM-DD`). Só então rode as migrations.
+3. **Backup**: só é obrigatório quando o banco **já tem dados** (antes de importar leads reais sobre um banco em uso, antes de migrations que mexam em tabelas com dados e, depois, de tempos em tempos, com `pg_dump` da conexão unpooled guardado fora do Neon e do repositório). Num banco recém-criado e vazio, pule: migrations e seed se refazem em minutos e os leads vêm dos CSVs. Para criar o backup: no painel do Neon, **Branches > Create branch** a partir de `main` (nome sugerido `backup-AAAA-MM-DD`, "Current data"). Confira também a janela de restauração por ponto no tempo do seu plano (Settings > Storage).
 4. Migrar e semear com a conexão direta, da sua máquina:
 
    ```bash
