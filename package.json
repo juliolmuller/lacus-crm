@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "UNLICENSED",
-  "packageManager": "pnpm@12.8.1",
+  "packageManager": "bun@1.4.4",
   "author": "Lacus Solutions",
   "type": "module",
   "scripts": {
@@ -15,15 +15,15 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.sw.json",
     "test": "vitest run --project unit",
     "test:int": "vitest run --project int",
-    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "check": "bun run typecheck && bun run lint && bun run test",
     "e2e": "playwright test",
     "e2e:pwa": "playwright test -c playwright.pwa.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:rollback": "tsx scripts/rollback.ts",
-    "db:seed": "tsx scripts/seed.ts",
-    "icons": "tsx scripts/generate-icons.ts",
-    "db:import": "tsx scripts/import-data.ts"
+    "db:rollback": "bun scripts/rollback.ts",
+    "db:seed": "bun scripts/seed.ts",
+    "icons": "bun scripts/generate-icons.ts",
+    "db:import": "bun scripts/import-data.ts"
   },
   "dependencies": {
     "@better-auth/cimd": "1.7.26",
@@ -85,7 +85,6 @@
     "serwist": "^9.5.15",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.5",
-    "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.73.0",
     "vitest": "^5.1.1"

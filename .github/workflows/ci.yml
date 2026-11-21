@@ -29,20 +29,21 @@ jobs:
       CRON_SECRET: ci-only-cron-secret
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm test
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run test
       - name: Migrations up, down, up
         run: |
-          pnpm db:migrate
-          pnpm db:rollback all
-          pnpm db:migrate
-      - run: pnpm db:seed
+          bun run db:migrate
+          bun run db:rollback all
+          bun run db:migrate
+      - run: bun run db:seed
       - name: Integração (triggers)
-        run: pnpm test:int
+        run: bun run test:int

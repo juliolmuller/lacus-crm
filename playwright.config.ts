@@ -20,7 +20,7 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: `pnpm exec tsx tests/e2e/setup-db.ts && pnpm exec next dev --port ${port}`,
+    command: `bun tests/e2e/setup-db.ts && bunx next dev --port ${port}`,
     url: `http://localhost:${port}/login`,
     reuseExistingServer: false, // um servidor já aberto apontaria para o banco de desenvolvimento
     timeout: 240_000, // recria o banco e2e, semeia e sobe o dev server (lento no WSL)

@@ -32,7 +32,7 @@ Depois de um deploy, o app instalado mostra o aviso "Nova versão disponível"; 
 
 ### Testes automatizados
 
-- `pnpm e2e:pwa` faz o build e roda na porta 3101, contra produção, os testes de PWA (manifest, worker, offline, caches proibidos, logout, instalação) e o e2e do painel (desktop e celular).
+- `bun run e2e:pwa` faz o build e roda na porta 3101, contra produção, os testes de PWA (manifest, worker, offline, caches proibidos, logout, instalação) e o e2e do painel (desktop e celular).
 - Lighthouse (mobile) contra o build local: `next start` com `E2E_AUTH_BYPASS=1 E2E_PROD_BUILD=1` (mais as variáveis de produção de mentira que estão em `playwright.pwa.config.ts`), pegue o cookie em `/api/e2e/login?next=/` e passe em `--extra-headers`.
 
 ## MCP e API REST

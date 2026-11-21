@@ -1,4 +1,4 @@
-// Seeds idempotentes: `pnpm db:seed`. Nunca sobrescreve o que o Júlio já editou (ON CONFLICT DO NOTHING).
+// Seeds idempotentes: `bun run db:seed`. Nunca sobrescreve o que o Júlio já editou (ON CONFLICT DO NOTHING).
 import { config } from 'dotenv';
 import { eq } from 'drizzle-orm';
 import { existsSync, readFileSync } from 'node:fs';

@@ -3,7 +3,7 @@ import { pointToE2eDatabase } from './tests/e2e/env';
 
 const db = pointToE2eDatabase(); // build/servidor e testes usam `<banco>_e2e`
 
-// PWA contra o build de produção (o service worker só roda assim). `pnpm e2e:pwa`.
+// PWA contra o build de produção (o service worker só roda assim). `bun run e2e:pwa`.
 const port = 3101;
 
 export default defineConfig({
@@ -20,7 +20,7 @@ export default defineConfig({
     { name: 'painel-mobile', testMatch: 'e2e/dashboard.spec.ts', use: devices['Pixel 7'] },
   ],
   webServer: {
-    command: `pnpm exec tsx tests/e2e/setup-db.ts && pnpm exec next build && pnpm exec next start --port ${port}`,
+    command: `bun tests/e2e/setup-db.ts && bunx next build && bunx next start --port ${port}`,
     url: `http://localhost:${port}/login`,
     reuseExistingServer: false,
     timeout: 600_000,

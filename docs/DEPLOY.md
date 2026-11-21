@@ -8,19 +8,19 @@ Os Termos da Vercel limitam o plano **Hobby** a uso pessoal e não comercial. O 
 
 ## 1. Projeto na Vercel e banco no Neon
 
-1. Importe o repositório como projeto Vercel (framework Next.js; build `pnpm build`, Node 24).
+1. Importe o repositório como projeto Vercel (framework Next.js; build `bun run build`, Node 24).
 2. Em **Storage**, adicione o **Neon** pela integração da Vercel. Ela cria `DATABASE_URL` (pooled) e `DATABASE_URL_UNPOOLED` (conexão direta) no projeto. Confirme que existem em **Production** (e em Preview, se quiser banco nos previews; use um branch do Neon para isso, nunca o de produção).
 3. **Backup antes de migrar**: no painel do Neon, **Branches > Create branch** a partir de `main` (nome sugerido `backup-AAAA-MM-DD`). Só então rode as migrations.
 4. Migrar e semear com a conexão direta, da sua máquina:
 
    ```bash
-   DATABASE_URL_UNPOOLED='<string unpooled do Neon>' DATABASE_URL='<a mesma>' pnpm db:migrate
-   DATABASE_URL='<string do Neon>' pnpm db:seed
+   DATABASE_URL_UNPOOLED='<string unpooled do Neon>' DATABASE_URL='<a mesma>' bun run db:migrate
+   DATABASE_URL='<string do Neon>' bun run db:seed
    ```
 
-   Rollback, se precisar: `pnpm db:rollback 1` (usa `drizzle/down/*.down.sql`) ou restaure o branch de backup.
+   Rollback, se precisar: `bun run db:rollback 1` (usa `drizzle/down/*.down.sql`) ou restaure o branch de backup.
 
-5. Dados reais: `pnpm db:import --insert-only` com os CSVs de `.data/` apontando para o Neon (o modo "somente novos" é o padrão seguro em produção). Confira `.data/import-report.json`.
+5. Dados reais: `bun run db:import --insert-only` com os CSVs de `.data/` apontando para o Neon (o modo "somente novos" é o padrão seguro em produção). Confira `.data/import-report.json`.
 
 ## 2. Variáveis de ambiente
 

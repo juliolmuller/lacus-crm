@@ -8,17 +8,17 @@ Especificação em `docs/SPEC.md`; decisões e desvios por fase em `docs/DECISIO
 
 ## Requisitos
 
-Node 24, pnpm 12 e Docker (Postgres 17 local).
+Node 24, Bun 1.4 e Docker (Postgres 17 local).
 
 ## Rodando localmente
 
 ```bash
-pnpm install
+bun install
 docker compose up -d            # Postgres em localhost:54329
 cp .env.example .env.local      # preencha (veja abaixo)
-pnpm db:migrate
-pnpm db:seed
-pnpm dev                        # http://localhost:3000
+bun run db:migrate
+bun run db:seed
+bun run dev                        # http://localhost:3000
 ```
 
 ### Variáveis de ambiente (`.env.local`)
@@ -34,22 +34,22 @@ Gere `BETTER_AUTH_SECRET`, `TOKEN_ENCRYPTION_KEY` (`openssl rand -base64 32`) e 
 
 ### Nichos e dados reais
 
-O seed lê `.data/nichos.csv` (fora do git), exportado da aba "Nichos" da planilha; sem o arquivo, a etapa é ignorada. Os demais CSVs também ficam em `.data/`. `pnpm db:import` importa na ordem nichos, cidades, fila, leads, top leads e uso da API; é idempotente e grava `.data/import-report.json` e `.data/dnc-candidates.md` (candidatos a "Não contatar", **nunca aplicados**). Na interface: `/leads/importar` e **Exportar** na tela de leads.
+O seed lê `.data/nichos.csv` (fora do git), exportado da aba "Nichos" da planilha; sem o arquivo, a etapa é ignorada. Os demais CSVs também ficam em `.data/`. `bun run db:import` importa na ordem nichos, cidades, fila, leads, top leads e uso da API; é idempotente e grava `.data/import-report.json` e `.data/dnc-candidates.md` (candidatos a "Não contatar", **nunca aplicados**). Na interface: `/leads/importar` e **Exportar** na tela de leads.
 
 ## Scripts
 
-| Script                                       | O que faz                                                                                                              |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev` / `build` / `start`               | Next.js (Turbopack)                                                                                                    |
-| `pnpm check`                                 | typecheck + lint + testes unitários                                                                                    |
-| `pnpm test:int`                              | integração num banco `<nome>_test` (criado e migrado sozinho)                                                          |
-| `pnpm e2e`                                   | Playwright (desktop e Pixel 7) contra `next dev`, num banco `<nome>_e2e` **recriado a cada execução** (nunca o de dev) |
-| `pnpm e2e:pwa`                               | PWA, painel e MCP contra o build de produção (porta 3101), também no banco `<nome>_e2e`                                |
-| `pnpm db:generate`                           | gera migration do schema Drizzle                                                                                       |
-| `pnpm db:migrate` / `db:rollback [n\|all]`   | aplica / desfaz migrations (`drizzle/down/*.down.sql`)                                                                 |
-| `pnpm db:seed`                               | seeds idempotentes                                                                                                     |
-| `pnpm db:import [--insert-only] [--dry-run]` | importa os CSVs de `.data/`                                                                                            |
-| `pnpm icons`                                 | regenera os ícones em `public/brand`                                                                                   |
+| Script                                          | O que faz                                                                                                              |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `bun run dev` / `build` / `start`               | Next.js (Turbopack)                                                                                                    |
+| `bun run check`                                 | typecheck + lint + testes unitários                                                                                    |
+| `bun run test:int`                              | integração num banco `<nome>_test` (criado e migrado sozinho)                                                          |
+| `bun run e2e`                                   | Playwright (desktop e Pixel 7) contra `next dev`, num banco `<nome>_e2e` **recriado a cada execução** (nunca o de dev) |
+| `bun run e2e:pwa`                               | PWA, painel e MCP contra o build de produção (porta 3101), também no banco `<nome>_e2e`                                |
+| `bun run db:generate`                           | gera migration do schema Drizzle                                                                                       |
+| `bun run db:migrate` / `db:rollback [n\|all]`   | aplica / desfaz migrations (`drizzle/down/*.down.sql`)                                                                 |
+| `bun run db:seed`                               | seeds idempotentes                                                                                                     |
+| `bun run db:import [--insert-only] [--dry-run]` | importa os CSVs de `.data/`                                                                                            |
+| `bun run icons`                                 | regenera os ícones em `public/brand`                                                                                   |
 
 Commits seguem Conventional Commits (commitlint + husky). Atalho no app: `Ctrl+K` / `⌘K` abre a paleta (busca de leads e ações rápidas) no desktop.
 

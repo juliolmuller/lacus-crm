@@ -1,4 +1,4 @@
-// Desfaz migrations aplicadas: `pnpm db:rollback` (última), `pnpm db:rollback 2` (duas) ou `pnpm db:rollback all`.
+// Desfaz migrations aplicadas: `bun run db:rollback` (última), `bun run db:rollback 2` (duas) ou `bun run db:rollback all`.
 // Executa drizzle/down/<tag>.down.sql e remove o registro de drizzle.__drizzle_migrations, numa transação por migration.
 import { config } from 'dotenv';
 import { readFileSync } from 'node:fs';

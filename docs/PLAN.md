@@ -4,7 +4,7 @@
 
 Hoje a prospecção da Lacus Solutions roda em Google Sheets, alimentada por uma rotina do Claude a cada 2 h. O Lacus CRM substitui as abas Leads, Top leads, Fila, Cidades, Uso da API e Nichos e passa a ser o destino da rotina. É um app web (PWA) de um único usuário: dashboard, leads, funil kanban, lembretes no Google Calendar, follow-ups automáticos que nunca enviam nada sozinhos, e acesso por MCP e REST. A especificação completa é o prompt do Júlio (seções 1–15). Este plano registra só as decisões tomadas, os desvios da especificação e a execução por fases. Onde não diz nada, vale o prompt.
 
-Repositório: `~/crm` (vazio hoje) → `git init`, pacote `lacus-crm`, pnpm.
+Repositório: `~/crm` (vazio hoje) → `git init`, pacote `lacus-crm`, ~~pnpm~~ Bun (trocado em 21/11/2026, ver `docs/DECISIONS.md`).
 
 ## Respostas da seção 16 (fase 0)
 
@@ -53,7 +53,7 @@ As probabilidades são um palpite meu e ficam editáveis. Sem a etapa "Proposta 
 
 **D5. DnD**: `@dnd-kit/react` está em 0.5.3 (< 1.0), então uso `@dnd-kit/core` + `@dnd-kit/sortable`, como manda a regra da 6.3.
 
-**D6. Convenções do repo `lacus.solutions` reaproveitadas**: commitlint com a mesma `type-enum` (inclui `ai`), husky e lint-staged. Fico com o pnpm, como manda a spec, embora o outro repo use bun.
+**D6. Convenções do repo `lacus.solutions` reaproveitadas**: commitlint com a mesma `type-enum` (inclui `ai`), husky e lint-staged. Ficou com o pnpm, como mandava a spec; **trocado para Bun em 21/11/2026 a pedido do Júlio**, como no outro repo.
 
 ## Versões conferidas hoje (19/11/2026, `npm view`)
 
@@ -68,7 +68,7 @@ next 16.4.6 · better-auth 1.7.26 (+ `@better-auth/mcp`) · drizzle-orm 0.45.4 /
 
 ## Fases
 
-Cada fase termina com `pnpm check` (typecheck + lint + unit) e os e2e da fase passando, commits pequenos em Conventional Commits e um relatório com o que foi entregue, como testar e o que ficou pendente. Sem push nem deploy até o Júlio pedir.
+Cada fase termina com `bun run check` (typecheck + lint + unit) e os e2e da fase passando, commits pequenos em Conventional Commits e um relatório com o que foi entregue, como testar e o que ficou pendente. Sem push nem deploy até o Júlio pedir.
 
 | #   | Fase                              | Notas além da seção 13                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | --- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -83,8 +83,8 @@ Cada fase termina com `pnpm check` (typecheck + lint + unit) e os e2e da fase pa
 
 ## Verificação ponta a ponta
 
-- **Unit/integração**: `pnpm check` e `pnpm test:int` (Postgres em Docker, cada teste numa transação revertida). Casos obrigatórios: score = 85, feriados móveis de 2026/27, idempotência do upsert e das regras, triggers.
-- **E2E**: `pnpm e2e` (Playwright desktop, iPhone 14 e Pixel 7, com axe nos dois temas), usando a rota de bypass só com `E2E_AUTH_BYPASS=1` fora da produção.
+- **Unit/integração**: `bun run check` e `bun run test:int` (Postgres em Docker, cada teste numa transação revertida). Casos obrigatórios: score = 85, feriados móveis de 2026/27, idempotência do upsert e das regras, triggers.
+- **E2E**: `bun run e2e` (Playwright desktop, iPhone 14 e Pixel 7, com axe nos dois temas), usando a rota de bypass só com `E2E_AUTH_BYPASS=1` fora da produção.
 - **Manual com o Júlio**: login Vercel em localhost; conta fora da allowlist recusada; evento criado, alterado e apagado no Calendar; `claude mcp add` com PAT; conector OAuth no claude.ai listando ferramentas; uma execução real da rotina contra preview/produção; instalação da PWA em Android e iOS; Lighthouse.
 
 ## Riscos que o Júlio precisa saber

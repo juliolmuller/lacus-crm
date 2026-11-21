@@ -1,4 +1,4 @@
-// Importa os CSVs de .data/ para o banco local: `pnpm db:import [--insert-only] [--dry-run]`.
+// Importa os CSVs de .data/ para o banco local: `bun run db:import [--insert-only] [--dry-run]`.
 // Ordem: nichos → cidades → fila → leads → top leads → uso da API. Gera os relatórios em .data/.
 import { config } from 'dotenv';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -63,7 +63,7 @@ writeFileSync(
   [
     '# Candidatos a "Não contatar" (NÃO aplicados)',
     '',
-    `Gerado por \`pnpm db:import\` em ${new Date().toISOString().slice(0, 10)}. Nada foi marcado no banco: o Júlio confirma cada caso.`,
+    `Gerado por \`bun run db:import\` em ${new Date().toISOString().slice(0, 10)}. Nada foi marcado no banco: o Júlio confirma cada caso.`,
     '',
     '| Lead | Status | ID | Evidência |',
     '|---|---|---|---|',

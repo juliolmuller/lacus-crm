@@ -31,7 +31,7 @@ const env = {
   DATABASE_URL_UNPOOLED: url,
   SEED_SKIP_NICHES: '1',
 };
-const seed = spawnSync('pnpm', ['exec', 'tsx', 'scripts/seed.ts'], { env, stdio: 'inherit' });
+const seed = spawnSync('bun', ['scripts/seed.ts'], { env, stdio: 'inherit' });
 if (seed.status !== 0) throw new Error('seed falhou');
 
 // fixtures mínimas: leads, 1 negociação e 2 itens de fila tiram painel, lista, funil e fila do estado vazio;

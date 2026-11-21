@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-// SPEC 8. Ícones gerados por `pnpm icons` (scripts/generate-icons.ts).
+// SPEC 8. Ícones gerados por `bun run icons` (scripts/generate-icons.ts).
 const icon = (size: number, purpose: 'any' | 'maskable') => ({
   src: `/brand/${purpose === 'any' ? 'icon' : 'icon-maskable'}-${size}.png`,
   sizes: `${size}x${size}`,

@@ -87,7 +87,7 @@ Regras de negócio que valem para o app inteiro:
 | MCP              | **`mcp-handler`** (Vercel) v2 + `@modelcontextprotocol/server` v2: verificar versões e peer deps                                                                               |                                                                                                                                                                                                                                                                                                                                                   |
 | Google           | `google-auth-library` (OAuth2Client) + chamadas REST à Calendar API v3 com `fetch` (evite o pacote `googleapis` inteiro)                                                       |                                                                                                                                                                                                                                                                                                                                                   |
 | Testes           | **Vitest** (unit), **Playwright** + `@axe-core/playwright` (e2e e acessibilidade)                                                                                              |                                                                                                                                                                                                                                                                                                                                                   |
-| Gerenciador      | **pnpm**                                                                                                                                                                       |                                                                                                                                                                                                                                                                                                                                                   |
+| Gerenciador      | **Bun**                                                                                                                                                                        |                                                                                                                                                                                                                                                                                                                                                   |
 | Deploy           | Vercel, plano Hobby                                                                                                                                                            |                                                                                                                                                                                                                                                                                                                                                   |
 
 Qualquer desvio desta tabela precisa de justificativa escrita em `docs/DECISIONS.md`.
@@ -182,9 +182,9 @@ Na importação, qualquer valor desconhecido vira `new`, e o valor original vai 
   4. grava `do_not_contact_reason` e `do_not_contact_at`;
   5. insere uma entrada em `suppression_list` se o motivo for opt-out.
 - **Exclusão de lead**: hard delete com confirmação digitada (o usuário digita o nome do negócio), cascata para deals, interações e lembretes, e entrada automática na `suppression_list`.
-- **Migrations reversíveis**: para cada migration `NNNN_*.sql`, escreva à mão o `drizzle/down/NNNN_*.down.sql` e crie o script `pnpm db:rollback`. Antes de migrar produção, crie um branch Neon de backup (documente o comando ou o passo no painel).
+- **Migrations reversíveis**: para cada migration `NNNN_*.sql`, escreva à mão o `drizzle/down/NNNN_*.down.sql` e crie o script `bun run db:rollback`. Antes de migrar produção, crie um branch Neon de backup (documente o comando ou o passo no painel).
 
-### 4.5 Seeds (idempotentes, `pnpm db:seed`)
+### 4.5 Seeds (idempotentes, `bun run db:seed`)
 
 - **18 nichos**: só os nomes que o Júlio fornecer, ou importação do CSV da aba Nichos. **Não invente** ticket nem abertura.
 - **Etapas do funil**: ver `docs/PLAN.md` (D2), que substitui a tabela original.
@@ -557,7 +557,7 @@ Valide as variáveis no boot com Zod (`src/lib/env.ts`), com mensagens claras di
 - **E2E (Playwright)**: login por rota de bypass ativa **só** com `E2E_AUTH_BYPASS=1` e `NODE_ENV !== "production"` e `VERCEL_ENV` indefinido; fluxos de leads, funil (teclado e toque), lembretes, importação, tokens; projetos desktop e mobile (iPhone 14, Pixel 7).
 - **Acessibilidade**: `@axe-core/playwright` em todas as rotas principais nos dois temas.
 - **Migrations**: o CI aplica up, down e up num banco descartável.
-- **Qualidade**: ESLint + Prettier, `tsc --noEmit`, nenhum `any` sem comentário, scripts `pnpm check` e `pnpm e2e`.
+- **Qualidade**: ESLint + Prettier, `tsc --noEmit`, nenhum `any` sem comentário, scripts `bun run check` e `bun run e2e`.
 
 ## 15. Fora de escopo e riscos
 

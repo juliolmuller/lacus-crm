@@ -1,4 +1,4 @@
-// Gerado com `pnpm dlx auth@latest generate` (Better Auth 1.7) e ajustado: timestamps com fuso e sem relations.
+// Gerado com `bunx auth@latest generate` (Better Auth 1.7) e ajustado: timestamps com fuso e sem relations.
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -90,7 +90,7 @@ export const auth_verifications = pgTable(
   (t) => [index('auth_verifications_identifier_idx').on(t.identifier)],
 );
 
-// Plugins jwt, mcp e cimd (OAuth do MCP, PLAN D1). Gerado com `pnpm dlx auth@latest generate` e ajustado como acima.
+// Plugins jwt, mcp e cimd (OAuth do MCP, PLAN D1). Gerado com `bunx auth@latest generate` e ajustado como acima.
 export const jwks = pgTable('auth_jwks', {
   id: uuid('id')
     .default(sql`pg_catalog.gen_random_uuid()`)

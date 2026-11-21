@@ -48,7 +48,7 @@ Se mesmo assim o Google revogar o acesso (senha trocada, acesso removido em myac
 
 ## Teste manual (⏳ depende das credenciais reais)
 
-1. `pnpm dev`, abra `/configuracoes#google` e clique em **Conectar Google Calendar**. Autorize (aceite a tela de app não verificado, se aparecer). Volta para `/configuracoes?google=connected`, com status "Conectado (seu e-mail)".
+1. `bun run dev`, abra `/configuracoes#google` e clique em **Conectar Google Calendar**. Autorize (aceite a tela de app não verificado, se aparecer). Volta para `/configuracoes?google=connected`, com status "Conectado (seu e-mail)".
 2. No Google Calendar, confira que existe o calendário **Lacus CRM – Follow-ups** (fuso America/Sao_Paulo).
 3. **Criar**: em `/leads/<id>` → aba **Lembretes**, crie "Teste" com "Amanhã, 9h30". Em poucos segundos o evento "Follow-up: <lead> – Teste" aparece no calendário, com descrição (próxima ação, telefone, link do WhatsApp, link do lead) e avisos de 10 min e na hora. O ícone do lembrete em `/lembretes` fica verde (sincronizado).
 4. **Editar**: em `/lembretes` → **Editar**, mude o título e a hora. O evento muda de nome e horário no Calendar (sem duplicar).
@@ -59,4 +59,4 @@ Se mesmo assim o Google revogar o acesso (senha trocada, acesso removido em myac
 9. **invalid_grant**: em myaccount.google.com/permissions remova o acesso do app, crie ou edite um lembrete e rode o job (ou espere). O banner "O Google Calendar precisa ser reconectado" aparece; **Reconectar** reativa e os lembretes pendentes sincronizam.
 10. **Job**: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" -H "X-Run-Id: teste-1" http://localhost:3000/api/jobs/followups` devolve `duplicate:false`; repetir com o mesmo `X-Run-Id` devolve `{"duplicate":true}`.
 
-Os testes automatizados (`pnpm test:int`) cobrem os mesmos passos contra um Google simulado (fetch em memória): criar, editar, concluir, 404/410, backoff, `invalid_grant` e re-sincronização.
+Os testes automatizados (`bun run test:int`) cobrem os mesmos passos contra um Google simulado (fetch em memória): criar, editar, concluir, 404/410, backoff, `invalid_grant` e re-sincronização.
