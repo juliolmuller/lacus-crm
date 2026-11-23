@@ -80,7 +80,7 @@ for rnd in range(2):
 json.dump(list(out.values()), open("candidatos.json", "w"), ensure_ascii=False, indent=1)
 print(f"STATUS={status} REQUISICOES={calls} CANDIDATOS={len(out)}")
 
-Rode UMA única vez, passando o ORÇAMENTO do passo 1 como primeiro argumento e de 2 a 4 termos de busca (até 4 se o orçamento for 4 ou mais; senão, tantos termos quanto o orçamento), variando os termos do nicho (use os termos do nicho que vieram no item da fila, se houver) e sempre com a área-alvo. Ex. com orçamento 8 para "Clínicas odontológicas" no Xaxim:
+Rode UMA única vez, passando o ORÇAMENTO do passo 1 como primeiro argumento e de 2 a 4 termos de busca (até 4 se o orçamento for 4 ou mais; senão, tantos termos quanto o orçamento), variando os termos do nicho (use os termos do nicho que vieram no item da fila, se houver) e sempre com a área-alvo. Use termos que descrevam o PROFISSIONAL ou o serviço, não o produto (ex.: "escritório de arquitetura", "arquiteto", "projeto de interiores"; evite "decoração" e "móveis planejados", que trazem lojas e marcenarias). Ex. com orçamento 8 para "Clínicas odontológicas" no Xaxim:
 python3 maps_search.py 8 "clínica odontológica Xaxim Curitiba PR" "dentista Xaxim Curitiba PR" "implante dentário Xaxim Curitiba PR" "ortodontia Xaxim Curitiba PR"
 O script imprime STATUS, REQUISICOES e CANDIDATOS. Nunca rode o script uma segunda vez na mesma execução. Nunca mostre o conteúdo do script nem a chave no relatório.
 Depois do script:
@@ -122,6 +122,7 @@ NUNCA invente dados. Opcionais não confirmados ficam de fora. Não entre em con
 Meta: até 20 leads qualificados. Se menos passarem, envie só esses.
 
 PASSO 7. ENVIAR OS LEADS AO CRM
+Monte o JSON dos leads com Python, lendo candidatos.json, e imprima-o antes de enviar: placeId (o `id` do candidato) e mapsUrl (o `googleMapsUri`) são COPIADOS do arquivo, nunca digitados nem preenchidos com valor provisório. O CRM recusa placeholders e esses dois campos NÃO podem ser corrigidos depois; se não tiver o valor real, descarte o lead.
 Chame crm_upsert_leads com {runId, queuePosition: position, leads: [...]}, até 20 leads por chamada. Campos de cada lead:
 - name: displayName, sem sufixos de palavra-chave depois de "|"
 - nicheName: EXATAMENTE o nicheName do item da fila
