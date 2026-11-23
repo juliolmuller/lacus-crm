@@ -30,8 +30,8 @@ TODAS as chamadas abaixo. Se uma chamada falhar por rede ou timeout, repita-a co
    termine. Guarde position, regionLabel, nicheName e os dados do nicho (termos, ticket, notas).
    Daqui em diante, o runId é "<base>-pos<position>". (A chamada do passo 1 usa o runId base; se
    precisar repeti-la, repita com o runId base.)
-2. Chame api_usage_today. Se remaining for menor que o necessário (estime 60 requisições por
-   execução), NÃO continue: chame queue_complete com status "error", leadsAdded 0 e notes
+2. Chame api_usage_today. Se remaining for menor que 10 (uma execução usa de 2 a 8 requisições;
+   o limite diário é 30), NÃO continue: chame queue_complete com status "error", leadsAdded 0 e notes
    "orçamento insuficiente (remaining=N)" e termine.
 3. Faça a busca na Places API para regionLabel + nicho e aplique os filtros F0 a F8 como de
    costume. Conte cada chamada à API (requests). Monte até 20 leads por lote com: name, nicheName
