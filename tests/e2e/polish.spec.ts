@@ -80,7 +80,9 @@ test('configurações: score com prévia, aparência (densidade), dados e sobre'
   );
   await expect(page.getByRole('link', { name: 'Importar CSV' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'LGPD e opt-out' })).toBeVisible();
-  await expect(page.getByText(/Lacus CRM, versão \d+\.\d+\.\d+/)).toBeVisible();
+  await expect(
+    page.getByRole('main').getByText(/Lacus Solutions\. Todos os direitos reservados/),
+  ).toBeVisible();
 });
 
 test('densidade padrão: confortável no celular, compacto no desktop', async ({

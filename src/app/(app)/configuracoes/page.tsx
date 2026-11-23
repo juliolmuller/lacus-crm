@@ -23,8 +23,6 @@ import { listSuppression } from '@/lib/services/suppression';
 import { listTokens } from '@/lib/services/tokens';
 import { cadence, cancelOn } from '@/lib/validation/followups';
 
-import pkg from '../../../../package.json';
-
 export const metadata: Metadata = { title: 'Configurações' };
 
 const { leads, niches, regions } = schema;
@@ -233,7 +231,6 @@ export default async function Page({
 
       <div className="flex flex-col gap-3">
         <H id="sobre">Sobre</H>
-        <p className="text-body">Lacus CRM, versão {pkg.version}</p>
         <Copyright />
       </div>
     </section>
