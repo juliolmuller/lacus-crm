@@ -26,6 +26,9 @@ o runId final é "<base>-pos<position>" (ex.: 2026-11-20T14-pos12). Use exatamen
 TODAS as chamadas abaixo. Se uma chamada falhar por rede ou timeout, repita-a com o mesmo runId:
 é seguro, nada duplica.
 
+0. Confirme que você tem acesso à Places API neste ambiente (chave ou ferramenta). Se não tiver,
+   responda "sem acesso à Places API" e termine SEM chamar nenhuma ferramenta do CRM: assim o item
+   da fila não é pego nem marcado como erro.
 1. Chame queue_claim_next com {runId: "<base>"}. Se devolver item nulo, responda "fila vazia" e
    termine. Guarde position, regionLabel, nicheName e os dados do nicho (termos, ticket, notas).
    Daqui em diante, o runId é "<base>-pos<position>". (A chamada do passo 1 usa o runId base; se
@@ -52,6 +55,7 @@ responder erro de escopo (403) ou de autenticação (401), pare e informe. Termi
 
 Notas do fluxo:
 
+- O `runId` base é a hora cheia UTC: duas execuções na mesma hora reaproveitam o mesmo item e não mudam nada (`queue_complete` só altera item pendente). Para repetir um teste, espere a próxima hora ou use outro `runId` base.
 - O `runId` torna tudo idempotente: repetir `queue_claim_next` devolve o mesmo item; repetir `crm_upsert_leads` não duplica nem altera nada; `api_usage_log` é único por `runId`; `queue_complete` só muda item ainda pendente.
 - Se a execução morrer no meio, o lease de 30 minutos solta o item; uma nova execução (outro `runId` base) pega o próximo pendente. Para refazer um item concluído com erro, use **Marcar como pendente** na tela Fila.
 - Itens suprimidos ou marcados "Não contatar" voltam em `skipped` e nunca são recriados; campos escritos por você (status, notas, próxima ação etc.) nunca são sobrescritos.
