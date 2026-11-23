@@ -9,7 +9,7 @@ Registro das decisões da fase 0 (`docs/PLAN.md`) e de tudo que foi verificado o
 - **D3. Sincronia etapa e status só para frente** (`new < to_contact < contacted < no_response < replied < negotiating < client`; `lost`, `client` e `discarded` sempre aplicados). Substitui "deal criado vira `negotiating`" da seção 11.
 - **D4. Top leads** sem deal aberto ganham um deal na etapa equivalente ao status.
 - **D5. DnD**: `@dnd-kit/core` + `@dnd-kit/sortable` (`@dnd-kit/react` está < 1.0).
-- **D6. Convenções do repo `lacus.solutions`**: commitlint com a mesma `type-enum` (inclui `ai`), husky e lint-staged; começou com pnpm no lugar do bun, **trocado para Bun em 21/11/2026** (ver "Migração para Bun" no fim deste arquivo).
+- **D6. Convenções do repo `lacus.solutions`** (commitlint e lint-staged substituídos em 23/11/2026, ver "Configurações espelhadas do juliolmuller.com"): commitlint com a mesma `type-enum` (inclui `ai`), husky e lint-staged; começou com pnpm no lugar do bun, **trocado para Bun em 21/11/2026** (ver "Migração para Bun" no fim deste arquivo).
 
 ## Fase 1: verificações e desvios
 
@@ -32,7 +32,7 @@ next 16.4.6, react 19.3.1, better-auth 1.7.26, drizzle-orm 0.45.4, drizzle-kit 0
 11. **Bypass de E2E**: rota `/api/e2e/login` responde 404 salvo com `E2E_AUTH_BYPASS=1`, `NODE_ENV !== "production"` e `VERCEL_ENV` indefinido. Usa o plugin `testUtils` do Better Auth em uma instância separada (`src/lib/auth/e2e.ts`, importada dinamicamente só depois da guarda), como a doc do plugin recomenda. A DAL aceita o usuário de teste (`sub = e2e-owner`) só com o bypass ativo.
 12. **Componentes shadcn escritos à mão** no estilo do shadcn (cva + tokens), sem rodar o CLI, para não importar tokens e estilos que conflitam com os da seção 7. `components.json` aponta para `src/app/globals.css`. Toast via sonner. Seletor de tema próprio (sem Radix).
 13. **(histórico, pnpm) `minimumReleaseAge`**: o pnpm 12 bloqueia pacotes muito recentes; ele adicionou `minimumReleaseAgeExclude` do `better-auth@1.7.26` e dependências em `pnpm-workspace.yaml` (versão publicada há poucos dias). Builds de `esbuild` liberados em `allowBuilds`. `sharp` funciona sem script de build.
-14. **Husky**: `pre-commit` roda lint-staged, `commit-msg` roda commitlint e `pre-push` roda `bun run check`.
+14. **Husky**: `pre-commit` roda lint-staged, `commit-msg` roda commitlint e `pre-push` roda `bun run check` (desde 23/11/2026, só `bun run typecheck`).
 
 ### Hobby da Vercel (verificado em 19/11/2026)
 
@@ -190,3 +190,14 @@ Pedido do Júlio: usar Bun, como no repo `lacus.solutions`. Sem mudança de comp
 6. **Perdido na troca**: o `minimumReleaseAge` do pnpm 12 (atraso para pacotes recém-publicados). O Bun tem equivalente em `bunfig.toml`, mas não foi configurado; avaliar se quiser a proteção de volta.
 7. **Husky e CI**: hooks usam `bunx lint-staged`, `bunx commitlint` e `bun run check`; o CI usa `oven-sh/setup-bun` (1.4.4) mais `setup-node` 24 e `bun install --frozen-lockfile`.
 8. **Vercel**: detecta o `bun.lock` e instala com `bun install`; o build do Next continua em Node 24.
+
+## Configurações espelhadas do juliolmuller.com (23/11/2026)
+
+Pedido do Júlio: usar no CRM as mesmas configurações de repositório, Git flow, lint e hooks do repo `juliolmuller.com`.
+
+1. **Lint**: ESLint 10 com `eslint-config-any@next` (3.0 beta, config `next`), que já traz Prettier, typescript-eslint, React, import, a11y e Markdown. Saíram `eslint-config-next`, `@next/eslint-plugin-next`, `typescript-eslint`, `eslint-config-prettier`, `prettier` e `prettier.config.mjs`. `bun run lint` não aceita avisos (`--max-warnings=0`). TypeScript foi para `~6.0.3` (o `eslint-config-any` aceita `<6.1`).
+2. **Retorno explícito**: a regra `explicit-function-return-type` vale em todo o código, exceto `src/lib/services`, `src/lib/db`, `src/lib/auth` e `tests`, onde o tipo vem da inferência do Drizzle e do Better Auth; escrevê-lo à mão copiaria o schema. A adoção reformatou o código e trouxe tipos de retorno, `===` no lugar de `== null`, `public` nos construtores e renomes de refs (`…Ref`) e ids (`…Id`), sem mudar comportamento.
+3. **Commits e hooks**: commitlint só com `@commitlint/config-conventional` (sai o tipo `ai` do D6), lint-staged no `package.json` só para JS/TS (`eslint --max-warnings=0 --fix`), `pre-push` roda `bun run typecheck`.
+4. **Git flow**: `main` é produção e `next` é a branch de integração. CI (`ci.yml`) roda em push para `main` e `next`, mais um job de `bun audit`. Dependabot abre PRs semanais agrupados contra `next`. `release.yml` roda o semantic-release em `main` (`.releaserc`): versão no `package.json`, tag e release no GitHub.
+5. **Claude no GitHub**: `claude-issue.yml` (label `@claude` ou `@claude:next` numa issue: planeja, pergunta se precisar, implementa e abre o PR), `claude-review.yml` (revisa PRs do dono ou do `claude[bot]` com a label `@claude`), `claude-unblock.yml` (libera issues bloqueadas por dependências) e `pr-author-assign.yml`. Textos para o dono em português. As verificações do implementer são `lint`, `typecheck`, `test` e `test:int`, com Postgres no job. Precisa do segredo `CLAUDE_CODE_OAUTH_TOKEN` e do app Claude no repositório.
+6. **Repositório**: `CODEOWNERS`, `.gitattributes` (LF, com `*.csv -text` para os fixtures com CRLF ficarem byte a byte), `.nvmrc` (24), `AGENTS.md` como guia dos agentes e `CLAUDE.md` apontando para ele.
