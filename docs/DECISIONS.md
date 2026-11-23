@@ -201,3 +201,13 @@ Pedido do Júlio: usar no CRM as mesmas configurações de repositório, Git flo
 4. **Git flow**: `main` é produção e `next` é a branch de integração. CI (`ci.yml`) roda em push para `main` e `next`, mais um job de `bun audit`. Dependabot abre PRs semanais agrupados contra `next`. `release.yml` roda o semantic-release em `main` (`.releaserc`): tag e release no GitHub. Como no `podcastr`, o `package.json` fica com `"version": "auto"` e o release não commita nada; a versão vive só nas tags.
 5. **Claude no GitHub**: `claude-issue.yml` (label `@claude` ou `@claude:next` numa issue: planeja, pergunta se precisar, implementa e abre o PR), `claude-review.yml` (revisa PRs do dono ou do `claude[bot]` com a label `@claude`), `claude-unblock.yml` (libera issues bloqueadas por dependências) e `pr-author-assign.yml`. Textos para o dono em português. As verificações do implementer são `lint`, `typecheck`, `test` e `test:int`, com Postgres no job. Precisa do segredo `CLAUDE_CODE_OAUTH_TOKEN` e do app Claude no repositório.
 6. **Repositório**: `CODEOWNERS`, `.gitattributes` (LF, com `*.csv -text` para os fixtures com CRLF ficarem byte a byte), `.nvmrc` (24), `AGENTS.md` como guia dos agentes e `CLAUDE.md` apontando para ele.
+
+## Diagnóstico de leads pelo MCP (23/11/2026)
+
+Contexto: o Júlio diagnostica os leads de maior prioridade numa skill do claude.ai que lia a planilha Top leads e guardava os resultados em arquivos do projeto. Com o CRM, a fonte e o destino passam a ser o próprio CRM.
+
+1. **`crm_save_diagnosis`** (nova ferramenta, 21 no total em `/api/mcp`): numa transação, grava os campos do diagnóstico, registra o texto como nota interna ("Diagnóstico do lead") e, com `advance` (padrão `true`), move a negociação aberta de "A diagnosticar" para "A abordar". A sincronia D3 leva o status do lead para `to_contact`. Se não há negociação aberta ou ela já passou dessa etapa, só grava e devolve o motivo em `dealMoved`.
+2. **`crm_update_lead`** passou a aceitar os campos do diagnóstico (site, redes, e-mail, decisor, WhatsApp, anúncios, resposta do dono, queixas, concorrência).
+3. **Busca**: `crm_search_leads` ganhou `hasPriority`, `hasSessionUrl` e `sort: "priority"`, e devolve `sessionUrl`. "O próximo lead" é `status: ["new"]` + `hasPriority` + `sort: "priority"`: quem já foi diagnosticado sai sozinho porque o status avança.
+4. **Link da sessão** editável no painel da negociação.
+5. **Consequência**: a nota do diagnóstico entra nas 20 últimas interações de `crm_get_lead`, e o texto da ferramenta é truncado em 8.000 caracteres. Por isso a skill limita o diagnóstico a ~5.000 caracteres e deixa o detalhe bruto na sessão.

@@ -59,6 +59,11 @@ export interface LeadFilters {
   dir: 'asc' | 'desc';
   dnc: 'hide' | 'only' | 'show';
   from: null | string;
+  /**
+   * Só MCP: filtra por ter (true) ou não (false) prioridade / link de sessão.
+   */
+  hasPriority?: boolean;
+  hasSession?: boolean;
   niche: null | number;
   overdue: boolean;
   q: string;

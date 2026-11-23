@@ -125,7 +125,7 @@ test('SDK oficial lista as ferramentas: completo e só prospecção', async () =
   };
   const all = await names('/api/mcp', await pat(['read', 'write', 'prospecting']));
 
-  expect(all).toHaveLength(20);
+  expect(all).toHaveLength(21);
   expect(all).toContain('crm_update_lead');
 
   const sub = await names('/api/mcp/prospecting', await pat(['prospecting']));

@@ -1,4 +1,18 @@
-import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 
 import { type Db, schema } from '@/lib/db';
 import { type LeadFilters } from '@/lib/leads/filters';
@@ -71,6 +85,12 @@ export function leadWhere(f: LeadFilters): SQL | undefined {
       sql`exists (select 1 from ${reminders} where ${reminders.leadId} = ${leads.id} and ${reminders.status} = 'open' and ${reminders.dueAt} < now())`,
     );
 
+  if (f.hasPriority !== undefined)
+    c.push(f.hasPriority ? isNotNull(leads.priority) : isNull(leads.priority));
+
+  if (f.hasSession !== undefined)
+    c.push(f.hasSession ? isNotNull(leads.sessionUrl) : isNull(leads.sessionUrl));
+
   if (f.from) c.push(gte(leads.includedAt, f.from));
 
   if (f.to) c.push(lte(leads.includedAt, f.to));
@@ -110,6 +130,7 @@ export async function listLeads(db: Db, f: LeadFilters, cursor?: null | string, 
       placeId: leads.placeId,
       lastContactAt: leads.lastContactAt,
       priority: leads.priority,
+      sessionUrl: leads.sessionUrl,
       doNotContact: leads.doNotContact,
       nicheName: niches.name,
       regionLabel: regions.label,

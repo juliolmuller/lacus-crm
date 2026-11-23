@@ -9,6 +9,7 @@ import { type DealDetail } from '@/lib/services/deals';
 
 import { DealForm } from './deal-form';
 import { InteractionForm } from './interaction-form';
+import { SessionLink } from './session-link';
 import { DealTimeline } from './timeline';
 
 export const DealNotFound = (): React.JSX.Element => (
@@ -46,6 +47,7 @@ export function DealDetailView({ d }: { d: DealDetail }): React.JSX.Element {
             Abrir o lead {lead.name}
           </Link>
         </p>
+        <SessionLink leadId={lead.id} url={lead.sessionUrl} />
       </header>
       <section aria-labelledby="deal-data" className="flex flex-col gap-3">
         <h3 id="deal-data" className="text-section">

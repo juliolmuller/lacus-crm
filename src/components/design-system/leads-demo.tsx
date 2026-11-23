@@ -28,6 +28,7 @@ const sample: LeadListRow[] = [
   nextAction: next as null | string,
   lastContactAt: i === 1 ? new Date('2026-11-15T15:00:00Z') : null,
   priority: priority as null | number,
+  sessionUrl: null,
   doNotContact: i === 2,
   phone: null,
   placeId: null,

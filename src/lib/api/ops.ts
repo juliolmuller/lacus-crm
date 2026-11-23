@@ -6,13 +6,14 @@ import { type Db, schema } from '@/lib/db';
 import { snoozePresets } from '@/lib/followups/snooze';
 import { renderTemplate, templateValues } from '@/lib/followups/templates';
 import { parseFilters } from '@/lib/leads/filters-server';
-import { contactStatuses, interactionTypes } from '@/lib/leads/labels';
+import { contactStatuses, interactionTypes, websiteStatuses } from '@/lib/leads/labels';
 import { whatsappUrl } from '@/lib/leads/links';
 import { logUsage, usageToday } from '@/lib/services/api-usage';
 import { audit } from '@/lib/services/audit';
 import { getCatalog } from '@/lib/services/catalog';
 import { getDashboard } from '@/lib/services/dashboard';
 import { createDeal, loseDeal, moveDeal, winDeal } from '@/lib/services/deals';
+import { saveDiagnosis } from '@/lib/services/diagnosis';
 import { getSetting } from '@/lib/services/followup-settings';
 import { logInteraction } from '@/lib/services/interactions';
 import { listLeads } from '@/lib/services/lead-list';
@@ -94,7 +95,7 @@ const found = <T>(v: null | T | undefined, what = 'Lead'): T => {
 export const searchLeads = op({
   name: 'crm_search_leads',
   description:
-    'Busca leads por texto, status, nicho, região, score ou negociação aberta (até 50, com cursor).',
+    'Busca leads por texto, status, nicho, região, score, negociação aberta, prioridade (Top leads) ou link de sessão (até 50, com cursor). Cada item traz prioridade e sessionUrl.',
   scopes: ['read'],
   input: z.object({
     query: z.string().optional(),
@@ -103,6 +104,18 @@ export const searchLeads = op({
     regionLabel: z.string().optional(),
     minScore: z.number().int().optional(),
     hasOpenDeal: z.boolean().optional(),
+    hasPriority: z
+      .boolean()
+      .optional()
+      .describe('true: só leads da lista "Top leads" (com prioridade)'),
+    hasSessionUrl: z
+      .boolean()
+      .optional()
+      .describe('false: só leads sem link de sessão (ainda não diagnosticados)'),
+    sort: z
+      .enum(['score', 'priority'])
+      .default('score')
+      .describe('score: maior primeiro; priority: menor primeiro (use com hasPriority: true)'),
     limit,
     cursor,
   }),
@@ -129,8 +142,10 @@ export const searchLeads = op({
       smin: a.minScore ?? null,
       deal:
         a.hasOpenDeal === undefined ? null : a.hasOpenDeal ? ('open' as const) : ('none' as const),
-      sort: 'score' as const,
-      dir: 'desc' as const,
+      sort: a.sort,
+      dir: a.sort === 'priority' ? ('asc' as const) : ('desc' as const),
+      hasPriority: a.hasPriority,
+      hasSession: a.hasSessionUrl,
     };
     const { rows, nextCursor } = await listLeads(db, f, a.cursor, a.limit);
 
@@ -287,6 +302,20 @@ export const regionsList = op({
 });
 
 // ---------- escrita ----------
+const diagnosisFields = {
+  complaints: z.string().nullable(),
+  decision_maker_contact: z.string().nullable(),
+  email: z.string().nullable(),
+  has_active_ads: z.boolean(),
+  has_whatsapp: z.boolean(),
+  instagram: z.string().nullable(),
+  instagram_active: z.boolean(),
+  other_socials: z.string().nullable(),
+  owner_replies_reviews: z.boolean().nullable(),
+  strong_local_competition: z.boolean(),
+  website_status: z.enum(websiteStatuses as [string, ...string[]]),
+  website_url: z.string().nullable(),
+};
 const patch = z
   .object({
     session_url: z.string().nullable(),
@@ -297,33 +326,51 @@ const patch = z
     notes: z.string().nullable(),
     channel: z.string().nullable(),
     response_or_objection: z.string().nullable(),
+    ...diagnosisFields,
   })
   .partial()
   .strict();
 
+const leadValues = (p: z.infer<typeof patch>): LeadValues => ({
+  ...('session_url' in p ? { sessionUrl: p.session_url } : {}),
+  ...('next_action' in p ? { nextAction: p.next_action } : {}),
+  ...('pitch' in p ? { pitch: p.pitch } : {}),
+  ...('priority' in p ? { priority: p.priority } : {}),
+  ...(p.contact_status
+    ? { contactStatus: p.contact_status as (typeof contactStatuses)[number] }
+    : {}),
+  ...('notes' in p ? { notes: p.notes } : {}),
+  ...('channel' in p ? { channel: p.channel } : {}),
+  ...('response_or_objection' in p ? { responseOrObjection: p.response_or_objection } : {}),
+  ...('complaints' in p ? { complaints: p.complaints } : {}),
+  ...('decision_maker_contact' in p ? { decisionMakerContact: p.decision_maker_contact } : {}),
+  ...('email' in p ? { email: p.email } : {}),
+  ...('has_active_ads' in p ? { hasActiveAds: p.has_active_ads } : {}),
+  ...('has_whatsapp' in p ? { hasWhatsapp: p.has_whatsapp } : {}),
+  ...('instagram' in p ? { instagram: p.instagram } : {}),
+  ...('instagram_active' in p ? { instagramActive: p.instagram_active } : {}),
+  ...('other_socials' in p ? { otherSocials: p.other_socials } : {}),
+  ...('owner_replies_reviews' in p ? { ownerRepliesReviews: p.owner_replies_reviews } : {}),
+  ...('strong_local_competition' in p
+    ? { strongLocalCompetition: p.strong_local_competition }
+    : {}),
+  ...('website_status' in p
+    ? { websiteStatus: p.website_status as (typeof websiteStatuses)[number] }
+    : {}),
+  ...('website_url' in p ? { websiteUrl: p.website_url } : {}),
+});
+
 export const updateLeadOp = op({
   name: 'crm_update_lead',
   description:
-    'Atualiza campos permitidos do lead: session_url, next_action, pitch, priority, contact_status, notes, channel, response_or_objection.',
+    'Atualiza campos permitidos do lead: session_url, next_action, pitch, priority, contact_status, notes, channel, response_or_objection e os campos do diagnóstico (website_url, website_status, instagram, other_socials, email, decision_maker_contact, has_whatsapp, has_active_ads, instagram_active, owner_replies_reviews, complaints, strong_local_competition). Recalcula o score.',
   scopes: ['write'],
   input: z.object({ id, patch }),
   async run(a, { db, actor }) {
     const p = a.patch;
-    const values: LeadValues = {
-      ...('session_url' in p ? { sessionUrl: p.session_url } : {}),
-      ...('next_action' in p ? { nextAction: p.next_action } : {}),
-      ...('pitch' in p ? { pitch: p.pitch } : {}),
-      ...('priority' in p ? { priority: p.priority } : {}),
-      ...(p.contact_status
-        ? { contactStatus: p.contact_status as (typeof contactStatuses)[number] }
-        : {}),
-      ...('notes' in p ? { notes: p.notes } : {}),
-      ...('channel' in p ? { channel: p.channel } : {}),
-      ...('response_or_objection' in p ? { responseOrObjection: p.response_or_objection } : {}),
-    };
 
     return db.transaction(async (tx) => {
-      const lead = await updateLead(tx, a.id, values);
+      const lead = await updateLead(tx, a.id, leadValues(p));
 
       await audit(tx, {
         entity: 'lead',
@@ -336,6 +383,27 @@ export const updateLeadOp = op({
       return lead;
     });
   },
+});
+
+export const saveDiagnosisOp = op({
+  name: 'crm_save_diagnosis',
+  description:
+    'Salva o diagnóstico de um lead de uma vez: grava os campos confirmados em `patch` (mesmos de crm_update_lead, incluindo session_url, pitch e next_action), registra `diagnosis` como nota interna na linha do tempo e, com advance (padrão true), move a negociação aberta de "A diagnosticar" para "A abordar". Se o lead não tem negociação aberta ou ela já passou dessa etapa, só grava e informa o motivo em dealMoved.',
+  scopes: ['write'],
+  input: z.object({
+    id,
+    patch,
+    diagnosis: z.string().min(1).optional(),
+    advance: z.boolean().default(true),
+  }),
+  run: (a, { db, actor }) =>
+    saveDiagnosis(db, {
+      actor,
+      advance: a.advance,
+      diagnosis: a.diagnosis,
+      leadId: a.id,
+      values: leadValues(a.patch),
+    }),
 });
 
 export const setDnc = op({
@@ -622,6 +690,7 @@ export const ALL_OPS = [
   getLeadFull,
   upsertLeadsOp,
   updateLeadOp,
+  saveDiagnosisOp,
   setDnc,
   logInteractionOp,
   createDealOp,
