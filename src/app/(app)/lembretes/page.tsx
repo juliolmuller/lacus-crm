@@ -30,7 +30,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
       <h1 className="text-page">Lembretes</h1>
       <nav
         aria-label="Filtro de lembretes"
-        className="flex gap-1 overflow-x-auto border-b border-border"
+        className="flex gap-1 overflow-x-auto border-b border-border pb-px"
       >
         {tabs.map((t) => (
           <Link

@@ -22,7 +22,7 @@ export function LeadTabs({ tabs }: { tabs: { id: string; label: string; panel: R
         role="tablist"
         aria-label="Seções do lead"
         onKeyDown={onKey}
-        className="flex gap-1 overflow-x-auto border-b border-border"
+        className="flex gap-1 overflow-x-auto border-b border-border pb-px"
       >
         {tabs.map((t) => (
           <button
