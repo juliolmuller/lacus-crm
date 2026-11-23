@@ -8,12 +8,21 @@ export const leadInput = z.object({
   name: text.max(200),
   nicheName: text.max(100),
   regionLabel: text.max(200).describe('"PR - Curitiba - Xaxim" ou "Xaxim, Curitiba/PR"'),
-  placeId: text.max(300).optional(),
+  // placeId e mapsUrl não têm ferramenta de correção: recusa valores provisórios (já houve "PLACEHOLDER")
+  placeId: text
+    .max(300)
+    .refine((v) => !/placeholder|provis|^(?:tbd|todo|n\/?a|null|undefined|x+)$/i.test(v), {
+      message: 'placeId deve ser o `id` real da Places API, sem valores provisórios',
+    })
+    .optional(),
   phone: text.max(50).optional(),
   address: text.optional(),
   mapsRating: z.number().min(0).max(5).optional(),
   mapsReviews: z.number().int().min(0).optional(),
-  mapsUrl: text.optional(),
+  mapsUrl: z
+    .url({ protocol: /^https?$/ })
+    .max(2000)
+    .optional(),
   mapsCategory: text.max(200).optional(),
   digitalSignals: text.optional(),
   websiteUrl: text.optional(),
