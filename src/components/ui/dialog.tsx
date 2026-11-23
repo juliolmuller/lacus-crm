@@ -11,11 +11,21 @@ type Props = {
   description?: string;
   /** "side" é o drawer lateral (desktop); "center" é o diálogo comum. */
   variant?: 'center' | 'side';
+  /** diálogo `center` mais largo, para formulários em colunas */
+  wide?: boolean;
   children: ReactNode;
 };
 
 /** <dialog> nativo: foco preso, Esc fecha, aria-modal e backdrop de graça. */
-export function Dialog({ open, onClose, title, description, variant = 'center', children }: Props) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  description,
+  variant = 'center',
+  wide,
+  children,
+}: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -34,9 +44,10 @@ export function Dialog({ open, onClose, title, description, variant = 'center', 
       onClick={(e) => e.target === ref.current && onClose()}
       aria-label={title}
       className={cn(
-        'm-0 max-h-none max-w-none border-border bg-surface-1 p-0 text-text shadow-e3 backdrop:bg-black/50',
+        'm-0 max-h-none max-w-none overflow-hidden border-border bg-surface-1 p-0 text-text shadow-e3 backdrop:bg-black/50',
+        variant === 'center' && 'm-auto max-h-[90dvh] rounded-lg border',
         variant === 'center' &&
-          'm-auto max-h-[90dvh] w-[min(32rem,calc(100vw-2rem))] rounded-lg border',
+          (wide ? 'w-[min(44rem,calc(100vw-2rem))]' : 'w-[min(32rem,calc(100vw-2rem))]'),
         variant === 'side' &&
           'ml-auto h-dvh w-[min(44rem,100vw)] border-l backdrop:backdrop-blur-[1px]',
       )}

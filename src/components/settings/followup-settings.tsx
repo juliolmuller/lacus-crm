@@ -155,6 +155,7 @@ export function FollowupSettings({
         open={!!editing}
         onClose={() => setEditing(null)}
         title={editing?.id ? 'Editar regra' : 'Nova regra'}
+        wide
         description="Regras criam lembretes (e eventos no Calendar). Nunca enviam mensagens."
       >
         {r && (
@@ -264,7 +265,7 @@ export function FollowupSettings({
               {r.cadence.map((s, i) => (
                 <div
                   key={i}
-                  className="grid grid-cols-[5rem_6rem_1fr] items-end gap-2 rounded-md border border-border p-2 sm:grid-cols-[5rem_6rem_1fr_9rem_auto]"
+                  className="grid grid-cols-[5rem_6rem_minmax(0,1fr)] items-end gap-2 rounded-md border border-border p-2 sm:grid-cols-[5rem_6rem_minmax(0,1fr)_9rem_auto]"
                 >
                   <Field
                     label="Dias úteis"
