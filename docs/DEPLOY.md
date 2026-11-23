@@ -2,10 +2,10 @@
 
 Domínio de produção: `https://lacuscrm.juliolmuller.com`. Todo push em `main` gera um deploy de produção (projeto Vercel ligado ao GitHub); branches e PRs geram previews.
 
-**Estado em 21/11/2026**
+**Estado em 22/11/2026**
 
-- Feito: projeto na Vercel e Neon (passo 1) com migrations, seed e importação dos dados reais (53 leads, 20 negociações, 216 itens de fila); variáveis de ambiente (passo 2) e `OWNER_VERCEL_USER_ID`; domínio (passo 3); Vercel App com as callbacks de produção (passo 4); deploy de produção; Schedule `followups-hourly` ativo (passo 6); login e painel funcionando em produção.
-- Pendente: Google Calendar (passo 5), tokens e conectores do claude.ai (passo 7), e os itens restantes do smoke (passo 8). O plano Hobby foi decidido (passo 0).
+- Feito: projeto na Vercel e Neon (passo 1) com migrations, seed e importação dos dados reais (53 leads, 20 negociações, 216 itens de fila); variáveis de ambiente (passo 2) e `OWNER_VERCEL_USER_ID`; domínio (passo 3); Vercel App com as callbacks de produção (passo 4); deploy de produção; Schedule `followups-hourly` ativo (passo 6); login e painel funcionando em produção; Google Calendar conectado em produção (passo 5), com evento criado e apagado ao concluir o lembrete, verificado no calendário.
+- Pendente: tokens e conectores do claude.ai (passo 7) e os itens restantes do smoke (passo 8). O plano Hobby foi decidido (passo 0).
 
 Os passos abaixo seguem como roteiro de referência (por exemplo, para refazer o ambiente).
 
@@ -72,20 +72,20 @@ No app **Lacus CRM** (Settings > Apps), registre as callbacks:
 
 Use **um app só** para local, produção e preview (as três callbacks acima, no mesmo app; as credenciais e o `OWNER_VERCEL_USER_ID` são iguais nos ambientes). Na página **Manage** do app, habilite os escopos **Email** e **Profile** (`openid` já vem ativo): se faltarem, o login volta para `/login?error=invalid_scope`. O app pede `openid email profile`. Se possível, em "Sign-In Access" restrinja a "Members of the team". No primeiro login em produção, preencha `OWNER_VERCEL_USER_ID` com o `sub` (em produção o acesso negado não o mostra; pegue-o no login local, que mostra: com `OWNER_VERCEL_USER_ID` e `OWNER_EMAIL` vazias, entre em `http://localhost:3000/login` e copie o valor de "Acesso negado. sub recebido: …") e faça redeploy.
 
-## 5. Google Calendar
+## 5. Google Calendar (concluído em 22/11/2026)
 
 Passo a passo completo em `docs/GOOGLE.md`. Resumo do que fazer para produção:
 
 1. Google Auth Platform > Público-alvo > **Publicar app** (status **In production**). Em Testing o refresh token expira em 7 dias.
 2. Cliente OAuth "Aplicativo da Web" com o URI exato `https://lacuscrm.juliolmuller.com/api/google/callback` (mais o de localhost).
 3. `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` na Vercel (Production) e redeploy.
-4. Em `https://lacuscrm.juliolmuller.com/configuracoes#google`, **Conectar** e aceite o aviso "app não verificado" (Avançado > Acessar). Crie um lembrete e confira o evento no calendário "Lacus CRM – Follow-ups".
+4. Em `https://lacuscrm.juliolmuller.com/configuracoes#google`, **Conectar** e aceite o aviso "app não verificado" (Avançado > Acessar). Crie um lembrete e confira o evento no calendário "Lacus CRM – Follow-ups". O calendário pode ser renomeado no Google Calendar; o CRM o reaproveita pelo id.
 
 ## 6. Schedule dos follow-ups
 
 O `vercel.json` já declara o Schedule `followups-hourly` (`0 7-21 * * *`, `America/Sao_Paulo`, `POST /api/jobs/followups`) e o cron diário de reserva (`0 10 * * *`, UTC). Depois do primeiro deploy:
 
-1. Projeto > **Settings > Cron Jobs / Schedules**: confirme que o Schedule aparece e está **ativo**.
+1. Projeto > **Settings > Cron Jobs / Schedules**: confirme que o Schedule aparece e está **ativo** (conferido em 21/11/2026 com `vercel schedules ls`: `followups-hourly`, estado `active`).
 2. Teste à mão (usa `CRON_SECRET` ou um PAT com `write`):
 
    ```bash
@@ -107,10 +107,11 @@ O `vercel.json` já declara o Schedule `followups-hourly` (`0 7-21 * * *`, `Amer
 
 - [ ] `https://lacuscrm.juliolmuller.com/login` abre; entrar com a Vercel leva ao painel; outra conta recebe "Acesso negado".
 - [ ] `/`, `/leads`, `/funil`, `/lembretes`, `/fila`, `/configuracoes` carregam com os dados importados.
-- [ ] Criar um lead, uma negociação e um lembrete; o lembrete vira evento no Google Calendar; concluir o apaga.
+- [ ] Criar um lead e uma negociação.
+- [x] Criar um lembrete: vira evento no Google Calendar; concluir o apaga (verificado em 22/11/2026).
 - [ ] `Ctrl+K` abre a paleta e acha um lead por nome.
-- [ ] `GET /.well-known/oauth-authorization-server/api/auth` e `/.well-known/oauth-protected-resource/api/mcp` respondem 200 com URLs `https://lacuscrm.juliolmuller.com`.
-- [ ] `curl -i -X POST https://lacuscrm.juliolmuller.com/api/mcp` sem token devolve 401 com `WWW-Authenticate` apontando o resource metadata.
+- [x] `GET /.well-known/oauth-authorization-server/api/auth` e `/.well-known/oauth-protected-resource/api/mcp` respondem 200 com URLs `https://lacuscrm.juliolmuller.com` (verificado em 21/11/2026).
+- [x] `curl -i -X POST https://lacuscrm.juliolmuller.com/api/mcp` sem token devolve 401 com `WWW-Authenticate` apontando o resource metadata (verificado em 21/11/2026).
 - [ ] `curl -H "Authorization: Bearer <PAT>" https://lacuscrm.juliolmuller.com/api/v1/leads?limit=1` devolve 200.
 - [ ] `POST /api/jobs/followups` (passo 6) responde 200.
 - [ ] No celular: instalar o app (Android: menu "Instalar app"; iOS: Compartilhar > Adicionar à Tela de Início); abrir offline mostra `/~offline` com os dados do último snapshot.
