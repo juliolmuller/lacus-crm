@@ -8,6 +8,7 @@ O CRM cria um calendário próprio, "Lacus CRM – Follow-ups", na conta Google 
 - `openid email`: só para mostrar a conta conectada.
 - Limite conhecido: `calendarList.list` **não** aceita `calendar.app.created` (só `calendar`, `calendar.readonly`, `calendar.calendarlist` e `calendar.calendarlist.readonly`). Por isso o CRM guarda o `calendar_id` e o reaproveita ao reconectar; ele não procura o calendário pelo nome.
   Se a linha de `google_connections` for apagada do banco, a próxima conexão cria um calendário novo e o antigo fica órfão (apague-o à mão em calendar.google.com).
+- **Renomear o calendário** em calendar.google.com é seguro: o CRM usa o `calendar_id` guardado, grava o nome só ao criar o calendário e nunca o altera depois. Só a exclusão do calendário (ou da linha de `google_connections`) faz o CRM criar um novo, com o nome padrão "Lacus CRM – Follow-ups".
 
 ## Passo a passo no Google Cloud
 
