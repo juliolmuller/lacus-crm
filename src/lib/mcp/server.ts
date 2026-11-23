@@ -6,6 +6,7 @@ import { getAuth } from '@/lib/auth/auth';
 import { mcpResources } from '@/lib/auth/mcp-resources';
 import { getDb } from '@/lib/db';
 import { getEnv } from '@/lib/env';
+import { syncAfterWrite } from '@/lib/google/context';
 import { allows, looksLikePat, verifyToken, withinRateLimit } from '@/lib/services/tokens';
 
 export type Kind = 'full' | 'prospecting';
@@ -40,6 +41,7 @@ function buildServer(kind: Kind, p: Principal) {
           const result = JSON.parse(
             JSON.stringify(await o.run(args as never, { db: getDb(), actor: p.actor })),
           );
+          syncAfterWrite(o.scopes);
           const text = `${summary(result)}\n${JSON.stringify(result)}`.slice(0, MAX_TEXT);
           return { content: [{ type: 'text', text }], structuredContent: result };
         } catch (e) {

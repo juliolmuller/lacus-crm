@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getDb } from '@/lib/db';
-import { syncContext } from '@/lib/google/context';
+import { syncAfterWrite, syncContext } from '@/lib/google/context';
 import { runFollowupsJob } from '@/lib/services/jobs';
 import {
   allows,
@@ -185,6 +185,7 @@ export async function handleRest(req: Request, path: string): Promise<Response> 
     if (hit.r.op) {
       const args = hit.r.op.input.parse(hit.r.input!(r));
       data = await hit.r.op.run(args as never, { db: getDb(), actor: `mcp:${token.id}` });
+      syncAfterWrite(hit.r.op.scopes);
     } else data = await hit.r.run!(r, token);
     return Response.json(data, { headers });
   } catch (e) {

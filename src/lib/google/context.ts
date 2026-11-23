@@ -20,3 +20,16 @@ export const syncAfterResponse = () =>
       console.error('sync do Calendar falhou', e);
     }
   });
+
+/**
+ * Escritas por MCP e REST: a UI sincroniza ao fim da resposta (`syncAfterResponse`); sem isto o
+ * lembrete ficaria `pending` até o próximo job horário. Falha aqui nunca derruba a ferramenta.
+ */
+export function syncAfterWrite(scopes: readonly string[]) {
+  if (!scopes.includes('write')) return;
+  try {
+    syncAfterResponse();
+  } catch (e) {
+    console.error('sync do Calendar não agendado', e);
+  }
+}
