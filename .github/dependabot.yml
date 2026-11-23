@@ -1,0 +1,70 @@
+version: 2
+
+# Atualizações semanais e agrupadas, sempre contra `next`. As de segurança são
+# separadas e imediatas. Next.js e React andam juntos; leia as release notes.
+updates:
+  - package-ecosystem: bun
+    directory: /
+    target-branch: next
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      framework:
+        patterns:
+          - next
+          - react
+          - react-dom
+          - '@types/react'
+          - '@types/react-dom'
+      auth:
+        patterns:
+          - better-auth
+          - '@better-auth/*'
+      database:
+        patterns:
+          - drizzle-orm
+          - drizzle-kit
+          - pg
+          - '@types/pg'
+          - '@neondatabase/serverless'
+      mcp:
+        patterns:
+          - '@modelcontextprotocol/*'
+      testing:
+        patterns:
+          - '@playwright/test'
+          - '@axe-core/playwright'
+          - vitest
+          - '@vitest/*'
+      tooling:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+      runtime-minor:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # eslint-config-any aceita TypeScript < 6.1 e ESLint 10.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      # v10 exige conventional-changelog-writer@9, que o
+      # @semantic-release/release-notes-generator ainda não suporta.
+      - dependency-name: conventional-changelog-conventionalcommits
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: next
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']
