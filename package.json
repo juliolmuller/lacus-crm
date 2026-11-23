@@ -23,7 +23,8 @@
     "db:rollback": "bun scripts/rollback.ts",
     "db:seed": "bun scripts/seed.ts",
     "icons": "bun scripts/generate-icons.ts",
-    "db:import": "bun scripts/import-data.ts"
+    "db:import": "bun scripts/import-data.ts",
+    "audit:deps": "bun audit --audit-level=high"
   },
   "dependencies": {
     "@better-auth/cimd": "1.7.26",

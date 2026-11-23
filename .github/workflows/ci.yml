@@ -2,12 +2,26 @@ name: CI
 
 on:
   push:
-    branches: [main]
-  pull_request:
+    branches: [main, next]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgres://lacus:lacus@localhost:5432/lacus_crm
+  # Valores descartáveis, só para passar na validação de env.
+  BETTER_AUTH_SECRET: ci-only-secret-ci-only-secret-ci-only
+  BETTER_AUTH_URL: http://localhost:3000
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+  TOKEN_ENCRYPTION_KEY: ci-only-key-ci-only-key-ci-only-key
+  CRON_SECRET: ci-only-cron-secret
+  NEXT_TELEMETRY_DISABLED: '1'
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:17-alpine
@@ -19,26 +33,30 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U lacus -d lacus_crm"
           --health-interval 3s --health-timeout 3s --health-retries 20
-    env:
-      DATABASE_URL: postgres://lacus:lacus@localhost:5432/lacus_crm
-      # Valores descartáveis, só para passar na validação de env.
-      BETTER_AUTH_SECRET: ci-only-secret-ci-only-secret-ci-only
-      BETTER_AUTH_URL: http://localhost:3000
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
-      TOKEN_ENCRYPTION_KEY: ci-only-key-ci-only-key-ci-only-key
-      CRON_SECRET: ci-only-cron-secret
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.4
-      - uses: actions/setup-node@v4
+          bun-version-file: package.json
+
+      # ESLint, Vitest, Next e Drizzle Kit rodam em Node; o Bun só instala e orquestra.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version-file: .nvmrc
+
+      - name: Cache Bun install cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
       - run: bun install --frozen-lockfile
-      - run: bun run typecheck
+
       - run: bun run lint
+      - run: bun run typecheck
       - run: bun run test
+
       - name: Migrations up, down, up
         run: |
           bun run db:migrate
@@ -47,3 +65,13 @@ jobs:
       - run: bun run db:seed
       - name: Integração (triggers)
         run: bun run test:int
+
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run audit:deps
