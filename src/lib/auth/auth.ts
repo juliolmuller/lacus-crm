@@ -93,6 +93,9 @@ function buildOptions() {
         consentPage: '/consent',
         resource: resources.main,
         resources: [resources.prospecting],
+        // CIMD não pede recursos: sem isto o cliente (claude.ai) só é vinculado ao principal e o
+        // conector de prospecção falha com `invalid_target`. O principal o plugin já acrescenta.
+        clientRegistrationDefaultResources: [resources.prospecting],
         scopes: [...SCOPES, 'offline_access'],
         accessTokenExpiresIn: 900, // revogar um conector vale em até 15 min (o JWT é verificado sem ir ao banco)
         // DCR desligado: o claude.ai e o Claude Code usam CIMD (docs da Anthropic).
