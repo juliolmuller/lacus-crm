@@ -1,12 +1,14 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { AxeBuilder } from '@axe-core/playwright';
+import { expect, type Locator, type Page, test } from '@playwright/test';
+
 import { query, removeLeads, seedDeals } from './db';
 
 // SPEC 14: axe nas rotas principais, nos dois temas. Só serious/critical reprovam.
-async function scan(page: Page, include?: string) {
+async function scan(page: Page, include?: string): Promise<void> {
   const axe = new AxeBuilder({ page });
   const { violations } = await (include ? axe.include(include) : axe).analyze();
   const bad = violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+
   expect(
     bad.map(
       (v) =>
@@ -18,7 +20,12 @@ async function scan(page: Page, include?: string) {
   ).toEqual([]);
 }
 
-async function open(page: Page, theme: 'light' | 'dark', path: string, heading: string) {
+async function open(
+  page: Page,
+  theme: 'dark' | 'light',
+  path: string,
+  heading: string,
+): Promise<void> {
   await page.addInitScript((t) => localStorage.setItem('theme', t), theme);
   await page.goto(`/api/e2e/login?next=${path}`);
   await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
@@ -28,21 +35,21 @@ async function open(page: Page, theme: 'light' | 'dark', path: string, heading: 
 }
 
 const routes = [
-  ['/', 'Início', (p: Page) => p.getByTestId('kpis')],
-  ['/leads', 'Leads', (p: Page) => p.getByRole('table')],
-  ['/funil', 'Funil', (p: Page) => p.getByRole('list', { name: /^Cartões de/ }).first()],
+  ['/', 'Início', (p: Page): Locator => p.getByTestId('kpis')],
+  ['/leads', 'Leads', (p: Page): Locator => p.getByRole('table')],
+  ['/funil', 'Funil', (p: Page): Locator => p.getByRole('list', { name: /^Cartões de/ }).first()],
   [
     '/lembretes',
     'Lembretes',
-    (p: Page) => p.getByRole('navigation', { name: 'Filtro de lembretes' }),
+    (p: Page): Locator => p.getByRole('navigation', { name: 'Filtro de lembretes' }),
   ],
-  ['/fila', 'Fila', (p: Page) => p.getByRole('table')],
+  ['/fila', 'Fila', (p: Page): Locator => p.getByRole('table')],
   [
     '/configuracoes',
     'Configurações',
-    (p: Page) => p.getByRole('heading', { name: 'Perfil', level: 2 }),
+    (p: Page): Locator => p.getByRole('heading', { name: 'Perfil', level: 2 }),
   ],
-  ['/design-system', 'Design System', (p: Page) => p.getByRole('heading', { level: 1 })],
+  ['/design-system', 'Design System', (p: Page): Locator => p.getByRole('heading', { level: 1 })],
 ] as const;
 
 for (const [route, heading, ready] of routes) {
@@ -82,6 +89,7 @@ for (const theme of ['light', 'dark'] as const) {
       [`E2E Axe ${Date.now()}${Math.floor(Math.random() * 1000)}`],
       'negotiating',
     );
+
     try {
       await query("update leads set contact_status = 'negotiating' where id = $1", [lead!.id]);
       await query(

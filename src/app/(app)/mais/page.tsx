@@ -1,15 +1,16 @@
 import { ChevronRight } from 'lucide-react';
-import type { Metadata } from 'next';
+import { type Metadata } from 'next';
 import Link from 'next/link';
+
 import { Copyright } from '@/components/brand/copyright';
 import { LogoutButton } from '@/components/layout/logout-button';
 import { moreNav } from '@/components/layout/nav';
-import { InstallApp } from '@/components/pwa/install-app';
 import { ThemeSelector } from '@/components/layout/theme-selector';
+import { InstallApp } from '@/components/pwa/install-app';
 
 export const metadata: Metadata = { title: 'Mais' };
 
-export default function Page() {
+export default function Page(): React.JSX.Element {
   return (
     <section className="flex max-w-xl flex-col gap-6">
       <h1 className="text-page">Mais</h1>

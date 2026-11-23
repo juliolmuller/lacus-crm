@@ -9,6 +9,7 @@ import {
   text,
   uuid,
 } from 'drizzle-orm/pg-core';
+
 import { createdAt, tstz, updatedAt } from './_helpers';
 import { googleStatus, viewScope } from './enums';
 

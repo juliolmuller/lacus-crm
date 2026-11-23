@@ -2,23 +2,28 @@
 
 import { useQueryStates } from 'nuqs';
 import { useTransition } from 'react';
+
 import { SelectField } from '@/components/ui/field';
-import { PERIODS, dashboardSearchParams, periodLabel } from '@/lib/dashboard/filters';
+import { dashboardSearchParams, periodLabel, PERIODS } from '@/lib/dashboard/filters';
 import { cn } from '@/lib/utils';
 
-/** Período, nicho e região na URL (nuqs): trocar um refaz as agregações no servidor. */
+/**
+ * Período, nicho e região na URL (nuqs): trocar um refaz as agregações no
+ * servidor.
+ */
 export function DashboardFilters({
   niches,
   regions,
 }: {
-  niches: { id: number; name: string }[];
-  regions: { id: number; label: string }[];
-}) {
+  niches: Array<{ id: number; name: string }>;
+  regions: Array<{ id: number; label: string }>;
+}): React.JSX.Element {
   const [pending, start] = useTransition();
   const [f, set] = useQueryStates(dashboardSearchParams, {
     shallow: false,
     startTransition: start,
   });
+
   return (
     <div
       className="flex flex-wrap items-end gap-x-4 gap-y-3"

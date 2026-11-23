@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
+
 import {
   disconnectGoogleAction,
   resyncGoogleAction,
@@ -12,18 +13,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 
-type Props = {
-  configured: boolean;
+interface Props {
   available: boolean;
-  status: 'active' | 'needs_reauth' | 'revoked' | null;
-  email: string | null;
-  calendarId: string | null;
-  lastError: string | null;
+  configured: boolean;
+  email: null | string;
   errors: number;
+  flash: null | string;
+  lastError: null | string;
   pending: number;
   popupMinutes: number[];
-  flash: string | null;
-};
+  status: 'active' | 'needs_reauth' | 'revoked' | null;
+}
 
 const flashText: Record<string, [boolean, string]> = {
   connected: [true, 'Google Calendar conectado.'],
@@ -35,7 +35,7 @@ const flashText: Record<string, [boolean, string]> = {
   not_configured: [false, 'Credenciais do Google ainda não configuradas (veja docs/GOOGLE.md).'],
 };
 
-export function GoogleSettings(p: Props) {
+export function GoogleSettings(p: Props): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
   const connected = p.status === 'active' || p.status === 'needs_reauth';
@@ -95,7 +95,13 @@ export function GoogleSettings(p: Props) {
               onClick={() =>
                 start(async () => {
                   const r = await resyncGoogleAction();
-                  if (!r.ok) return void toast.error(r.error);
+
+                  if (!r.ok) {
+                    toast.error(r.error);
+
+                    return;
+                  }
+
                   toast.success(
                     `Re-sincronizado: ${r.synced} atualizado(s), ${r.deleted} removido(s), ${r.errors} erro(s).`,
                   );
@@ -119,9 +125,16 @@ export function GoogleSettings(p: Props) {
                   )
                 )
                   return;
+
                 start(async () => {
                   const r = await disconnectGoogleAction();
-                  if (!r.ok) return void toast.error(r.error);
+
+                  if (!r.ok) {
+                    toast.error(r.error);
+
+                    return;
+                  }
+
                   toast.success('Desconectado');
                   router.refresh();
                 });
@@ -137,16 +150,27 @@ export function GoogleSettings(p: Props) {
         className="flex max-w-sm flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault();
+
           const mins = String(new FormData(e.currentTarget).get('minutes'))
             .split(',')
             .map((x) => x.trim())
             .filter(Boolean)
             .map(Number);
+
           if (mins.some((m) => !Number.isInteger(m) || m < 0))
-            return void toast.error('Use minutos inteiros separados por vírgula');
+            toast.error('Use minutos inteiros separados por vírgula');
+
+          return;
+
           start(async () => {
             const r = await saveCalendarDefaultsAction(mins);
-            if (!r.ok) return void toast.error(r.error);
+
+            if (!r.ok) {
+              toast.error(r.error);
+
+              return;
+            }
+
             toast.success('Lembretes padrão salvos');
             router.refresh();
           });

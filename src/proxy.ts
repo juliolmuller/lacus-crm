@@ -1,5 +1,5 @@
 import { getSessionCookie } from 'better-auth/cookies';
-import { NextResponse, type NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 // Rotas que não exigem cookie de sessão (SPEC 5.3). Cada handler faz a própria checagem.
 const PUBLIC = [
@@ -17,8 +17,9 @@ const PUBLIC = [
   /^\/\.well-known(\/|$)/,
 ];
 
-function csp(nonce: string) {
+function csp(nonce: string): string {
   const dev = process.env.NODE_ENV !== 'production';
+
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ''}`,
@@ -37,8 +38,9 @@ function csp(nonce: string) {
   ].join('; ');
 }
 
-export function proxy(request: NextRequest) {
+export function proxy(request: NextRequest): NextResponse<unknown> {
   const { pathname } = request.nextUrl;
+
   // Checagem otimista: só a existência do cookie. A validação real é a DAL (`requireOwner`).
   if (!PUBLIC.some((re) => re.test(pathname)) && !getSessionCookie(request)) {
     return NextResponse.redirect(new URL('/login', request.url));
@@ -47,10 +49,14 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const policy = csp(nonce);
   const headers = new Headers(request.headers);
+
   headers.set('x-nonce', nonce);
   headers.set('Content-Security-Policy', policy);
+
   const response = NextResponse.next({ request: { headers } });
+
   response.headers.set('Content-Security-Policy', policy);
+
   return response;
 }
 

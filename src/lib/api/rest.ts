@@ -1,15 +1,17 @@
 import { z } from 'zod';
+
+import { type Scope } from '@/lib/auth/mcp-resources';
 import { getDb } from '@/lib/db';
 import { syncAfterWrite, syncContext } from '@/lib/google/context';
 import { runFollowupsJob } from '@/lib/services/jobs';
 import {
   allows,
   looksLikePat,
+  type VerifiedToken,
   verifyToken,
   withinRateLimit,
-  type VerifiedToken,
 } from '@/lib/services/tokens';
-import type { Scope } from '@/lib/auth/mcp-resources';
+
 import { ApiError, toApiError } from './errors';
 import {
   apiUsageLog,
@@ -17,29 +19,40 @@ import {
   getLeadFull,
   listRemindersOp,
   logInteractionOp,
+  type Op,
   queueClaimNext,
   queueComplete,
   searchLeads,
   updateLeadOp,
   upsertLeadsOp,
-  type Op,
 } from './ops';
 
-type Req = { params: Record<string, string>; query: URLSearchParams; body: unknown; req: Request };
-type Route = {
-  method: 'GET' | 'POST' | 'PATCH';
-  path: string; // /leads/:id
-  summary: string;
-  scopes: Scope[];
-  /** operação de negócio + como montar a entrada a partir da requisição */
-  op?: Op;
-  input?: (r: Req) => unknown;
-  /** rota sem operação (job) */
-  run?: (r: Req, t: VerifiedToken) => Promise<unknown>;
-};
+interface Req {
+  body: unknown;
+  params: Record<string, string>;
+  query: URLSearchParams;
+  req: Request;
+}
 
-const num = (v: string | null) => (v == null || v === '' ? undefined : Number(v));
-const obj = (b: unknown) => (b && typeof b === 'object' ? (b as object) : {});
+interface Route {
+  input?: (r: Req) => unknown;
+  method: 'GET' | 'PATCH' | 'POST';
+  /**
+   * Operação de negócio + como montar a entrada a partir da requisição.
+   */
+  op?: Op;
+  path: string; // /leads/:id
+  /**
+   * Rota sem operação (job)
+   */
+  run?: (r: Req, t: VerifiedToken) => Promise<unknown>;
+  scopes: Scope[];
+  summary: string;
+}
+
+const num = (v: null | string): number | undefined =>
+  v === null || v === '' ? undefined : Number(v);
+const obj = (b: unknown): object => (b && typeof b === 'object' ? (b as object) : {});
 
 export const routes: Route[] = [
   {
@@ -145,56 +158,79 @@ export const routes: Route[] = [
   },
 ];
 
-const compile = (path: string) => new RegExp(`^${path.replace(/:(\w+)/g, '(?<$1>[^/]+)')}$`);
+const compile = (path: string): RegExp =>
+  new RegExp(`^${path.replace(/:(\w+)/g, '(?<$1>[^/]+)')}$`);
 const compiled = routes.map((r) => ({ r, re: compile(r.path) }));
 
-/** Autentica um PAT (REST só aceita PAT; o OAuth é do MCP). */
-export async function authenticate(req: Request, need: Scope[]) {
-  const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.get('authorization') ?? '')?.[1];
+/**
+ * Autentica um PAT (REST só aceita PAT; o OAuth é do MCP).
+ */
+export async function authenticate(req: Request, need: Scope[]): Promise<VerifiedToken> {
+  const bearer = /^Bearer\s+(\S.*)$/i.exec(req.headers.get('authorization') ?? '')?.[1];
+
   if (!bearer || !looksLikePat(bearer))
     throw new ApiError('unauthorized', 'Token ausente ou inválido');
+
   const v = await verifyToken(getDb(), bearer);
+
   if (!v.ok) throw new ApiError('unauthorized', 'Token inválido, revogado ou expirado');
+
   if (!withinRateLimit(v.token.id))
     throw new ApiError('rate_limited', 'Limite de 120 requisições por minuto');
+
   if (!allows(v.token.scopes, need))
     throw new ApiError('forbidden', `Escopo necessário: ${need.join(' ou ')}`);
+
   return v.token;
 }
 
 export async function handleRest(req: Request, path: string): Promise<Response> {
   const headers = { 'cache-control': 'no-store' };
+
   try {
     const url = new URL(req.url);
-    let hit: { r: Route; params: Record<string, string> } | undefined;
+    let hit: { params: Record<string, string>; r: Route } | undefined;
     let pathMatched = false;
     for (const { r, re } of compiled) {
       const m = re.exec(path);
+
       if (!m) continue;
+
       pathMatched = true;
+
       if (r.method === req.method) hit = { r, params: m.groups ?? {} };
     }
+
     if (!hit) {
       if (pathMatched) throw new ApiError('validation_error', 'Método não permitido');
+
       throw new ApiError('not_found', 'Rota não encontrada');
     }
+
     const token = await authenticate(req, hit.r.scopes);
     const body = req.method === 'GET' ? undefined : await req.json().catch(() => ({}));
     const r: Req = { params: hit.params, query: url.searchParams, body, req };
     let data: unknown;
+
     if (hit.r.op) {
       const args = hit.r.op.input.parse(hit.r.input!(r));
+
       data = await hit.r.op.run(args as never, { db: getDb(), actor: `mcp:${token.id}` });
       syncAfterWrite(hit.r.op.scopes);
     } else data = await hit.r.run!(r, token);
+
     return Response.json(data, { headers });
   } catch (e) {
     const err = toApiError(e);
+
     return Response.json(err.body(), { status: err.status, headers });
   }
 }
 
-/** OpenAPI 3.1 gerado dos schemas Zod das operações (Zod v4 `z.toJSONSchema`). */
+/**
+ * OpenAPI 3.1 gerado dos schemas Zod das operações (Zod v4 `z.toJSONSchema`).
+ */
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- the inferred OpenAPI document is the clearest description
 export function openApi(baseUrl: string) {
   const paths: Record<string, Record<string, unknown>> = {};
   for (const r of routes) {
@@ -207,6 +243,7 @@ export function openApi(baseUrl: string) {
     }));
     const schema = r.op ? z.toJSONSchema(r.op.input, { io: 'input' }) : null;
     const isQuery = r.method === 'GET';
+
     (paths[p] ??= {})[r.method.toLowerCase()] = {
       summary: r.summary,
       description: r.op?.description,
@@ -232,6 +269,7 @@ export function openApi(baseUrl: string) {
       },
     };
   }
+
   return {
     openapi: '3.1.0',
     info: { title: 'Lacus CRM API', version: '1.0.0' },

@@ -1,18 +1,26 @@
 import {
-  useId,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
+  useId,
 } from 'react';
+
 import { cn } from '@/lib/utils';
 
-type Common = { label: string; help?: string; error?: string };
+interface Common {
+  error?: string;
+  help?: string;
+  label: string;
+}
 
 const control =
   'rounded-md border border-border-strong bg-surface-3 px-3 text-body text-text placeholder:text-text-subtle read-only:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-50';
 
-/** Rótulo sempre visível; ajuda e erro ligados por aria-describedby; erro com borda danger e texto. */
+/**
+ * Rótulo sempre visível; ajuda e erro ligados por aria-describedby; erro com
+ * borda danger e texto.
+ */
 function Shell({
   id,
   label,
@@ -20,8 +28,13 @@ function Shell({
   error,
   className,
   children,
-}: Common & { id: string; className?: string; children: (a: object) => ReactNode }) {
+}: Common & {
+  children: (a: object) => ReactNode;
+  className?: string;
+  id: string;
+}): React.JSX.Element {
   const describedBy = [help && `${id}-help`, error && `${id}-error`].filter(Boolean).join(' ');
+
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       <label htmlFor={id} className="text-label text-text">
@@ -53,10 +66,11 @@ export function Field({
   className,
   id,
   ...props
-}: Common & InputHTMLAttributes<HTMLInputElement>) {
-  const auto = useId();
+}: Common & InputHTMLAttributes<HTMLInputElement>): React.JSX.Element {
+  const autoId = useId();
+
   return (
-    <Shell id={id ?? auto} label={label} help={help} error={error}>
+    <Shell id={id ?? autoId} label={label} help={help} error={error}>
       {(a) => (
         <input
           {...a}
@@ -76,10 +90,11 @@ export function SelectField({
   id,
   children,
   ...props
-}: Common & SelectHTMLAttributes<HTMLSelectElement>) {
-  const auto = useId();
+}: Common & SelectHTMLAttributes<HTMLSelectElement>): React.JSX.Element {
+  const autoId = useId();
+
   return (
-    <Shell id={id ?? auto} label={label} help={help} error={error}>
+    <Shell id={id ?? autoId} label={label} help={help} error={error}>
       {(a) => (
         <select
           {...a}
@@ -100,10 +115,11 @@ export function TextareaField({
   className,
   id,
   ...props
-}: Common & TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  const auto = useId();
+}: Common & TextareaHTMLAttributes<HTMLTextAreaElement>): React.JSX.Element {
+  const autoId = useId();
+
   return (
-    <Shell id={id ?? auto} label={label} help={help} error={error}>
+    <Shell id={id ?? autoId} label={label} help={help} error={error}>
       {(a) => (
         <textarea
           rows={3}
@@ -116,5 +132,8 @@ export function TextareaField({
   );
 }
 
-/** Estilo de select/input sem rótulo (células de tabela, filtros com aria-label). */
+/**
+ * Estilo de select/input sem rótulo (células de tabela, filtros com
+ * aria-label).
+ */
 export const bareControl = cn(control, 'h-8 text-table');

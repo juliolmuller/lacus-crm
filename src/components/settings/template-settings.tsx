@@ -4,31 +4,35 @@ import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import { deleteTemplateAction, saveTemplateAction } from '@/app/(app)/configuracoes/actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field, SelectField, TextareaField } from '@/components/ui/field';
 import { renderTemplate, templateValues, templateVars } from '@/lib/followups/templates';
-import type { WebsiteStatus } from '@/lib/leads/labels';
-import type { TemplateInput } from '@/lib/services/followup-settings';
+import { type WebsiteStatus } from '@/lib/leads/labels';
+import { type TemplateInput } from '@/lib/services/followup-settings';
 
-export type TemplateRowView = TemplateInput & { id: number };
-export type PreviewLead = {
-  id: string;
-  name: string;
-  mapsRating: string | null;
-  mapsReviews: number | null;
-  websiteStatus: WebsiteStatus | null;
-  pitch: string | null;
-  niche: string;
+export type TemplateRowView = { id: number } & TemplateInput;
+export interface PreviewLead {
   city: string;
-  neighborhood: string | null;
-};
+  id: string;
+  mapsRating: null | string;
+  mapsReviews: null | number;
+  name: string;
+  neighborhood: null | string;
+  niche: string;
+  pitch: null | string;
+  websiteStatus: null | WebsiteStatus;
+}
 
 const blank: TemplateInput = { key: '', name: '', channel: 'whatsapp', body: '', active: true };
 
-/** Prévia com um lead escolhido: variáveis faltando ficam visíveis e bloqueiam o envio. */
+/**
+ * Prévia com um lead escolhido: variáveis faltando ficam visíveis e bloqueiam o
+ * envio.
+ */
 function Preview({
   body,
   leads,
@@ -37,10 +41,12 @@ function Preview({
   body: string;
   leads: PreviewLead[];
   profile: { name?: string; portfolioUrl?: string };
-}) {
+}): React.JSX.Element {
   const [leadId, setLeadId] = useState(leads[0]?.id ?? '');
   const lead = leads.find((l) => l.id === leadId);
+
   if (!lead) return <p className="text-label text-text-muted">Sem leads para a prévia.</p>;
+
   const m = renderTemplate(
     body,
     templateValues(
@@ -50,6 +56,7 @@ function Preview({
       profile,
     ),
   );
+
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-1 p-3">
       <SelectField
@@ -84,26 +91,29 @@ export function TemplateSettings({
   leads,
   profile,
 }: {
-  templates: TemplateRowView[];
   leads: PreviewLead[];
   profile: { name?: string; portfolioUrl?: string };
-}) {
+  templates: TemplateRowView[];
+}): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [editing, setEditing] = useState<{ id: number | null; t: TemplateInput } | null>(null);
+  const [editing, setEditing] = useState<{ id: null | number; t: TemplateInput } | null>(null);
   const t = editing?.t;
-  const set = (patch: Partial<TemplateInput>) =>
+  const set = (patch: Partial<TemplateInput>): void =>
     setEditing((e) => e && { ...e, t: { ...e.t, ...patch } });
-  const done = (ok: string) => {
+  const done = (ok: string): void => {
     toast.success(ok);
     setEditing(null);
     router.refresh();
   };
-  const insert = (v: string) => {
+  const insert = (v: string): void => {
     const el = document.getElementById('template-body') as HTMLTextAreaElement | null;
     const text = `{{${v}}}`;
+
     if (!el || !t) return;
+
     const [a, b] = [el.selectionStart, el.selectionEnd];
+
     set({ body: t.body.slice(0, a) + text + t.body.slice(b) });
     requestAnimationFrame(() => {
       el.focus();
@@ -161,7 +171,13 @@ export function TemplateSettings({
               e.preventDefault();
               start(async () => {
                 const res = await saveTemplateAction(editing!.id, t);
-                if (!res.ok) return void toast.error(res.error);
+
+                if (!res.ok) {
+                  toast.error(res.error);
+
+                  return;
+                }
+
                 done('Modelo salvo');
               });
             }}
@@ -230,9 +246,16 @@ export function TemplateSettings({
                   className="text-danger-text"
                   onClick={() => {
                     if (!window.confirm('Excluir este modelo?')) return;
+
                     start(async () => {
                       const res = await deleteTemplateAction(editing.id!);
-                      if (!res.ok) return void toast.error(res.error);
+
+                      if (!res.ok) {
+                        toast.error(res.error);
+
+                        return;
+                      }
+
                       done('Modelo excluído');
                     });
                   }}

@@ -4,6 +4,7 @@ import { Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import {
   createTokenAction,
   revokeConnectorAction,
@@ -14,22 +15,22 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { formatWhen } from '@/lib/format';
 
-export type TokenRow = {
-  id: string;
-  name: string;
-  tokenPrefix: string;
-  scopes: string[];
-  lastUsedAt: Date | null;
-  expiresAt: Date | null;
-  revokedAt: Date | null;
+export interface TokenRow {
   expired: boolean;
-};
-export type ConnectorRow = {
-  clientId: string;
-  name: string | null;
+  expiresAt: Date | null;
+  id: string;
+  lastUsedAt: Date | null;
+  name: string;
+  revokedAt: Date | null;
   scopes: string[];
+  tokenPrefix: string;
+}
+export interface ConnectorRow {
   authorizedAt: Date;
-};
+  clientId: string;
+  name: null | string;
+  scopes: string[];
+}
 
 const SCOPE_HELP = {
   read: 'Ler leads, negociações e lembretes',
@@ -43,13 +44,13 @@ const EXPIRY = [
   ['', 'Sem validade'],
 ] as const;
 
-const copy = (text: string) =>
+const copy = (text: string): Promise<number | string> =>
   navigator.clipboard.writeText(text).then(
     () => toast.success('Copiado'),
     () => toast.error('Não foi possível copiar'),
   );
 
-const Snippet = ({ label, code }: { label: string; code: string }) => (
+const Snippet = ({ label, code }: { code: string; label: string }): React.JSX.Element => (
   <div className="flex flex-col gap-1">
     <div className="flex items-center justify-between">
       <span className="text-label text-text-muted">{label}</span>
@@ -58,6 +59,7 @@ const Snippet = ({ label, code }: { label: string; code: string }) => (
       </Button>
     </div>
     <pre
+      // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- a scrollable code block must be keyboard reachable
       tabIndex={0}
       className="overflow-x-auto rounded-md border border-border bg-surface-1 p-3 text-label"
     >
@@ -72,12 +74,12 @@ export function TokenSettings({
   tokens,
   connectors,
 }: {
-  tokens: TokenRow[];
   connectors: ConnectorRow[];
-}) {
+  tokens: TokenRow[];
+}): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [created, setCreated] = useState<string | null>(null);
+  const [created, setCreated] = useState<null | string>(null);
   const [scopes, setScopes] = useState<string[]>(['read']);
 
   return (
@@ -86,16 +88,24 @@ export function TokenSettings({
         className="flex flex-col gap-3 rounded-lg border border-border bg-surface-1 p-4"
         onSubmit={(e) => {
           e.preventDefault();
+
           const form = e.currentTarget;
           const f = new FormData(form);
           const days = String(f.get('expires'));
+
           start(async () => {
             const r = await createTokenAction({
               name: String(f.get('name')),
               scopes,
               expiresInDays: days ? Number(days) : null,
             });
-            if (!r.ok) return void toast.error(r.error);
+
+            if (!r.ok) {
+              toast.error(r.error);
+
+              return;
+            }
+
             setCreated(r.token);
             form.reset();
             router.refresh();
@@ -124,7 +134,8 @@ export function TokenSettings({
         </div>
         <fieldset className="flex flex-wrap gap-4">
           <legend className="mb-1 text-label text-text">Escopos</legend>
-          {(Object.keys(SCOPE_HELP) as (keyof typeof SCOPE_HELP)[]).map((s) => (
+          {(Object.keys(SCOPE_HELP) as Array<keyof typeof SCOPE_HELP>).map((s) => (
+            // eslint-disable-next-line jsx-a11y-x/label-has-associated-control -- the text is the scope name and help rendered inside
             <label key={s} className="flex items-center gap-2 text-body">
               <input
                 type="checkbox"
@@ -209,7 +220,13 @@ export function TokenSettings({
                       onClick={() =>
                         start(async () => {
                           const r = await revokeTokenAction(t.id);
-                          if (!r.ok) return void toast.error(r.error);
+
+                          if (!r.ok) {
+                            toast.error(r.error);
+
+                            return;
+                          }
+
                           toast.success('Token revogado');
                           router.refresh();
                         })
@@ -271,7 +288,13 @@ export function TokenSettings({
                   onClick={() =>
                     start(async () => {
                       const r = await revokeConnectorAction(c.clientId);
-                      if (!r.ok) return void toast.error(r.error);
+
+                      if (!r.ok) {
+                        toast.error(r.error);
+
+                        return;
+                      }
+
                       toast.success('Conector revogado');
                       router.refresh();
                     })

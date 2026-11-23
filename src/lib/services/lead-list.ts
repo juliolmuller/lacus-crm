@@ -1,14 +1,17 @@
 import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from 'drizzle-orm';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
-import type { LeadFilters } from '@/lib/leads/filters';
+
+import { type Db, schema } from '@/lib/db';
+import { type LeadFilters } from '@/lib/leads/filters';
 import { normalizeName } from '@/lib/normalize';
 
 const { leads, niches, regions, deals, reminders } = schema;
 
-const escapeLike = (v: string) => v.replace(/[\\%_]/g, '\\$&');
+const escapeLike = (v: string): string => v.replace(/[\\%_]/g, '\\$&');
 
-/** Ordenações com chave sem nulos, para o cursor (keyset) ser exato. `type` é o cast do valor do cursor. */
+/**
+ * Ordenações com chave sem nulos, para o cursor (keyset) ser exato. `type` é o
+ * cast do valor do cursor.
+ */
 const SORT_SQL = {
   score: { expr: sql`${leads.score}`, type: 'int' },
   name: { expr: sql`${leads.name}`, type: 'text' },
@@ -22,11 +25,13 @@ const SORT_SQL = {
 } as const;
 
 export function leadWhere(f: LeadFilters): SQL | undefined {
-  const c: (SQL | undefined)[] = [];
+  const c: Array<SQL | undefined> = [];
   const q = f.q.trim();
+
   if (q) {
     const digits = q.replace(/\D/g, '');
     const like = `%${escapeLike(q)}%`;
+
     c.push(
       or(
         ilike(leads.nameNormalized, `%${escapeLike(normalizeName(q))}%`), // GIN trigram
@@ -36,38 +41,56 @@ export function leadWhere(f: LeadFilters): SQL | undefined {
       ),
     );
   }
+
   if (f.status.length) c.push(inArray(leads.contactStatus, f.status));
+
   if (f.niche) c.push(eq(leads.nicheId, f.niche));
+
   if (f.region) c.push(eq(leads.regionId, f.region));
-  if (f.smin != null) c.push(gte(leads.score, f.smin));
-  if (f.smax != null) c.push(lte(leads.score, f.smax));
+
+  if (f.smin !== null) c.push(gte(leads.score, f.smin));
+
+  if (f.smax !== null) c.push(lte(leads.score, f.smax));
+
   if (f.site.length) c.push(inArray(leads.websiteStatus, f.site));
+
   if (f.wa) c.push(eq(leads.hasWhatsapp, f.wa === 'yes'));
+
   if (f.dnc === 'hide') c.push(eq(leads.doNotContact, false));
+
   if (f.dnc === 'only') c.push(eq(leads.doNotContact, true));
+
   if (f.deal) {
     const open = sql`exists (select 1 from ${deals} where ${deals.leadId} = ${leads.id} and ${deals.status} = 'open')`;
+
     c.push(f.deal === 'open' ? open : sql`not ${open}`);
   }
+
   if (f.overdue)
     c.push(
       sql`exists (select 1 from ${reminders} where ${reminders.leadId} = ${leads.id} and ${reminders.status} = 'open' and ${reminders.dueAt} < now())`,
     );
+
   if (f.from) c.push(gte(leads.includedAt, f.from));
+
   if (f.to) c.push(lte(leads.includedAt, f.to));
+
   if (f.source) c.push(eq(leads.dataSource, f.source));
+
   return and(...c);
 }
 
 export type LeadListRow = Awaited<ReturnType<typeof listLeads>>['rows'][number];
 
-const encode = (v: { v: string; id: string }) =>
+const encode = (v: { id: string; v: string }): string =>
   Buffer.from(JSON.stringify(v)).toString('base64url');
-const decode = (s: string) =>
-  JSON.parse(Buffer.from(s, 'base64url').toString()) as { v: string; id: string };
+const decode = (s: string): { id: string; v: string } =>
+  JSON.parse(Buffer.from(s, 'base64url').toString()) as { id: string; v: string };
 
-/** Página de leads com cursor keyset (valor da ordenação + id). 50 por página. */
-export async function listLeads(db: Db, f: LeadFilters, cursor?: string | null, limit = 50) {
+/**
+ * Página de leads com cursor keyset (valor da ordenação + id). 50 por página.
+ */
+export async function listLeads(db: Db, f: LeadFilters, cursor?: null | string, limit = 50) {
   const sort = SORT_SQL[f.sort];
   const order = f.dir === 'asc' ? asc : desc;
   const after = cursor ? decode(cursor) : null;
@@ -108,17 +131,19 @@ export async function listLeads(db: Db, f: LeadFilters, cursor?: string | null, 
   const more = rows.length > limit;
   const page = more ? rows.slice(0, limit) : rows;
   const last = page[page.length - 1];
+
   return {
     rows: page,
     nextCursor: more && last ? encode({ v: last.sortValue, id: last.id }) : null,
   };
 }
 
-export const countLeads = async (db: Db, f: LeadFilters) => {
+export const countLeads = async (db: Db, f: LeadFilters): Promise<number> => {
   const [r] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(leads)
     .innerJoin(regions, eq(regions.id, leads.regionId))
     .where(leadWhere(f));
+
   return r?.n ?? 0;
 };

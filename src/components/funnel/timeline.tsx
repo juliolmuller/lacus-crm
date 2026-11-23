@@ -1,13 +1,13 @@
+import { type interactions } from '@/lib/db/schema';
 import { formatWhen } from '@/lib/format';
 import { directionLabel, interactionLabel, outcomeLabel } from '@/lib/leads/labels';
-import type { TimelineItem } from '@/lib/services/deals';
-import type { interactions } from '@/lib/db/schema';
+import { type TimelineItem } from '@/lib/services/deals';
 
 type Interaction = typeof interactions.$inferSelect;
 
 const box = 'flex flex-col gap-0.5 rounded-md border border-border bg-surface-2 p-3';
 
-export function InteractionItem({ i }: { i: Interaction }) {
+export function InteractionItem({ i }: { i: Interaction }): React.JSX.Element {
   return (
     <li className={box}>
       <div className="flex justify-between gap-2 text-label text-text-muted">
@@ -32,9 +32,13 @@ const sourceLabel = {
   import: 'importação',
 } as const;
 
-/** Linha do tempo unificada da negociação: interações, mudanças de etapa e lembretes. */
-export function DealTimeline({ items }: { items: TimelineItem[] }) {
+/**
+ * Linha do tempo unificada da negociação: interações, mudanças de etapa e
+ * lembretes.
+ */
+export function DealTimeline({ items }: { items: TimelineItem[] }): React.JSX.Element {
   if (!items.length) return <p className="text-body text-text-muted">Nada registrado ainda.</p>;
+
   return (
     <ol className="flex flex-col gap-3">
       {items.map((it) =>

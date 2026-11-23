@@ -4,6 +4,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import { deleteRuleAction, saveRuleAction } from '@/app/(app)/configuracoes/actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,9 +17,9 @@ import {
   interactionTypes,
   outcomeLabel,
 } from '@/lib/leads/labels';
-import type { RuleInput } from '@/lib/services/followup-settings';
+import { type RuleInput } from '@/lib/services/followup-settings';
 
-export type RuleRowView = RuleInput & { id: number };
+export type RuleRowView = { id: number } & RuleInput;
 type Step = RuleInput['cadence'][number];
 
 const triggerLabel = {
@@ -39,7 +40,7 @@ const blank: RuleInput = {
   cancelOn: { inboundInteraction: true, stageLeft: true },
 };
 
-const weekday = (ymd: string) =>
+const weekday = (ymd: string): string =>
   new Intl.DateTimeFormat('pt-BR', {
     weekday: 'short',
     day: '2-digit',
@@ -48,9 +49,12 @@ const weekday = (ymd: string) =>
     timeZone: 'UTC',
   }).format(new Date(`${ymd}T12:00:00Z`));
 
-const offsetText = (n: number) => (n < 0 ? `${-n} d.u. antes da data` : `+${n} d.u.`);
+const offsetText = (n: number): string => (n < 0 ? `${-n} d.u. antes da data` : `+${n} d.u.`);
 
-/** Simulador: datas que a cadência geraria a partir de uma data, com feriados e fins de semana. */
+/**
+ * Simulador: datas que a cadência geraria a partir de uma data, com feriados e
+ * fins de semana.
+ */
 function Simulator({
   cadence,
   calendar,
@@ -59,8 +63,9 @@ function Simulator({
   cadence: Step[];
   calendar: BusinessCalendar;
   today: string;
-}) {
+}): React.JSX.Element {
   const [base, setBase] = useState(today);
+
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-1 p-3">
       <Field
@@ -72,6 +77,7 @@ function Simulator({
       {base && (
         <ol className="flex flex-col gap-1 text-body" aria-label="Datas simuladas">
           {cadence.map((s, i) => (
+            // eslint-disable-next-line @eslint-react/no-array-index-key -- steps have no identity besides their position
             <li key={i}>
               <span className="text-text-muted">{s.title || `Passo ${i + 1}`}:</span>{' '}
               {weekday(addBusinessDays(base, s.offsetBusinessDays, calendar))} às {s.time}
@@ -90,21 +96,21 @@ export function FollowupSettings({
   calendar,
   today,
 }: {
-  rules: RuleRowView[];
-  stages: { id: number; name: string }[];
-  templates: { key: string; name: string }[];
   calendar: BusinessCalendar;
+  rules: RuleRowView[];
+  stages: Array<{ id: number; name: string }>;
+  templates: Array<{ key: string; name: string }>;
   today: string;
-}) {
+}): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [editing, setEditing] = useState<{ id: number | null; rule: RuleInput } | null>(null);
+  const [editing, setEditing] = useState<{ id: null | number; rule: RuleInput } | null>(null);
   const r = editing?.rule;
-  const set = (patch: Partial<RuleInput>) =>
+  const set = (patch: Partial<RuleInput>): void =>
     setEditing((e) => e && { ...e, rule: { ...e.rule, ...patch } });
-  const setStep = (i: number, patch: Partial<Step>) =>
+  const setStep = (i: number, patch: Partial<Step>): void =>
     set({ cadence: r!.cadence.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
-  const done = (ok: string) => {
+  const done = (ok: string): void => {
     toast.success(ok);
     setEditing(null);
     router.refresh();
@@ -165,7 +171,13 @@ export function FollowupSettings({
               e.preventDefault();
               start(async () => {
                 const res = await saveRuleAction(editing!.id, r);
-                if (!res.ok) return void toast.error(res.error);
+
+                if (!res.ok) {
+                  toast.error(res.error);
+
+                  return;
+                }
+
                 done('Regra salva');
               });
             }}
@@ -202,8 +214,8 @@ export function FollowupSettings({
                   value={r.interactionDirection ?? ''}
                   onChange={(e) =>
                     set({
-                      interactionDirection: (e.target.value ||
-                        null) as RuleInput['interactionDirection'],
+                      interactionDirection: (e.target.value
+                        || null) as RuleInput['interactionDirection'],
                     })
                   }
                 >
@@ -264,6 +276,7 @@ export function FollowupSettings({
               </legend>
               {r.cadence.map((s, i) => (
                 <div
+                  // eslint-disable-next-line @eslint-react/no-array-index-key -- steps have no identity besides their position; reordering rewrites values by index
                   key={i}
                   className="grid grid-cols-[5rem_6rem_minmax(0,1fr)] items-end gap-2 rounded-md border border-border p-2 sm:grid-cols-[5rem_6rem_minmax(0,1fr)_9rem_auto]"
                 >
@@ -379,9 +392,16 @@ export function FollowupSettings({
                   onClick={() => {
                     if (!window.confirm('Excluir esta regra? Os lembretes já criados continuam.'))
                       return;
+
                     start(async () => {
                       const res = await deleteRuleAction(editing.id!);
-                      if (!res.ok) return void toast.error(res.error);
+
+                      if (!res.ok) {
+                        toast.error(res.error);
+
+                        return;
+                      }
+
                       done('Regra excluída');
                     });
                   }}

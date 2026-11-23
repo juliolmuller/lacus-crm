@@ -1,10 +1,13 @@
 import { formatMoney, formatPercent } from '@/lib/format';
-import type { Funnel } from '@/lib/services/dashboard';
-import { HBarChart, type BarDatum } from './charts';
+import { type Funnel } from '@/lib/services/dashboard';
+
+import { type BarDatum, HBarChart } from './charts';
 import { Empty, Panel } from './panel';
 
-/** Barras por etapa (quantidade e R$) e a conversão entre etapas consecutivas. */
-export function FunnelCard({ stages }: { stages: Funnel }) {
+/**
+ * Barras por etapa (quantidade e R$) e a conversão entre etapas consecutivas.
+ */
+export function FunnelCard({ stages }: { stages: Funnel }): React.JSX.Element {
   const data: BarDatum[] = stages.map((s) => ({
     name: s.name,
     value: s.count,
@@ -13,6 +16,7 @@ export function FunnelCard({ stages }: { stages: Funnel }) {
   }));
   const steps = stages.filter((s) => s.toNext);
   const empty = stages.every((s) => s.count === 0 && s.reached === 0);
+
   return (
     <Panel title="Funil">
       {empty ? (

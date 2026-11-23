@@ -1,11 +1,15 @@
 import { asc, desc, eq, sql } from 'drizzle-orm';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
+
+import { type Db, schema } from '@/lib/db';
+
 import { listReminders } from './reminders';
 
 const { leads } = schema;
 
-/** Dados mínimos para o modo offline (SPEC 8): lembretes de hoje e atrasados + 50 leads de topo. */
+/**
+ * Dados mínimos para o modo offline (SPEC 8): lembretes de hoje e atrasados +
+ * 50 leads de topo.
+ */
 export async function offlineSnapshot(db: Db, now = new Date()) {
   const [overdue, today, top] = await Promise.all([
     listReminders(db, 'overdue', now),
@@ -24,6 +28,7 @@ export async function offlineSnapshot(db: Db, now = new Date()) {
       .orderBy(sql`${leads.priority} asc nulls last`, desc(leads.score), asc(leads.name))
       .limit(50),
   ]);
+
   return {
     generatedAt: now.toISOString(),
     reminders: [...overdue.rows, ...today.rows].map((r) => ({

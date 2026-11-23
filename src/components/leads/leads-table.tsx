@@ -5,37 +5,40 @@ import { ArrowDown, ArrowUp, Ban, SearchX } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { EmptyState } from '@/components/ui/empty-state';
+
 import { ScoreBadge, StatusBadge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import { bareControl } from '@/components/ui/field';
 import { formatDate, spDate } from '@/lib/leads/csv';
-import { SORTS, TABLE_COLUMNS, type TableColumn } from '@/lib/leads/filters';
-import { contactStatuses, siteLabel, statusLabel, type ContactStatus } from '@/lib/leads/labels';
-import type { LeadListRow } from '@/lib/services/lead-list';
+import { type SORTS, TABLE_COLUMNS, type TableColumn } from '@/lib/leads/filters';
+import { type ContactStatus, contactStatuses, siteLabel, statusLabel } from '@/lib/leads/labels';
+import { type LeadListRow } from '@/lib/services/lead-list';
 import { cn } from '@/lib/utils';
 
 type Sort = (typeof SORTS)[number];
 type Inline =
   | { field: 'contactStatus'; value: ContactStatus }
   | { field: 'nextAction'; value: string }
-  | { field: 'priority'; value: number | null };
+  | { field: 'priority'; value: null | number };
 
-export type LeadsTableProps = {
-  initialRows: LeadListRow[];
-  initialCursor: string | null;
-  /** Query string dos filtros (sem `lead`), repassada ao carregar mais páginas. */
-  qs: string;
+export interface LeadsTableProps {
   columns: TableColumn[];
-  sort: Sort;
   dir: 'asc' | 'desc';
-  onSort: (s: Sort) => void;
-  onOpen: (id: string) => void;
+  initialCursor: null | string;
+  initialRows: LeadListRow[];
   loadMore: (
     qs: string,
     cursor: string,
-  ) => Promise<{ rows: LeadListRow[]; nextCursor: string | null }>;
-  update: (id: string, input: Inline) => Promise<{ ok: true } | { ok: false; error: string }>;
-};
+  ) => Promise<{ nextCursor: null | string; rows: LeadListRow[] }>;
+  onOpen: (id: string) => void;
+  onSort: (s: Sort) => void;
+  /**
+   * Query string dos filtros (sem `lead`), repassada ao carregar mais páginas.
+   */
+  qs: string;
+  sort: Sort;
+  update: (id: string, input: Inline) => Promise<{ error: string; ok: false } | { ok: true }>;
+}
 
 const WIDTH: Record<TableColumn, number> = {
   score: 76,
@@ -56,25 +59,30 @@ const SORT_OF: Partial<Record<TableColumn, Sort>> = {
   contact: 'contact',
   priority: 'priority',
 };
-/** Estimativa (Confortável); as linhas reais usam `--row-h` (densidade) e `measureElement` corrige. Fixa para não divergir entre servidor e cliente. */
+/**
+ * Estimativa (Confortável); as linhas reais usam `--row-h` (densidade) e
+ * `measureElement` corrige. Fixa para não divergir entre servidor e cliente.
+ */
 const ROW_H = 44;
 
-/** Tabela virtualizada: só as linhas visíveis existem no DOM; o fim da rolagem pede a próxima página (cursor). */
-export function LeadsTable(p: LeadsTableProps) {
+/**
+ * Tabela virtualizada: só as linhas visíveis existem no DOM; o fim da rolagem
+ * pede a próxima página (cursor).
+ */
+export function LeadsTable(p: LeadsTableProps): React.JSX.Element {
   const [rows, setRows] = useState(p.initialRows);
   const [cursor, setCursor] = useState(p.initialCursor);
   const [loading, setLoading] = useState(false);
-  const scroller = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const cols: TableColumn[] = ['name', ...p.columns.filter((c) => c !== 'name')].sort(
     (a, b) => Object.keys(TABLE_COLUMNS).indexOf(a) - Object.keys(TABLE_COLUMNS).indexOf(b),
   ) as TableColumn[];
   const template = cols.map((c) => `${WIDTH[c]}px`).join(' ');
   const minWidth = cols.reduce((s, c) => s + WIDTH[c], 0);
 
-  // eslint-disable-next-line react-hooks/incompatible-library -- limitação conhecida do TanStack Virtual com o React Compiler
   const virt = useVirtualizer({
     count: rows.length,
-    getScrollElement: () => scroller.current,
+    getScrollElement: () => scrollerRef.current,
     estimateSize: () => ROW_H,
     overscan: 10,
   });
@@ -83,6 +91,8 @@ export function LeadsTable(p: LeadsTableProps) {
 
   useEffect(() => {
     if (!cursor || loading || lastIndex < rows.length - 15) return;
+
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- marca a página que este efeito começa a buscar
     setLoading(true);
     p.loadMore(p.qs, cursor)
       .then((page) => {
@@ -93,12 +103,15 @@ export function LeadsTable(p: LeadsTableProps) {
       .finally(() => setLoading(false));
   }, [cursor, loading, lastIndex, rows.length, p]);
 
-  async function edit(row: LeadListRow, input: Inline) {
+  async function edit(row: LeadListRow, input: Inline): Promise<void> {
     const before = row[input.field];
-    const patch = (value: unknown) =>
+    const patch = (value: unknown): void =>
       setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, [input.field]: value } : r)));
+
     patch(input.field === 'nextAction' ? input.value || null : input.value); // otimista
+
     const res = await p.update(row.id, input);
+
     if (!res.ok) {
       patch(before); // rollback
       toast.error(res.error);
@@ -122,7 +135,7 @@ export function LeadsTable(p: LeadsTableProps) {
 
   return (
     <div
-      ref={scroller}
+      ref={scrollerRef}
       className="h-[calc(100dvh-20rem)] min-h-96 overflow-auto rounded-lg border border-border bg-surface-1 lg:h-[calc(100dvh-17rem)]"
     >
       <div role="table" aria-label="Leads" aria-rowcount={rows.length + 1} style={{ minWidth }}>
@@ -134,6 +147,7 @@ export function LeadsTable(p: LeadsTableProps) {
           {cols.map((c) => {
             const s = SORT_OF[c];
             const active = s && s === p.sort;
+
             return (
               <div
                 key={c}
@@ -148,8 +162,8 @@ export function LeadsTable(p: LeadsTableProps) {
                     className="inline-flex items-center gap-1 hover:text-text"
                   >
                     {TABLE_COLUMNS[c]}
-                    {active &&
-                      (p.dir === 'asc' ? (
+                    {active
+                      && (p.dir === 'asc' ? (
                         <ArrowUp className="size-3.5" aria-hidden />
                       ) : (
                         <ArrowDown className="size-3.5" aria-hidden />
@@ -165,6 +179,7 @@ export function LeadsTable(p: LeadsTableProps) {
         <div style={{ height: virt.getTotalSize(), position: 'relative' }}>
           {items.map((v) => {
             const r = rows[v.index]!;
+
             return (
               <div
                 key={r.id}
@@ -208,13 +223,17 @@ function Cell({
   edit,
 }: {
   col: TableColumn;
-  row: LeadListRow;
-  onOpen: (id: string) => void;
   edit: (row: LeadListRow, input: Inline) => void;
-}) {
+  onOpen: (id: string) => void;
+  row: LeadListRow;
+}): React.JSX.Element {
   switch (col) {
-    case 'score':
-      return <ScoreBadge score={row.score} />;
+    case 'contact':
+      return (
+        <span className="tabular">
+          {row.lastContactAt ? formatDate(spDate(row.lastContactAt)) : '—'}
+        </span>
+      );
     case 'name':
       return (
         <button
@@ -235,10 +254,54 @@ function Cell({
           {row.name}
         </button>
       );
+    case 'nextAction':
+      return (
+        <input
+          aria-label={`Próxima ação de ${row.name}`}
+          defaultValue={row.nextAction ?? ''}
+          key={row.nextAction ?? ''}
+          maxLength={300}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+
+            if (v !== (row.nextAction ?? '')) edit(row, { field: 'nextAction', value: v });
+          }}
+          className={cn(bareControl, 'w-full')}
+        />
+      );
     case 'niche':
       return <span className="block truncate">{row.nicheName}</span>;
+    case 'priority':
+      return (
+        <input
+          type="number"
+          min={0}
+          max={999}
+          aria-label={`Prioridade de ${row.name}`}
+          defaultValue={row.priority ?? ''}
+          key={row.priority ?? ''}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          onBlur={(e) => {
+            const v = e.target.value === '' ? null : Number(e.target.value);
+
+            if (v !== row.priority) edit(row, { field: 'priority', value: v });
+          }}
+          className={cn(bareControl, 'tabular w-20')}
+        />
+      );
+    case 'rating':
+      return (
+        <span className="tabular">
+          {row.mapsRating ? `${Number(row.mapsRating).toFixed(1)} (${row.mapsReviews ?? 0})` : '—'}
+        </span>
+      );
     case 'region':
       return <span className="block truncate">{row.regionLabel.replace(/^[A-Z]{2} - /, '')}</span>;
+    case 'score':
+      return <ScoreBadge score={row.score} />;
+    case 'site':
+      return <span className="block truncate">{siteLabel[row.websiteStatus ?? 'unknown']}</span>;
     case 'status':
       return row.doNotContact ? (
         <StatusBadge status={row.contactStatus} />
@@ -258,53 +321,7 @@ function Cell({
           ))}
         </select>
       );
-    case 'site':
-      return <span className="block truncate">{siteLabel[row.websiteStatus ?? 'unknown']}</span>;
-    case 'rating':
-      return (
-        <span className="tabular">
-          {row.mapsRating ? `${Number(row.mapsRating).toFixed(1)} (${row.mapsReviews ?? 0})` : '—'}
-        </span>
-      );
     case 'whatsapp':
       return <span>{row.hasWhatsapp ? 'Sim' : 'Não'}</span>;
-    case 'nextAction':
-      return (
-        <input
-          aria-label={`Próxima ação de ${row.name}`}
-          defaultValue={row.nextAction ?? ''}
-          key={row.nextAction ?? ''}
-          maxLength={300}
-          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-          onBlur={(e) => {
-            const v = e.target.value.trim();
-            if (v !== (row.nextAction ?? '')) edit(row, { field: 'nextAction', value: v });
-          }}
-          className={cn(bareControl, 'w-full')}
-        />
-      );
-    case 'contact':
-      return (
-        <span className="tabular">
-          {row.lastContactAt ? formatDate(spDate(row.lastContactAt)) : '—'}
-        </span>
-      );
-    case 'priority':
-      return (
-        <input
-          type="number"
-          min={0}
-          max={999}
-          aria-label={`Prioridade de ${row.name}`}
-          defaultValue={row.priority ?? ''}
-          key={row.priority ?? ''}
-          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-          onBlur={(e) => {
-            const v = e.target.value === '' ? null : Number(e.target.value);
-            if (v !== row.priority) edit(row, { field: 'priority', value: v });
-          }}
-          className={cn(bareControl, 'tabular w-20')}
-        />
-      );
   }
 }

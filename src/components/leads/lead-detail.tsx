@@ -1,19 +1,21 @@
 import { AlertTriangle, SearchX } from 'lucide-react';
 import Link from 'next/link';
-import { ScoreBadge, StatusBadge } from '@/components/ui/badge';
-import { EmptyState } from '@/components/ui/empty-state';
-import { formatWhen, formatMoney } from '@/lib/format';
-import { formatDate, leadToRow, spDate } from '@/lib/leads/csv';
-import { templateValues } from '@/lib/followups/templates';
-import { siteLabel } from '@/lib/leads/labels';
-import { formatCityNeighborhood } from '@/lib/normalize';
-import type { ScoreBreakdown as Breakdown } from '@/lib/score';
-import type { LeadDetail as Detail } from '@/lib/services/lead-detail';
+
 import { CreateDealButton } from '@/components/funnel/create-deal-button';
 import { InteractionForm } from '@/components/funnel/interaction-form';
 import { InteractionItem } from '@/components/funnel/timeline';
 import { LeadReminders } from '@/components/reminders/lead-reminders';
 import { toReminderView } from '@/components/reminders/view';
+import { ScoreBadge, StatusBadge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { templateValues } from '@/lib/followups/templates';
+import { formatMoney, formatWhen } from '@/lib/format';
+import { formatDate, leadToRow, spDate } from '@/lib/leads/csv';
+import { siteLabel } from '@/lib/leads/labels';
+import { formatCityNeighborhood } from '@/lib/normalize';
+import { type ScoreBreakdown as Breakdown } from '@/lib/score';
+import { type LeadDetail as Detail } from '@/lib/services/lead-detail';
+
 import { LeadDataForm } from './lead-data-form';
 import { LeadTabs } from './lead-tabs';
 import { QuickActions } from './quick-actions';
@@ -22,7 +24,13 @@ import { ScoreBreakdown } from './score-breakdown';
 const when = formatWhen;
 const money = formatMoney;
 
-function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+function Fact({
+  label,
+  children,
+}: {
+  children: React.ReactNode;
+  label: string;
+}): React.JSX.Element {
   return (
     <div className="flex flex-col gap-0.5">
       <dt className="text-label text-text-muted">{label}</dt>
@@ -31,7 +39,13 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-const Block = ({ title, text }: { title: string; text: string | null }) =>
+const Block = ({
+  title,
+  text,
+}: {
+  text: null | string;
+  title: string;
+}): null | React.JSX.Element =>
   text ? (
     <section className="flex flex-col gap-1">
       <h3 className="text-label text-text-muted">{title}</h3>
@@ -39,7 +53,7 @@ const Block = ({ title, text }: { title: string; text: string | null }) =>
     </section>
   ) : null;
 
-export function LeadNotFound() {
+export function LeadNotFound(): React.JSX.Element {
   return (
     <EmptyState icon={SearchX} title="Lead não encontrado">
       Ele pode ter sido excluído.
@@ -47,7 +61,10 @@ export function LeadNotFound() {
   );
 }
 
-/** Conteúdo do lead (drawer e página cheia): cabeçalho, ações rápidas e as 5 abas. */
+/**
+ * Conteúdo do lead (drawer e página cheia): cabeçalho, ações rápidas e as 5
+ * abas.
+ */
 export function LeadDetail({
   d,
   niches,
@@ -56,11 +73,11 @@ export function LeadDetail({
   d: Detail;
   niches: string[];
   regions: string[];
-}) {
+}): React.JSX.Element {
   const { lead, niche, region } = d;
   const place = formatCityNeighborhood(region);
   const row = leadToRow(lead, niche, place);
-  const empty = (t: string) => <p className="text-body text-text-muted">{t}</p>;
+  const empty = (t: string): React.JSX.Element => <p className="text-body text-text-muted">{t}</p>;
 
   const resumo = (
     <div className="flex flex-col gap-5">

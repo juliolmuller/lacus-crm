@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { CONTACT_EMAIL, RESPONSIBLE, UPDATED_AT, publicMetadata } from '../site';
+
+import { CONTACT_EMAIL, publicMetadata, RESPONSIBLE, UPDATED_AT } from '../site';
 
 export const metadata = publicMetadata(
   '/termos',
@@ -7,7 +8,7 @@ export const metadata = publicMetadata(
   'Termos de Uso do Lacus CRM, um aplicativo pessoal de prospecção.',
 );
 
-export default function TermosPage() {
+export default function TermosPage(): React.JSX.Element {
   return (
     <>
       <h1>Termos de Uso</h1>

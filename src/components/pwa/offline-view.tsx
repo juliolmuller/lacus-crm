@@ -1,27 +1,37 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+
 import { Badge } from '@/components/ui/badge';
 import { formatWhen } from '@/lib/format';
 import { statusLabel } from '@/lib/leads/labels';
-import type { OfflineSnapshot } from '@/lib/services/offline';
+import { type OfflineSnapshot } from '@/lib/services/offline';
 
-/** "dd/mm hh:mm" em São Paulo. */
-const stamp = (iso: string) => {
+/**
+ * "dd/mm hh:mm" em São Paulo.
+ */
+const stamp = (iso: string): string => {
   const w = formatWhen(new Date(iso));
+
   return `${w.slice(0, 5)} ${w.slice(-5)}`;
 };
 
-export function OfflineView() {
-  const [snap, setSnap] = useState<OfflineSnapshot | null | undefined>(undefined);
+export function OfflineView(): React.JSX.Element {
+  const [snap, setSnap] = useState<null | OfflineSnapshot | undefined>(undefined);
+
   useEffect(() => {
+    const ctrl = new AbortController();
+
     // o service worker responde com o último snapshot guardado quando a rede falha
-    fetch('/api/offline/snapshot')
+    fetch('/api/offline/snapshot', { signal: ctrl.signal })
       .then((r) => (r.ok ? (r.json() as Promise<OfflineSnapshot>) : null))
       .then(setSnap, () => setSnap(null));
+
+    return (): void => ctrl.abort();
   }, []);
 
   if (snap === undefined) return <p role="status">Carregando…</p>;
+
   if (snap === null)
     return (
       <section className="flex flex-col gap-2">
@@ -47,7 +57,10 @@ export function OfflineView() {
         ) : (
           <ul className="overflow-hidden rounded-lg border border-border bg-surface-1">
             {snap.reminders.map((r) => (
-              <li key={r.id} className="flex flex-col gap-1 border-b border-border p-3 last:border-0">
+              <li
+                key={r.id}
+                className="flex flex-col gap-1 border-b border-border p-3 last:border-0"
+              >
                 <span className="text-body font-medium">{r.title}</span>
                 <span className="flex flex-wrap items-center gap-2 text-body text-text-muted">
                   {r.leadName} · {stamp(r.dueAt)}
@@ -72,7 +85,10 @@ export function OfflineView() {
                 {l.nextAction ? ` · ${l.nextAction}` : ''}
               </span>
               {l.phone && (
-                <a href={`tel:${l.phone}`} className="text-body text-primary underline-offset-4 hover:underline">
+                <a
+                  href={`tel:${l.phone}`}
+                  className="text-body text-primary underline-offset-4 hover:underline"
+                >
                   {l.phone}
                 </a>
               )}

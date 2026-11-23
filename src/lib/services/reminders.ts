@@ -1,38 +1,39 @@
 import { and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
+
+import { type Db, schema } from '@/lib/db';
 import { spDateTime, spYmd } from '@/lib/followups/business-days';
 import { snoozeDue, type SnoozePreset } from '@/lib/followups/snooze';
 import { renderTemplate, templateValues } from '@/lib/followups/templates';
 import { whatsappUrl } from '@/lib/leads/links';
 import { cadence } from '@/lib/validation/followups';
+
 import { getSetting } from './followup-settings';
-import { logInteraction, type InteractionInput } from './interactions';
+import { type InteractionInput, logInteraction } from './interactions';
 import { businessCalendar } from './rules';
 
 const { reminders, leads, followupRules, messageTemplates, niches, regions } = schema;
 
 export class ReminderError extends Error {
-  constructor(
-    public code: 'NOT_FOUND' | 'DO_NOT_CONTACT' | 'NOT_OPEN',
+  public constructor(
+    public code: 'DO_NOT_CONTACT' | 'NOT_FOUND' | 'NOT_OPEN',
     message: string,
   ) {
     super(message);
   }
 }
 
-const pgMessage = (e: unknown) =>
+const pgMessage = (e: unknown): string =>
   String((e as { cause?: { message?: string } }).cause?.message ?? (e as Error).message);
 
-export type ReminderInput = {
-  leadId: string;
-  dealId?: string | null;
-  title: string;
-  notes?: string | null;
+export interface ReminderInput {
+  dealId?: null | string;
   dueAt: Date;
   durationMin?: number;
+  leadId: string;
+  notes?: null | string;
   source?: 'manual' | 'mcp';
-};
+  title: string;
+}
 
 export async function createReminder(db: Db, input: ReminderInput) {
   try {
@@ -51,33 +52,40 @@ export async function createReminder(db: Db, input: ReminderInput) {
         })
         .returning(),
     );
+
     return r!;
   } catch (e) {
     if (pgMessage(e).includes('LEAD_DO_NOT_CONTACT'))
       throw new ReminderError('DO_NOT_CONTACT', 'Este lead está marcado como Não contatar.');
+
     throw e;
   }
 }
 
 async function lockOpen(tx: Db, id: string) {
   const [r] = await tx.select().from(reminders).where(eq(reminders.id, id)).for('update');
+
   if (!r) throw new ReminderError('NOT_FOUND', 'Lembrete não encontrado.');
+
   if (r.status !== 'open') throw new ReminderError('NOT_OPEN', 'Este lembrete já foi encerrado.');
+
   return r;
 }
 
 export async function updateReminder(
   db: Db,
   id: string,
-  patch: Partial<Pick<ReminderInput, 'title' | 'notes' | 'dueAt' | 'durationMin'>>,
+  patch: Partial<Pick<ReminderInput, 'dueAt' | 'durationMin' | 'notes' | 'title'>>,
 ) {
   return db.transaction(async (tx) => {
     await lockOpen(tx, id);
+
     const [r] = await tx
       .update(reminders)
       .set({ ...patch, syncStatus: 'pending', syncAttempts: 0, syncError: null })
       .where(eq(reminders.id, id))
       .returning();
+
     return r!;
   });
 }
@@ -85,11 +93,12 @@ export async function updateReminder(
 export async function snoozeReminder(
   db: Db,
   id: string,
-  to: SnoozePreset | { at: Date },
+  to: { at: Date } | SnoozePreset,
   now = new Date(),
 ) {
   return db.transaction(async (tx) => {
     await lockOpen(tx, id);
+
     const dueAt = typeof to === 'object' ? to.at : snoozeDue(to, now, await businessCalendar(tx));
     const [r] = await tx
       .update(reminders)
@@ -102,11 +111,12 @@ export async function snoozeReminder(
       })
       .where(eq(reminders.id, id))
       .returning();
+
     return r!;
   });
 }
 
-export async function cancelReminder(db: Db, id: string) {
+export async function cancelReminder(db: Db, id: string): Promise<void> {
   return db.transaction(async (tx) => {
     await lockOpen(tx, id);
     await tx
@@ -116,23 +126,28 @@ export async function cancelReminder(db: Db, id: string) {
   });
 }
 
-/** Passo da cadência a que o lembrete pertence (`rule:{id}:step:{i}:anchor:…`). */
-export const stepOf = (dedupeKey: string | null) => {
+/**
+ * Passo da cadência a que o lembrete pertence (`rule:{id}:step:{i}:anchor:…`).
+ */
+export const stepOf = (dedupeKey: null | string): { index: number; ruleId: number } | null => {
   const m = dedupeKey?.match(/^rule:(\d+):step:(\d+):/);
+
   return m ? { ruleId: Number(m[1]), index: Number(m[2]) } : null;
 };
 
 /**
- * Conclui o lembrete (opcionalmente registrando uma interação junto). Se era o último passo de uma
- * cadência marcada com `suggestStatus` e o lead segue sem resposta, devolve a sugestão.
+ * Conclui o lembrete (opcionalmente registrando uma interação junto). Se era o
+ * último passo de uma cadência marcada com `suggestStatus` e o lead segue sem
+ * resposta, devolve a sugestão.
  */
 export async function completeReminder(
   db: Db,
   id: string,
-  opts: { interaction?: Omit<InteractionInput, 'leadId' | 'dealId'> } = {},
+  opts: { interaction?: Omit<InteractionInput, 'dealId' | 'leadId'> } = {},
 ) {
   return db.transaction(async (tx) => {
     const r = await lockOpen(tx, id);
+
     await tx
       .update(reminders)
       .set({
@@ -143,6 +158,7 @@ export async function completeReminder(
         syncError: null,
       })
       .where(eq(reminders.id, id));
+
     const step = stepOf(r.dedupeKey);
     // a interação é a execução deste passo: não reinicia a cadência a que ele pertence
     const logged = opts.interaction
@@ -153,23 +169,26 @@ export async function completeReminder(
         )
       : null;
     let suggestion: { leadId: string; status: 'no_response' } | null = null;
+
     if (step) {
       const [rule] = await tx.select().from(followupRules).where(eq(followupRules.id, step.ruleId));
       const steps = cadence.safeParse(rule?.cadence);
       const [lead] = await tx.select().from(leads).where(eq(leads.id, r.leadId));
+
       if (
-        steps.success &&
-        step.index === steps.data.length - 1 &&
-        steps.data[step.index]?.suggestStatus === 'no_response' &&
-        lead?.contactStatus === 'contacted'
+        steps.success
+        && step.index === steps.data.length - 1
+        && steps.data[step.index]?.suggestStatus === 'no_response'
+        && lead?.contactStatus === 'contacted'
       )
         suggestion = { leadId: lead.id, status: 'no_response' };
     }
+
     return { reminderIds: logged?.reminderIds ?? [], suggestion };
   });
 }
 
-export type ReminderTab = 'overdue' | 'today' | 'upcoming' | 'done';
+export type ReminderTab = 'done' | 'overdue' | 'today' | 'upcoming';
 
 export const reminderRow = {
   id: reminders.id,
@@ -191,7 +210,10 @@ export const reminderRow = {
 };
 export type ReminderRow = Awaited<ReturnType<typeof listReminders>>['rows'][number];
 
-/** Atrasados: venceram antes de agora; Hoje: o resto do dia em São Paulo; Próximos: dias seguintes. */
+/**
+ * Atrasados: venceram antes de agora; Hoje: o resto do dia em São Paulo;
+ * Próximos: dias seguintes.
+ */
 export async function listReminders(db: Db, tab: ReminderTab, now = new Date()) {
   const startTomorrow = spDateTime(
     new Date(Date.parse(`${spYmd(now)}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10),
@@ -221,34 +243,46 @@ export async function listReminders(db: Db, tab: ReminderTab, now = new Date()) 
     })
     .from(reminders)
     .where(eq(reminders.status, 'open'));
+
   return { rows, counts: { overdue: Number(c?.overdue ?? 0), today: Number(c?.today ?? 0) } };
 }
 
-/** Próximo vencimento aberto por lead (cartões do funil). */
-export async function nextDueByLead(db: Db, leadIds: string[]) {
+/**
+ * Próximo vencimento aberto por lead (cartões do funil).
+ */
+export async function nextDueByLead(db: Db, leadIds: string[]): Promise<Map<string, Date>> {
   if (!leadIds.length) return new Map<string, Date>();
+
   const rows = await db
     .select({ leadId: reminders.leadId, due: sql<Date>`min(${reminders.dueAt})` })
     .from(reminders)
     .where(and(eq(reminders.status, 'open'), inArray(reminders.leadId, leadIds)))
     .groupBy(reminders.leadId);
+
   return new Map(rows.map((r) => [r.leadId, new Date(r.due)]));
 }
 
 /**
- * Link do WhatsApp de cada lembrete: se o passo da cadência tem modelo e a mensagem renderiza sem
- * variáveis faltando, o texto vai junto (`?text=`); senão, abre a conversa em branco.
+ * Link do WhatsApp de cada lembrete: se o passo da cadência tem modelo e a
+ * mensagem renderiza sem variáveis faltando, o texto vai junto (`?text=`);
+ * senão, abre a conversa em branco.
  */
-export async function whatsappLinks(db: Db, rows: ReminderRow[], now = new Date()) {
-  const out = new Map<string, string | null>();
+export async function whatsappLinks(
+  db: Db,
+  rows: ReminderRow[],
+  now = new Date(),
+): Promise<Map<string, null | string>> {
+  const out = new Map<string, null | string>();
   const withStep = rows.map((r) => ({ r, step: stepOf(r.dedupeKey) }));
   const ruleIds = [...new Set(withStep.flatMap((x) => (x.step ? [x.step.ruleId] : [])))];
   const rules = ruleIds.length
     ? await db.select().from(followupRules).where(inArray(followupRules.id, ruleIds))
     : [];
-  const keyOf = (s: { ruleId: number; index: number } | null) => {
+  const keyOf = (s: { index: number; ruleId: number } | null): string | undefined => {
     if (!s) return undefined;
+
     const c = cadence.safeParse(rules.find((x) => x.id === s.ruleId)?.cadence);
+
     return c.success ? c.data[s.index]?.templateKey : undefined;
   };
   const keys = [...new Set(withStep.flatMap((x) => keyOf(x.step) ?? []))];
@@ -260,6 +294,7 @@ export async function whatsappLinks(db: Db, rows: ReminderRow[], now = new Date(
     const base = whatsappUrl(r.phone);
     const tpl = templates.find((t) => t.key === keyOf(step));
     let url = base;
+
     if (base && tpl) {
       const [x] = await db
         .select({ lead: leads, niche: niches, region: regions })
@@ -267,12 +302,16 @@ export async function whatsappLinks(db: Db, rows: ReminderRow[], now = new Date(
         .innerJoin(niches, eq(niches.id, leads.nicheId))
         .innerJoin(regions, eq(regions.id, leads.regionId))
         .where(eq(leads.id, r.leadId));
+
       if (x) {
         const m = renderTemplate(tpl.body, templateValues(x.lead, x.niche, x.region, profile), now);
+
         if (!m.blocked) url = whatsappUrl(r.phone, m.text);
       }
     }
+
     out.set(r.id, url);
   }
+
   return out;
 }

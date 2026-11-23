@@ -1,6 +1,7 @@
 // Instância só para testes E2E (mesmo secret e banco, mais o plugin testUtils). Nunca importada em produção.
 import { betterAuth } from 'better-auth';
-import { testUtils } from 'better-auth/plugins';
+import { type LoginResult, testUtils } from 'better-auth/plugins';
+
 import { authOptions } from './auth';
 import { E2E_EMAIL, E2E_SUB } from './bypass';
 
@@ -14,6 +15,7 @@ async function setup() {
   });
   const ctx = await testAuth.$context;
   let user = await ctx.internalAdapter.findUserByEmail(E2E_EMAIL).then((r) => r?.user);
+
   if (!user) {
     user = await ctx.test.saveUser(
       ctx.test.createUser({ email: E2E_EMAIL, name: 'E2E Owner', emailVerified: true }),
@@ -24,13 +26,15 @@ async function setup() {
       accountId: E2E_SUB,
     });
   }
+
   return { ctx, userId: user.id };
 }
 
 // Uma preparação por processo: requisições paralelas dos testes não disputam a criação do usuário.
 let ready: ReturnType<typeof setup> | undefined;
 
-export async function e2eLogin() {
+export async function e2eLogin(): Promise<LoginResult> {
   const { ctx, userId } = await (ready ??= setup());
+
   return ctx.test.login({ userId });
 }

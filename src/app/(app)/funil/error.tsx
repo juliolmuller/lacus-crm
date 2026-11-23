@@ -2,6 +2,6 @@
 
 import { RouteError } from '@/components/ui/route-error';
 
-export default function ErrorPage({ reset }: { error: Error; reset: () => void }) {
+export default function ErrorPage({ reset }: { reset: () => void }): React.JSX.Element {
   return <RouteError what="o funil" reset={reset} />;
 }

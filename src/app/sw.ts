@@ -1,9 +1,16 @@
-import { NetworkFirst, NetworkOnly, Serwist, type PrecacheEntry, type SerwistGlobalConfig } from 'serwist';
+import {
+  NetworkFirst,
+  NetworkOnly,
+  type PrecacheEntry,
+  Serwist,
+  type SerwistGlobalConfig,
+} from 'serwist';
+
 import { cacheableAtRuntime, neverCache } from '../lib/pwa/cache-rules';
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
-    __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
+    __SW_MANIFEST: Array<PrecacheEntry | string> | undefined;
   }
 }
 declare const self: ServiceWorkerGlobalScope;
@@ -17,19 +24,21 @@ const serwist = new Serwist({
   navigationPreload: false,
   runtimeCaching: [
     {
-      matcher: ({ request }) => cacheableAtRuntime(request),
+      matcher: ({ request }): boolean => cacheableAtRuntime(request),
       handler: new NetworkFirst({ cacheName: SNAPSHOT_CACHE, networkTimeoutSeconds: 3 }),
       method: 'GET',
     },
     // Navegação passa direto para a rede (HTML autenticado nunca é guardado); sem rede cai em /~offline.
     {
-      matcher: ({ request }) => request.mode === 'navigate' && !neverCache(request),
+      matcher: ({ request }): boolean => request.mode === 'navigate' && !neverCache(request),
       handler: new NetworkOnly(),
       method: 'GET',
     },
   ],
   fallbacks: {
-    entries: [{ url: '/~offline', matcher: ({ request }) => request.destination === 'document' }],
+    entries: [
+      { url: '/~offline', matcher: ({ request }): boolean => request.destination === 'document' },
+    ],
   },
 });
 
@@ -38,6 +47,7 @@ serwist.addEventListeners();
 // Logout: apaga os caches de runtime (o snapshot tem dados do usuário); o precache fica.
 self.addEventListener('message', (event) => {
   if (event.data?.type !== 'CLEAR_CACHES') return;
+
   event.waitUntil(
     caches
       .keys()

@@ -5,13 +5,17 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-type Ctx = { params: Promise<{ path: string[] }> };
+interface Ctx {
+  params: Promise<{ path: string[] }>;
+}
 
-async function handler(req: Request, { params }: Ctx) {
+async function handler(req: Request, { params }: Ctx): Promise<Response> {
   const path = `/${(await params).path.join('/')}`;
+
   if (req.method === 'GET' && path === '/openapi.json')
     return Response.json(openApi(getEnv().BETTER_AUTH_URL));
+
   return handleRest(req, path);
 }
 
-export { handler as GET, handler as POST, handler as PATCH };
+export { handler as GET, handler as PATCH, handler as POST };

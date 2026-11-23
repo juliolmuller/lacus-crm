@@ -1,9 +1,10 @@
 'use client';
 
 import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
 
-export function ToastDemo() {
+export function ToastDemo(): React.JSX.Element {
   return (
     <div className="flex flex-wrap gap-2">
       <Button variant="secondary" onClick={() => toast.success('Lead salvo')}>

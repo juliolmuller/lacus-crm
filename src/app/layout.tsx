@@ -1,8 +1,9 @@
-import type { Metadata, Viewport } from 'next';
 import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
+import { type Metadata, type Viewport } from 'next';
 import { headers } from 'next/headers';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
+
 import { PwaProvider } from '@/components/pwa/pwa-provider';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
@@ -25,8 +26,13 @@ export const viewport: Viewport = { themeColor: '#0B0D10', viewportFit: 'cover' 
 // Aplica o tema e a densidade salvos antes da hidratação (evita flash). "system" segue prefers-color-scheme.
 const THEME_SCRIPT = `try{var t=localStorage.getItem('theme')||'system';document.documentElement.dataset.theme=t==='system'?(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;var d=localStorage.getItem('density');document.documentElement.dataset.density=d==='compact'||d==='comfortable'?d:(matchMedia('(min-width: 1024px)').matches?'compact':'comfortable')}catch(e){}`;
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}): Promise<React.JSX.Element> {
   const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
     <html
       lang="pt-BR"
@@ -40,6 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script
           nonce={nonce}
           suppressHydrationWarning
+          // eslint-disable-next-line @eslint-react/dom-no-dangerously-set-innerhtml -- constant theme script that must run before paint
           dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }}
         />
       </head>

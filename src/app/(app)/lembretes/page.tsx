@@ -1,23 +1,28 @@
 import { BellOff } from 'lucide-react';
-import type { Metadata } from 'next';
+import { type Metadata } from 'next';
 import Link from 'next/link';
+
 import { ReminderItem } from '@/components/reminders/reminder-item';
 import { rowToView } from '@/components/reminders/view';
 import { EmptyState } from '@/components/ui/empty-state';
 import { getDb } from '@/lib/db';
-import { listReminders, whatsappLinks, type ReminderTab } from '@/lib/services/reminders';
+import { listReminders, type ReminderTab, whatsappLinks } from '@/lib/services/reminders';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Lembretes' };
 
-const tabs: { id: ReminderTab; label: string; empty: string }[] = [
+const tabs: Array<{ empty: string; id: ReminderTab; label: string }> = [
   { id: 'overdue', label: 'Atrasados', empty: 'Nada atrasado. Bom trabalho!' },
   { id: 'today', label: 'Hoje', empty: 'Nenhum lembrete para o resto de hoje.' },
   { id: 'upcoming', label: 'Próximos', empty: 'Nada agendado para os próximos dias.' },
   { id: 'done', label: 'Concluídos', empty: 'Nenhum lembrete concluído ainda.' },
 ];
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}): Promise<React.JSX.Element> {
   const { tab: raw } = await searchParams;
   const tab = tabs.find((t) => t.id === raw)?.id ?? 'today';
   const db = getDb();
@@ -25,6 +30,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   const { rows, counts } = await listReminders(db, tab, now);
   const links = await whatsappLinks(db, rows, now);
   const current = tabs.find((t) => t.id === tab)!;
+
   return (
     <section className="flex max-w-4xl flex-col gap-4">
       <h1 className="text-page">Lembretes</h1>

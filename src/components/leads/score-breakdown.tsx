@@ -1,5 +1,5 @@
 import { ScoreBadge } from '@/components/ui/badge';
-import type { ScoreBreakdown as Breakdown, ScoreWeights } from '@/lib/score';
+import { type ScoreBreakdown as Breakdown, type ScoreWeights } from '@/lib/score';
 
 const LABEL: Record<keyof Breakdown, string> = {
   website: 'Site fraco ou ausente',
@@ -10,16 +10,18 @@ const LABEL: Record<keyof Breakdown, string> = {
   competition: 'Concorrência local com site forte',
 };
 
-/** Score com o detalhamento por critério (pontos ganhos / peso). */
+/**
+ * Score com o detalhamento por critério (pontos ganhos / peso).
+ */
 export function ScoreBreakdown({
   score,
   breakdown,
   weights,
 }: {
-  score: number;
   breakdown: Breakdown | null;
+  score: number;
   weights: ScoreWeights;
-}) {
+}): React.JSX.Element {
   return (
     <section
       aria-labelledby="score-title"
@@ -33,9 +35,10 @@ export function ScoreBreakdown({
       </div>
       {breakdown ? (
         <ul className="flex flex-col gap-2">
-          {(Object.keys(LABEL) as (keyof Breakdown)[]).map((k) => {
+          {(Object.keys(LABEL) as Array<keyof Breakdown>).map((k) => {
             const got = breakdown[k] ?? 0;
             const max = weights[k];
+
             return (
               <li key={k} className="flex flex-col gap-1">
                 <div className="flex justify-between text-body">

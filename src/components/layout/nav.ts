@@ -3,14 +3,18 @@ import {
   Bell,
   Columns3,
   ListChecks,
+  type LucideIcon,
   Menu,
   Palette,
   Settings,
   Users,
-  type LucideIcon,
 } from 'lucide-react';
 
-export type NavItem = { href: string; label: string; Icon: LucideIcon };
+export interface NavItem {
+  href: string;
+  Icon: LucideIcon;
+  label: string;
+}
 
 export const mobileNav: NavItem[] = [
   { href: '/', label: 'Início', Icon: BarChart3 },
@@ -28,5 +32,5 @@ export const moreNav: NavItem[] = [
 
 export const desktopNav: NavItem[] = [...mobileNav.slice(0, 4), ...moreNav];
 
-export const isActive = (href: string, pathname: string) =>
+export const isActive = (href: string, pathname: string): boolean =>
   href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);

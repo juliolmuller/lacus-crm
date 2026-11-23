@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { keyBetween, MAX_KEY_LENGTH, needsRebalance, rebalanceKeys } from '@/lib/funnel/fractional';
 import { syncedStatus } from '@/lib/funnel/status-sync';
 
@@ -7,12 +8,14 @@ describe('chaves fracionárias', () => {
     const a = keyBetween(null, null)!;
     const c = keyBetween(a, null)!;
     const b = keyBetween(a, c)!;
+
     expect(a < b && b < c).toBe(true);
     expect(keyBetween(null, a)! < a).toBe(true);
   });
 
   it('ordem inválida (iguais ou invertidas) devolve null para rebalancear', () => {
     const a = keyBetween(null, null)!;
+
     expect(keyBetween(a, a)).toBeNull();
     expect(keyBetween('a5', 'a1')).toBeNull();
   });
@@ -26,7 +29,9 @@ describe('chaves fracionárias', () => {
       hi = key;
     }
     expect(key.length).toBeGreaterThan(MAX_KEY_LENGTH);
+
     const keys = rebalanceKeys(5);
+
     expect(keys).toHaveLength(5);
     expect([...keys].sort()).toEqual(keys);
     expect(keys.every((k) => !needsRebalance(k))).toBe(true);

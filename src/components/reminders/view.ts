@@ -1,12 +1,15 @@
-import type { schema } from '@/lib/db';
-import type { ReminderRow } from '@/lib/services/reminders';
-import type { ReminderView } from './reminder-item';
+import { type schema } from '@/lib/db';
+import { type ReminderRow } from '@/lib/services/reminders';
 
-/** Linha do banco → o que o componente de lembrete recebe (datas viram ISO). */
+import { type ReminderView } from './reminder-item';
+
+/**
+ * Linha do banco → o que o componente de lembrete recebe (datas viram ISO).
+ */
 export const toReminderView = (
   r: typeof schema.reminders.$inferSelect,
   leadName: string,
-  whatsapp: string | null = null,
+  whatsapp: null | string = null,
   now = new Date(),
 ): ReminderView => ({
   id: r.id,
@@ -23,8 +26,10 @@ export const toReminderView = (
   whatsapp,
 });
 
-/** Linha das listas (join com o lead) → o que o componente de lembrete recebe. */
-export const rowToView = (r: ReminderRow, now: Date, whatsapp: string | null): ReminderView => ({
+/**
+ * Linha das listas (join com o lead) → o que o componente de lembrete recebe.
+ */
+export const rowToView = (r: ReminderRow, now: Date, whatsapp: null | string): ReminderView => ({
   id: r.id,
   title: r.title,
   notes: r.notes,

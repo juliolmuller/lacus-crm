@@ -4,8 +4,9 @@ import { getEnv } from '@/lib/env';
 export const dynamic = 'force-dynamic';
 
 // RFC 9728 do segundo conector: o plugin mcp() só publica o documento do recurso principal.
-export const GET = () => {
+export const GET = (): Response => {
   const base = getEnv().BETTER_AUTH_URL;
+
   return Response.json(
     {
       resource: mcpResources(base).prospecting,

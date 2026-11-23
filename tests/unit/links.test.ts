@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { instagramUrl, safeUrl, telUrl, whatsappUrl } from '@/lib/leads/links';
 
 describe('links das ações rápidas', () => {

@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function Loading() {
+export default function Loading(): React.JSX.Element {
   return (
     <section className="flex flex-col gap-4" aria-busy="true" aria-label="Carregando o painel">
       <h1 className="text-page">Início</h1>

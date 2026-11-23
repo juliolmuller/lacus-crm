@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import {
   formatCityNeighborhood,
   normalizeName,
@@ -53,7 +54,9 @@ describe('parseCityNeighborhood', () => {
   it('inválido → null e ida e volta', () => {
     expect(parseCityNeighborhood('Curitiba')).toBeNull();
     expect(parseCityNeighborhood('')).toBeNull();
+
     const p = parseCityNeighborhood('Xaxim, Curitiba/PR')!;
+
     expect(formatCityNeighborhood(p)).toBe('Xaxim, Curitiba/PR');
   });
 });

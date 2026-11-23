@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+
+import { decrypt, encrypt } from '@/lib/crypto';
 import {
   addBusinessDays,
   businessDaysBetween,
@@ -8,17 +10,17 @@ import {
   spDateTime,
   spYmd,
 } from '@/lib/followups/business-days';
-import { planFollowups, type RuleRow } from '@/lib/followups/engine';
+import { planFollowups, type PlannedReminder, type RuleRow } from '@/lib/followups/engine';
+import { backoffMinutes, snoozeDue } from '@/lib/followups/snooze';
 import { greeting, renderTemplate } from '@/lib/followups/templates';
-import { decrypt, encrypt } from '@/lib/crypto';
 import { isInvalidGrant } from '@/lib/google/calendar-api';
 import { buildEvent } from '@/lib/google/event';
-import { backoffMinutes, snoozeDue } from '@/lib/followups/snooze';
 
 describe('dias úteis', () => {
   it('Páscoa e feriados móveis de 2026 e 2027', () => {
     expect(easterSunday(2026)).toBe('2026-04-05');
     expect(easterSunday(2027)).toBe('2027-03-28');
+
     const h26 = holidaysOf(2026);
     for (const d of ['2026-02-16', '2026-02-17', '2026-04-03', '2026-06-04'])
       expect(h26.has(d), d).toBe(true);
@@ -32,7 +34,9 @@ describe('dias úteis', () => {
     expect(isBusinessDay('2026-09-07')).toBe(false); // segunda, Independência
     expect(isBusinessDay('2026-11-20')).toBe(false); // sexta, Consciência Negra
     expect(isBusinessDay('2026-12-24')).toBe(true);
+
     const cal = { extraHolidays: [{ date: '2026-12-24', name: 'Recesso' }] };
+
     expect(isBusinessDay('2026-12-24', cal)).toBe(false);
     expect(isBusinessDay('2027-12-24', cal)).toBe(true); // extra de outro ano não vale
   });
@@ -99,6 +103,7 @@ describe('motor de regras (planejamento)', () => {
       existingKeys: new Set(),
       calendar,
     });
+
     expect(plan.create.map((c) => c.dueAt.toISOString())).toEqual([
       '2026-11-18T13:00:00.000Z',
       '2026-11-24T13:00:00.000Z', // 20/11 (feriado) pulado
@@ -112,13 +117,14 @@ describe('motor de regras (planejamento)', () => {
   });
 
   it('sem resposta só vale com lead em Abordado, tipo de contato e resultado neutro', () => {
-    const plan = (over: object) =>
+    const plan = (over: object): number =>
       planFollowups({
         event: logged({ type: 'whatsapp', leadStatus: 'contacted', ...over }),
         rules: [firstContact],
         open: [],
         existingKeys: new Set(),
       }).create.length;
+
     expect(plan({})).toBe(3);
     expect(plan({ outcome: 'no_answer' })).toBe(3);
     expect(plan({ leadStatus: 'replied' })).toBe(0);
@@ -139,14 +145,17 @@ describe('motor de regras (planejamento)', () => {
       open,
       existingKeys: new Set(),
     });
+
     expect(inbound.cancel).toEqual(['a']);
-    const moved = (dealId: string) =>
+
+    const moved = (dealId: string): string[] =>
       planFollowups({
         event: { kind: 'deal_stage_entered', anchor: 'h1', dealId, stageId: 3, at },
         rules,
         open,
         existingKeys: new Set(),
       }).cancel;
+
     expect(moved('d1')).toEqual(['a']);
     expect(moved('d2')).toEqual([]);
   });
@@ -155,11 +164,16 @@ describe('motor de regras (planejamento)', () => {
     const base = { event: logged(), rules: [proposal], calendar };
     const keys = new Set(['rule:2:step:0:anchor:i1', 'rule:2:step:1:anchor:i1']);
     const p = planFollowups({ ...base, open: [], existingKeys: keys });
+
     expect(p.create.map((c) => c.stepIndex)).toEqual([2]);
+
     const open = [{ id: 'x', ruleId: 2, dealId: 'd1' }];
+
     expect(planFollowups({ ...base, open, existingKeys: keys }).cancel).toEqual(['x']);
     expect(planFollowups({ ...base, open, existingKeys: keys, replay: true }).cancel).toEqual([]);
+
     const all = new Set([...keys, 'rule:2:step:2:anchor:i1']);
+
     expect(planFollowups({ ...base, open, existingKeys: all }).cancel).toEqual([]);
   });
 
@@ -176,7 +190,9 @@ describe('motor de regras (planejamento)', () => {
       open: [],
       existingKeys: new Set(),
     });
+
     expect(p.create[0]!.dueAt.toISOString()).toBe('2026-11-19T12:00:00.000Z'); // 20/11 pulado
+
     const later = rule({
       id: 5,
       interactionOutcome: 'asked_later',
@@ -193,6 +209,7 @@ describe('motor de regras (planejamento)', () => {
       open: [],
       existingKeys: new Set(),
     });
+
     expect(r.create[0]!.dueAt.toISOString()).toBe('2026-11-19T12:30:00.000Z');
   });
 
@@ -206,8 +223,9 @@ describe('motor de regras (planejamento)', () => {
     });
     const ev = (stageId: number) =>
       ({ kind: 'deal_stage_entered', anchor: 'h2', dealId: 'd1', stageId, at }) as const;
-    const run = (stageId: number) =>
+    const run = (stageId: number): PlannedReminder[] =>
       planFollowups({ event: ev(stageId), rules: [won], open: [], existingKeys: new Set() }).create;
+
     expect(run(7)).toHaveLength(1);
     expect(run(4)).toHaveLength(0);
   });
@@ -224,12 +242,15 @@ describe('modelos de mensagem', () => {
   it('substitui variáveis, avisa as ausentes e bloqueia com {{', () => {
     const now = new Date('2026-11-19T12:00:00Z');
     const ok = renderTemplate('{{saudacao}}, {{ nome_negocio }}!', { nome_negocio: 'Café' }, now);
+
     expect(ok).toEqual({ text: 'Bom dia, Café!', missing: [], blocked: false });
+
     const bad = renderTemplate(
       'Oi {{nome_negocio}} {{bairro}} {{xyz}}',
       { nome_negocio: 'Café', bairro: ' ' },
       now,
     );
+
     expect(bad.missing).toEqual(['bairro', 'xyz']);
     expect(bad.blocked).toBe(true);
     expect(bad.text).toBe('Oi Café {{bairro}} {{xyz}}');
@@ -238,8 +259,10 @@ describe('modelos de mensagem', () => {
 
 describe('cifra AES-256-GCM', () => {
   const keys = { v1: 'a'.repeat(32), v2: 'b'.repeat(32) };
+
   it('ida e volta com prefixo de versão', () => {
     const blob = encrypt('refresh-token', keys);
+
     expect(blob.startsWith('v1.')).toBe(true);
     expect(blob).not.toContain('refresh-token');
     expect(decrypt(blob, keys)).toBe('refresh-token');
@@ -247,12 +270,14 @@ describe('cifra AES-256-GCM', () => {
   });
   it('rotação: lê a versão antiga e cifra com a nova', () => {
     const old = encrypt('tok', keys, 'v1');
+
     expect(encrypt('tok', keys, 'v2').startsWith('v2.')).toBe(true);
     expect(decrypt(old, keys)).toBe('tok');
   });
   it('rejeita adulteração, chave errada e formato inválido', () => {
     const blob = encrypt('tok', keys);
     const parts = blob.split('.');
+
     parts[3] = Buffer.from('zzzz').toString('base64url');
     expect(() => decrypt(parts.join('.'), keys)).toThrow();
     expect(() => decrypt(blob, { v1: 'c'.repeat(32) })).toThrow();
@@ -262,6 +287,7 @@ describe('cifra AES-256-GCM', () => {
 
 describe('adiar, backoff e evento do Calendar', () => {
   const now = new Date('2026-11-19T20:00:00Z'); // quinta, 17h em São Paulo
+
   it('presets de adiamento', () => {
     expect(snoozeDue('1h', now).toISOString()).toBe('2026-11-19T21:00:00.000Z');
     expect(snoozeDue('tomorrow', now).toISOString()).toBe('2026-11-20T12:30:00.000Z');
@@ -286,6 +312,7 @@ describe('adiar, backoff e evento do Calendar', () => {
       { name: 'Clínica X', phoneE164: '+5541999990000', nextAction: 'Enviar proposta' },
       { appUrl: 'https://crm.example.com', popupMinutes: [10, 0] },
     );
+
     expect(e.summary).toBe('Follow-up: Clínica X – Ligar');
     expect(e.description.split('\n')).toEqual([
       'Próxima ação: Enviar proposta',

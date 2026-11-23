@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
+
 import { cacheableAtRuntime, neverCache } from '@/lib/pwa/cache-rules';
 
-const req = (path: string, method = 'GET', headers: Record<string, string> = {}) => ({
+const req = (
+  path: string,
+  method = 'GET',
+  headers: Record<string, string> = {},
+): { headers: Headers; method: string; url: string } => ({
   url: `https://crm.test${path}`,
   method,
   headers: new Headers(headers),

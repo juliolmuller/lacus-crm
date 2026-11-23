@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+
 import {
-  COLUMNS,
-  HEADERS,
   applyMapping,
   autoMapHeaders,
+  COLUMNS,
+  HEADERS,
   leadToRow,
   parseContactDate,
   parseDate,
@@ -18,9 +19,10 @@ describe('mapeamento de cabeçalhos', () => {
   });
   it('reconhece sem acento/caixa e deixa o resto sem mapear', () => {
     const m = autoMapHeaders(['nome do negocio', 'WHATSAPP', 'Coluna extra']);
+
     expect(m).toEqual({
       'nome do negocio': 'Nome do negócio',
-      WHATSAPP: 'WhatsApp',
+      'WHATSAPP': 'WhatsApp',
       'Coluna extra': null,
     });
     expect(applyMapping({ 'nome do negocio': 'X', 'Coluna extra': 'Y' }, m)).toEqual({
@@ -50,9 +52,9 @@ describe('conversões', () => {
 
 describe('parseLeadRow', () => {
   const row = {
-    ID: '54ccff37-d6e1-4b65-b244-df29358576d6',
+    'ID': '54ccff37-d6e1-4b65-b244-df29358576d6',
     'Nome do negócio': 'Odontlux',
-    WhatsApp: 'Sim',
+    'WhatsApp': 'Sim',
     'Situação do site': 'Só rede social',
     'Nota no Maps': '4,5',
     'Dono responde avaliações': '',
@@ -62,8 +64,10 @@ describe('parseLeadRow', () => {
     'Valor da proposta (R$)': '1.200,50',
     'Data de inclusão': '12/11/2026',
   };
+
   it('converte e só devolve os campos presentes', () => {
     const r = parseLeadRow(row);
+
     expect(r.errors).toEqual([]);
     expect(r.values).toMatchObject({
       id: row.ID,
@@ -81,7 +85,8 @@ describe('parseLeadRow', () => {
     expect('email' in r.values).toBe(false);
   });
   it('status desconhecido vira new e o original vai para as observações', () => {
-    const r = parseLeadRow({ 'Status do contato': 'Em análise', Observações: 'algo' });
+    const r = parseLeadRow({ 'Status do contato': 'Em análise', 'Observações': 'algo' });
+
     expect(r.values).toMatchObject({
       contactStatus: 'new',
       notes: '[status original: Em análise] algo',
@@ -91,9 +96,10 @@ describe('parseLeadRow', () => {
     const r = parseLeadRow({
       'Nota no Maps': '7',
       'Data do contato': 'x',
-      WhatsApp: 'talvez',
-      ID: 'abc',
+      'WhatsApp': 'talvez',
+      'ID': 'abc',
     });
+
     expect(r.errors).toHaveLength(4);
   });
   it('data de inclusão vazia mantém o padrão do banco', () => {
@@ -121,19 +127,25 @@ describe('leadToRow ↔ parseLeadRow', () => {
       proposalValue: '1500.00',
       includedAt: '2026-11-12',
       notes: 'linha 1\nlinha 2, com vírgula; e ponto-e-vírgula',
-    } as Record<string, unknown> & { score: number };
+    } as { score: number } & Record<string, unknown>;
     const row = leadToRow(
       lead,
       { name: 'Clínicas odontológicas', ticket: 'alto' },
       'Xaxim, Curitiba/PR',
     );
+
     expect(Object.keys(row)).toEqual(HEADERS);
+
     const back = parseLeadRow(row);
+
     expect(back.errors).toEqual([]);
     for (const col of COLUMNS) {
       if (['niche', 'place', 'ticket', 'score'].includes(col.kind)) continue;
+
       const v = lead[col.key];
+
       if (v === undefined) continue;
+
       expect(back.values[col.key], col.key).toEqual(v);
     }
     expect(back.nicheName).toBe('Clínicas odontológicas');

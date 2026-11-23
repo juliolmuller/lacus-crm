@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import {
   cancelReminderAction,
   completeReminderAction,
@@ -30,21 +31,23 @@ import { snoozeLabel, snoozePresets } from '@/lib/followups/snooze';
 import { formatWhen } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-export type ReminderView = {
-  id: string;
-  title: string;
-  notes: string | null;
+export interface ReminderView {
   dueAt: string; // ISO
-  status: 'open' | 'done' | 'canceled';
-  source: 'manual' | 'rule' | 'mcp';
-  /** venceu antes de agora (calculado no servidor) */
-  overdue: boolean;
-  syncStatus: 'pending' | 'synced' | 'error' | 'disabled';
-  syncError: string | null;
+  id: string;
   leadId: string;
   leadName: string;
-  whatsapp: string | null;
-};
+  notes: null | string;
+  /**
+   * Venceu antes de agora (calculado no servidor)
+   */
+  overdue: boolean;
+  source: 'manual' | 'mcp' | 'rule';
+  status: 'canceled' | 'done' | 'open';
+  syncError: null | string;
+  syncStatus: 'disabled' | 'error' | 'pending' | 'synced';
+  title: string;
+  whatsapp: null | string;
+}
 
 const sourceLabel = { manual: 'Manual', rule: 'Regra', mcp: 'MCP' } as const;
 const syncMeta = {
@@ -58,9 +61,16 @@ const syncMeta = {
   disabled: { Icon: CloudOff, text: 'Sem Google Calendar conectado', cls: 'text-text-muted' },
 } as const;
 
-function SyncIcon({ status, error }: { status: ReminderView['syncStatus']; error: string | null }) {
+function SyncIcon({
+  status,
+  error,
+}: {
+  error: null | string;
+  status: ReminderView['syncStatus'];
+}): React.JSX.Element {
   const { Icon, text, cls } = syncMeta[status];
   const label = error ? `${text}: ${error}` : text;
+
   return (
     <span title={label} className={cn('inline-flex', cls)}>
       <Icon className="size-4" aria-hidden />
@@ -69,56 +79,83 @@ function SyncIcon({ status, error }: { status: ReminderView['syncStatus']; error
   );
 }
 
-type Dlg = 'complete' | 'snooze' | 'edit' | null;
+type Dlg = 'complete' | 'edit' | 'snooze' | null;
 const SWIPE = 90;
 
-/** Item de lembrete (lista e drawers). No celular: deslizar → concluir, ← adiar (botões equivalentes sempre visíveis). */
-export function ReminderItem({ r, showLead = true }: { r: ReminderView; showLead?: boolean }) {
+/**
+ * Item de lembrete (lista e drawers). No celular: deslizar → concluir, ← adiar
+ * (botões equivalentes sempre visíveis).
+ */
+export function ReminderItem({
+  r,
+  showLead = true,
+}: {
+  r: ReminderView;
+  showLead?: boolean;
+}): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [dlg, setDlg] = useState<Dlg>(null);
   const [withInteraction, setWithInteraction] = useState(false);
   const [dx, setDx] = useState(0);
-  const touch = useRef<{ x: number; y: number } | null>(null);
+  const touchRef = useRef<{ x: number; y: number } | null>(null);
   const due = new Date(r.dueAt);
   const open = r.status === 'open';
   const overdue = open && r.overdue;
-  const close = () => setDlg(null);
+  const close = (): void => setDlg(null);
 
-  const run = (fn: () => Promise<{ ok: boolean; error?: string }>, ok: string) =>
+  const run = (fn: () => Promise<{ error?: string; ok: boolean }>, ok: string): void =>
     start(async () => {
       const res = await fn();
-      if (!res.ok) return void toast.error(res.error ?? 'Erro');
+
+      if (!res.ok) {
+        toast.error(res.error ?? 'Erro');
+
+        return;
+      }
+
       toast.success(ok);
       close();
       router.refresh();
     });
 
-  const complete = (interaction: object | null) =>
+  const complete = (interaction: null | object): void =>
     start(async () => {
       const res = await completeReminderAction(r.id, { interaction });
-      if (!res.ok) return void toast.error(res.error);
+
+      if (!res.ok) {
+        toast.error(res.error);
+
+        return;
+      }
+
       close();
+
       if (res.suggestion)
         toast('Último follow-up concluído sem resposta.', {
           duration: 15000,
           action: {
             label: 'Marcar como Sem resposta',
-            onClick: () => void markNoResponseAction(r.leadId).then(() => router.refresh()),
+            onClick: () => {
+              markNoResponseAction(r.leadId).then(() => router.refresh());
+            },
           },
         });
       else
         toast.success(
           res.created ? `Concluído. ${res.created} lembrete(s) novo(s).` : 'Lembrete concluído',
         );
+
       router.refresh();
     });
 
-  const onTouchEnd = () => {
+  const onTouchEnd = (): void => {
     const moved = dx;
-    touch.current = null;
+    touchRef.current = null;
     setDx(0);
+
     if (!open || pending) return;
+
     if (moved > SWIPE) complete(null);
     else if (moved < -SWIPE)
       run(() => snoozeReminderAction(r.id, 'tomorrow'), 'Adiado para amanhã, 9h30');
@@ -133,12 +170,15 @@ export function ReminderItem({ r, showLead = true }: { r: ReminderView; showLead
         className="touch-pan-y p-3"
         style={{ transform: dx ? `translateX(${dx}px)` : undefined }}
         onTouchStart={(e) =>
-          (touch.current = { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY })
+          (touchRef.current = { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY })
         }
         onTouchMove={(e) => {
-          const t = touch.current;
+          const t = touchRef.current;
+
           if (!t || !open) return;
+
           const mx = e.touches[0]!.clientX - t.x;
+
           if (Math.abs(mx) > Math.abs(e.touches[0]!.clientY - t.y))
             setDx(Math.max(-140, Math.min(140, mx)));
         }}
@@ -174,7 +214,9 @@ export function ReminderItem({ r, showLead = true }: { r: ReminderView; showLead
             onClick={() =>
               start(async () => {
                 const s = await syncNowAction();
+
                 if (s.ok) toast(s.errors ? 'Ainda com erro.' : 'Sincronizado.');
+
                 router.refresh();
               })
             }
@@ -244,7 +286,9 @@ export function ReminderItem({ r, showLead = true }: { r: ReminderView; showLead
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault();
+
             const at = String(new FormData(e.currentTarget).get('at'));
+
             run(() => snoozeReminderAction(r.id, { at }), 'Lembrete adiado');
           }}
         >
@@ -284,7 +328,9 @@ export function ReminderItem({ r, showLead = true }: { r: ReminderView; showLead
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault();
+
             const f = new FormData(e.currentTarget);
+
             run(
               () =>
                 updateReminderAction(r.id, {

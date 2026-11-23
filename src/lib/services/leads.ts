@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, inArray, or, sql } from 'drizzle-orm';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
+
+import { type Db, schema } from '@/lib/db';
 import { suppressionKeys } from '@/lib/hash';
 import { spDate } from '@/lib/leads/csv';
 import { normalizeName, normalizePhone, type ParsedPlace } from '@/lib/normalize';
@@ -12,43 +12,51 @@ const { leads, niches, regions, settings, suppressionList, deals, dealStages, de
 const { reminders, interactions } = schema;
 
 export type Lead = typeof leads.$inferSelect;
-/** Campos editáveis (colunas do banco, valores já convertidos). Os derivados são calculados aqui. */
+/**
+ * Campos editáveis (colunas do banco, valores já convertidos). Os derivados são
+ * calculados aqui.
+ */
 export type LeadValues = Partial<
   Omit<
     typeof leads.$inferInsert,
-    | 'phoneE164'
-    | 'nameNormalized'
-    | 'score'
-    | 'scoreBreakdown'
-    | 'scoreComputedAt'
+    | 'createdAt'
     | 'doNotContact'
     | 'doNotContactAt'
     | 'doNotContactReason'
-    | 'createdAt'
+    | 'nameNormalized'
+    | 'phoneE164'
+    | 'score'
+    | 'scoreBreakdown'
+    | 'scoreComputedAt'
     | 'updatedAt'
   >
 >;
 
 export class LeadError extends Error {
-  constructor(
-    public code: 'NOT_FOUND' | 'NAME_MISMATCH' | 'SUPPRESSED' | 'ALREADY_DNC',
+  public constructor(
+    public code: 'ALREADY_DNC' | 'NAME_MISMATCH' | 'NOT_FOUND' | 'SUPPRESSED',
     message: string,
   ) {
     super(message);
   }
 }
 
-const sameValue = (key: string, a: unknown, b: unknown) => {
+const sameValue = (key: string, a: unknown, b: unknown): boolean => {
   if (key === 'lastContactAt') {
     // a planilha e o formulário só têm a data: compara o dia em São Paulo
     return (a instanceof Date ? spDate(a) : null) === (b instanceof Date ? spDate(b) : null);
   }
+
   if (a instanceof Date || b instanceof Date) return +new Date(a as Date) === +new Date(b as Date);
+
   return (a ?? null) === (b ?? null);
 };
 
-/** Chaves do patch cujo valor difere do lead atual (evita regravar o que não mudou). */
-export const changedFields = (current: object, patch: object) =>
+/**
+ * Chaves do patch cujo valor difere do lead atual (evita regravar o que não
+ * mudou).
+ */
+export const changedFields = (current: object, patch: object): string[] =>
   Object.entries(patch)
     .filter(([k, v]) => !sameValue(k, (current as Record<string, unknown>)[k], v))
     .map(([k]) => k);
@@ -58,14 +66,18 @@ export async function getScoreSettings(db: Db): Promise<ScoreSettings> {
     .select()
     .from(settings)
     .where(inArray(settings.key, ['score_weights', 'score_thresholds']));
-  const get = <K extends 'score_weights' | 'score_thresholds'>(key: K) =>
+  const get = <K extends 'score_thresholds' | 'score_weights'>(key: K) =>
     parseSetting(key, rows.find((r) => r.key === key)?.value ?? settingDefaults[key]);
+
   return { weights: get('score_weights'), thresholds: get('score_thresholds') };
 }
 
-/** Campos calculados a partir do lead completo: telefone E.164, nome normalizado e score. */
+/**
+ * Campos calculados a partir do lead completo: telefone E.164, nome normalizado
+ * e score.
+ */
 export function deriveFields(
-  lead: Lead | (LeadValues & { name: string }),
+  lead: ({ name: string } & LeadValues) | Lead,
   niche: ScoreNiche,
   s: ScoreSettings,
 ) {
@@ -83,6 +95,7 @@ export function deriveFields(
     niche,
     s,
   );
+
   return {
     phoneE164: normalizePhone(lead.phone),
     nameNormalized: normalizeName(lead.name),
@@ -95,11 +108,14 @@ export function deriveFields(
 export async function resolveNiche(db: Db, name: string) {
   const all = await db.select().from(niches);
   const n = normalizeName(name);
+
   return all.find((x) => normalizeName(x.name) === n) ?? null;
 }
 
-/** Região pelo label; cria se não existir (SPEC 6.2). */
-export async function resolveRegion(db: Db, p: ParsedPlace, sourceSheetId?: string | null) {
+/**
+ * Região pelo label; cria se não existir (SPEC 6.2).
+ */
+export async function resolveRegion(db: Db, p: ParsedPlace, sourceSheetId?: null | string) {
   await db
     .insert(regions)
     .values({
@@ -110,19 +126,27 @@ export async function resolveRegion(db: Db, p: ParsedPlace, sourceSheetId?: stri
       sourceSheetId: sourceSheetId ?? null,
     })
     .onConflictDoNothing({ target: regions.label });
+
   const [r] = await db.select().from(regions).where(eq(regions.label, p.label));
+
   return r!;
 }
 
-type Keys = {
-  placeId?: string | null;
-  phoneE164?: string | null;
+interface Keys {
   nameNormalized: string;
+  phoneE164?: null | string;
+  placeId?: null | string;
   regionId: number;
-};
+}
 
-/** Duplicatas por place_id, telefone ou nome normalizado + região. */
-export async function findDuplicates(db: Db, k: Keys, excludeId?: string) {
+/**
+ * Duplicatas por place_id, telefone ou nome normalizado + região.
+ */
+export async function findDuplicates(
+  db: Db,
+  k: Keys,
+  excludeId?: string,
+): Promise<Array<{ id: string; name: string; reasons: string[]; regionLabel: string }>> {
   const conds = [
     k.placeId ? eq(leads.placeId, k.placeId) : undefined,
     k.phoneE164 ? eq(leads.phoneE164, k.phoneE164) : undefined,
@@ -141,6 +165,7 @@ export async function findDuplicates(db: Db, k: Keys, excludeId?: string) {
     .from(leads)
     .innerJoin(regions, eq(regions.id, leads.regionId))
     .where(and(or(...conds), excludeId ? sql`${leads.id} <> ${excludeId}` : undefined));
+
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
@@ -156,12 +181,12 @@ export async function findDuplicates(db: Db, k: Keys, excludeId?: string) {
 export async function isSuppressed(
   db: Db,
   l: {
-    placeId?: string | null;
-    phoneE164?: string | null;
     nameNormalized: string;
+    phoneE164?: null | string;
+    placeId?: null | string;
     regionLabel: string;
   },
-) {
+): Promise<boolean> {
   const h = suppressionKeys(l);
   const conds = [
     l.placeId ? eq(suppressionList.placeId, l.placeId) : undefined,
@@ -173,36 +198,47 @@ export async function isSuppressed(
     .from(suppressionList)
     .where(or(...conds))
     .limit(1);
+
   return !!hit;
 }
 
 export type CreateResult =
-  | { ok: true; lead: Lead }
-  | { ok: false; reason: 'duplicate'; duplicates: Awaited<ReturnType<typeof findDuplicates>> }
+  | { duplicates: Awaited<ReturnType<typeof findDuplicates>>; ok: false; reason: 'duplicate' }
+  | { lead: Lead; ok: true }
   | { ok: false; reason: 'suppressed' };
 
-/** Cria o lead (score e normalizações calculados). Sem `force`, recusa duplicata e lead suprimido. */
+/**
+ * Cria o lead (score e normalizações calculados). Sem `force`, recusa duplicata
+ * e lead suprimido.
+ */
 export async function createLead(
   db: Db,
-  input: { values: LeadValues & { name: string }; nicheId: number; regionId: number },
+  input: { nicheId: number; regionId: number; values: { name: string } & LeadValues },
   opts: { force?: boolean } = {},
 ): Promise<CreateResult> {
   const [niche] = await db.select().from(niches).where(eq(niches.id, input.nicheId));
   const [region] = await db.select().from(regions).where(eq(regions.id, input.regionId));
+
   if (!niche || !region) throw new LeadError('NOT_FOUND', 'Nicho ou região inexistente');
+
   const settingsNow = await getScoreSettings(db);
   const derived = deriveFields(input.values, niche, settingsNow);
   const keys = { ...derived, placeId: input.values.placeId, regionId: region.id };
+
   if (await isSuppressed(db, { ...keys, regionLabel: region.label }))
     return { ok: false, reason: 'suppressed' };
+
   if (!opts.force) {
     const duplicates = await findDuplicates(db, keys);
+
     if (duplicates.length) return { ok: false, reason: 'duplicate', duplicates };
   }
+
   const [lead] = await db
     .insert(leads)
     .values({ ...input.values, ...derived, nicheId: niche.id, regionId: region.id })
     .returning();
+
   return { ok: true, lead: lead! };
 }
 
@@ -213,17 +249,23 @@ export async function getLead(db: Db, id: string) {
     .innerJoin(niches, eq(niches.id, leads.nicheId))
     .innerJoin(regions, eq(regions.id, leads.regionId))
     .where(eq(leads.id, id));
+
   return row ?? null;
 }
 
-/** Atualiza campos e recalcula derivados (score só muda se algo que conta mudou, mas é barato recalcular). */
+/**
+ * Atualiza campos e recalcula derivados (score só muda se algo que conta mudou,
+ * mas é barato recalcular).
+ */
 export async function updateLead(
   db: Db,
   id: string,
-  patch: LeadValues & { nicheId?: number; regionId?: number },
+  patch: { nicheId?: number; regionId?: number } & LeadValues,
 ) {
   const cur = await getLead(db, id);
+
   if (!cur) throw new LeadError('NOT_FOUND', 'Lead não encontrado');
+
   const merged = { ...cur.lead, ...patch };
   const niche =
     patch.nicheId && patch.nicheId !== cur.niche.id
@@ -240,20 +282,27 @@ export async function updateLead(
     })
     .where(eq(leads.id, id))
     .returning();
+
   return lead!;
 }
 
-/** SPEC 4.4: tudo numa transação. `optOut` grava também a suppression_list. */
+/**
+ * SPEC 4.4: tudo numa transação. `optOut` grava também a suppression_list.
+ */
 export async function setDoNotContact(
   db: Db,
   id: string,
-  input: { reason: string; optOut: boolean },
-) {
+  input: { optOut: boolean; reason: string },
+): Promise<void> {
   await db.transaction(async (tx) => {
     const cur = await getLead(tx, id);
+
     if (!cur) throw new LeadError('NOT_FOUND', 'Lead não encontrado');
+
     if (cur.lead.doNotContact) throw new LeadError('ALREADY_DNC', 'Lead já está como Não contatar');
+
     const now = new Date();
+
     // 1. lembretes abertos cancelados; os que têm evento no Calendar ficam pendentes de remoção
     await tx
       .update(reminders)
@@ -262,6 +311,7 @@ export async function setDoNotContact(
         syncStatus: sql`case when ${reminders.googleEventId} is not null then 'pending'::sync_status else 'disabled'::sync_status end`,
       })
       .where(and(eq(reminders.leadId, id), eq(reminders.status, 'open')));
+
     // 2. negociações abertas vão para Perdido
     const [lost] = await tx.select().from(dealStages).where(eq(dealStages.key, 'lost'));
     const open = await tx
@@ -302,6 +352,7 @@ export async function setDoNotContact(
       body: input.reason,
       createdBy: 'user',
     });
+
     // 5. suppression_list só para opt-out
     if (input.optOut) {
       await tx.insert(suppressionList).values({
@@ -317,13 +368,19 @@ export async function setDoNotContact(
   });
 }
 
-/** Hard delete (SPEC 4.4). O usuário digita o nome; a cascata do banco leva deals, interações e lembretes. */
-export async function deleteLead(db: Db, id: string, typedName: string) {
+/**
+ * Hard delete (SPEC 4.4). O usuário digita o nome; a cascata do banco leva
+ * deals, interações e lembretes.
+ */
+export async function deleteLead(db: Db, id: string, typedName: string): Promise<void> {
   await db.transaction(async (tx) => {
     const cur = await getLead(tx, id);
+
     if (!cur) throw new LeadError('NOT_FOUND', 'Lead não encontrado');
+
     if (typedName.trim() !== cur.lead.name.trim())
       throw new LeadError('NAME_MISMATCH', 'O nome digitado não confere');
+
     await tx.insert(suppressionList).values({
       placeId: cur.lead.placeId,
       ...suppressionKeys({
@@ -337,26 +394,33 @@ export async function deleteLead(db: Db, id: string, typedName: string) {
   });
 }
 
-/** Recalcula o score de todos os leads, 500 por transação (usado quando os pesos mudam). */
-export async function recomputeAllScores(db: Db, batchSize = 500) {
+/**
+ * Recalcula o score de todos os leads, 500 por transação (usado quando os pesos
+ * mudam).
+ */
+export async function recomputeAllScores(db: Db, batchSize = 500): Promise<number> {
   const s = await getScoreSettings(db);
-  let after: string | null = null;
+  let after: null | string = null;
   let changed = 0;
   for (;;) {
-    const batch: { lead: Lead; niche: typeof niches.$inferSelect | null }[] = await db
+    const batch: Array<{ lead: Lead; niche: null | typeof niches.$inferSelect }> = await db
       .select({ lead: leads, niche: niches })
       .from(leads)
       .leftJoin(niches, eq(niches.id, leads.nicheId))
       .where(after ? gt(leads.id, after) : undefined)
       .orderBy(asc(leads.id))
       .limit(batchSize);
+
     if (!batch.length) return changed;
+
     await db.transaction(async (tx) => {
       for (const { lead, niche } of batch) {
         const { score, breakdown } = computeScore(lead, niche, s);
         const stored = (lead.scoreBreakdown ?? {}) as Record<string, number>; // jsonb reordena as chaves
+
         if (score === lead.score && Object.entries(breakdown).every(([k, v]) => stored[k] === v))
           continue;
+
         await tx
           .update(leads)
           .set({ score, scoreBreakdown: breakdown, scoreComputedAt: new Date() })

@@ -1,15 +1,17 @@
 import { SearchX } from 'lucide-react';
 import Link from 'next/link';
-import { ScoreBadge, StatusBadge } from '@/components/ui/badge';
-import { EmptyState } from '@/components/ui/empty-state';
-import type { DealDetail } from '@/lib/services/deals';
+
 import { LeadReminders } from '@/components/reminders/lead-reminders';
 import { toReminderView } from '@/components/reminders/view';
+import { ScoreBadge, StatusBadge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { type DealDetail } from '@/lib/services/deals';
+
 import { DealForm } from './deal-form';
 import { InteractionForm } from './interaction-form';
 import { DealTimeline } from './timeline';
 
-export const DealNotFound = () => (
+export const DealNotFound = (): React.JSX.Element => (
   <EmptyState icon={SearchX} title="Negociação não encontrada">
     Ela pode ter sido excluída junto com o lead.
   </EmptyState>
@@ -17,9 +19,13 @@ export const DealNotFound = () => (
 
 const statusLabel = { open: 'Aberta', won: 'Ganha', lost: 'Perdida' } as const;
 
-/** Conteúdo do drawer da negociação: dados, nova interação e linha do tempo unificada. */
-export function DealDetailView({ d }: { d: DealDetail }) {
+/**
+ * Conteúdo do drawer da negociação: dados, nova interação e linha do tempo
+ * unificada.
+ */
+export function DealDetailView({ d }: { d: DealDetail }): React.JSX.Element {
   const { deal, stage, lead, niche } = d;
+
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-2">

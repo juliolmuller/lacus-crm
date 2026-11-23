@@ -1,4 +1,5 @@
 import Link from 'next/link';
+
 import { CONTACT_EMAIL, publicMetadata } from '../site';
 
 export const metadata = publicMetadata(
@@ -7,7 +8,7 @@ export const metadata = publicMetadata(
   'Lacus CRM: CRM pessoal de prospecção que cria lembretes de follow-up numa agenda própria do Google Agenda.',
 );
 
-export default function SobrePage() {
+export default function SobrePage(): React.JSX.Element {
   return (
     <>
       <h1>Lacus CRM</h1>

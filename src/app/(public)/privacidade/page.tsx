@@ -1,4 +1,4 @@
-import { CONTACT_EMAIL, RESPONSIBLE, UPDATED_AT, publicMetadata } from '../site';
+import { CONTACT_EMAIL, publicMetadata, RESPONSIBLE, UPDATED_AT } from '../site';
 
 export const metadata = publicMetadata(
   '/privacidade',
@@ -8,7 +8,7 @@ export const metadata = publicMetadata(
 
 const mail = <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>;
 
-export default function PrivacidadePage() {
+export default function PrivacidadePage(): React.JSX.Element {
   return (
     <>
       <h1>Política de Privacidade</h1>

@@ -1,5 +1,7 @@
-import type { Metadata } from 'next';
+import { eq } from 'drizzle-orm';
+import { type Metadata } from 'next';
 import { Suspense } from 'react';
+
 import { LeadDetail, LeadNotFound } from '@/components/leads/lead-detail';
 import { LeadsView } from '@/components/leads/leads-view';
 import { UrlDrawer } from '@/components/ui/url-drawer';
@@ -9,15 +11,15 @@ import { getCatalog } from '@/lib/services/catalog';
 import { getLeadDetail } from '@/lib/services/lead-detail';
 import { countLeads, listLeads } from '@/lib/services/lead-list';
 import { getScoreSettings } from '@/lib/services/leads';
-import { eq } from 'drizzle-orm';
 
 export const metadata: Metadata = { title: 'Leads' };
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
-async function Drawer({ id }: { id: string }) {
+async function Drawer({ id }: { id: string }): Promise<React.JSX.Element> {
   const db = getDb();
   const [d, cat] = await Promise.all([getLeadDetail(db, id), getCatalog(db)]);
+
   return (
     <UrlDrawer param="lead" title={d?.lead.name ?? 'Lead'}>
       {d ? (
@@ -33,7 +35,11 @@ async function Drawer({ id }: { id: string }) {
   );
 }
 
-export default async function Page({ searchParams }: { searchParams: SP }) {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: SP;
+}): Promise<React.JSX.Element> {
   const params = await searchParams;
   const filters = parseFilters(params);
   const db = getDb();
@@ -49,6 +55,7 @@ export default async function Page({ searchParams }: { searchParams: SP }) {
     getScoreSettings(db),
   ]);
   const leadId = typeof params.lead === 'string' ? params.lead : null;
+
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-page">Leads</h1>

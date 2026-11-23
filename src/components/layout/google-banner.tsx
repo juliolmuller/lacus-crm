@@ -1,13 +1,19 @@
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+
 import { getDb } from '@/lib/db';
 import { syncOverview } from '@/lib/services/calendar-sync';
 
-/** Aviso no shell: Google precisa reconectar (invalid_grant) ou há lembretes que não sincronizaram. */
-export async function GoogleBanner() {
+/**
+ * Aviso no shell: Google precisa reconectar (invalid_grant) ou há lembretes que
+ * não sincronizaram.
+ */
+export async function GoogleBanner(): Promise<null | React.JSX.Element> {
   const o = await syncOverview(getDb());
   const reauth = o.status === 'needs_reauth';
+
   if (!reauth && !(o.status === 'active' && o.errors > 0)) return null;
+
   return (
     <div
       role="status"

@@ -1,17 +1,17 @@
 'use client';
 
 import {
+  closestCenter,
   DndContext,
+  type DragEndEvent,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from '@dnd-kit/core';
 import {
-  SortableContext,
   arrayMove,
+  SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import {
   markPendingAction,
   moveToTopAction,
@@ -35,18 +36,18 @@ import { bareControl } from '@/components/ui/field';
 import { formatWhen } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-export type QueueRow = {
+export interface QueueRow {
+  executedAt: null | string;
+  leadsAdded: number;
+  lease: 'active' | 'expired' | null;
+  leaseUntil: null | string;
+  niche: string;
+  notes: null | string;
   position: number;
   region: string;
-  niche: string;
-  status: 'pending' | 'done' | 'error';
   skipped: boolean;
-  executedAt: string | null;
-  leadsAdded: number;
-  notes: string | null;
-  lease: 'active' | 'expired' | null;
-  leaseUntil: string | null;
-};
+  status: 'done' | 'error' | 'pending';
+}
 
 const statusFilters = [
   ['', 'Todos'],
@@ -56,7 +57,7 @@ const statusFilters = [
   ['skipped', 'Pulado'],
 ] as const;
 
-const label = (r: QueueRow) =>
+const label = (r: QueueRow): React.JSX.Element =>
   r.skipped ? (
     <Badge>Pulado</Badge>
   ) : r.status === 'done' ? (
@@ -67,18 +68,19 @@ const label = (r: QueueRow) =>
     <Badge tone="primary">Pendente</Badge>
   );
 
-type Actions = {
+interface Actions {
   busy: boolean;
-  run: (fn: () => Promise<{ ok: boolean; error?: string }>, ok: string) => void;
-};
+  run: (fn: () => Promise<{ error?: string; ok: boolean }>, ok: string) => void;
+}
 
-function Row({ r, a, canDrag }: { r: QueueRow; a: Actions; canDrag: boolean }) {
+function Row({ r, a, canDrag }: { a: Actions; canDrag: boolean; r: QueueRow }): React.JSX.Element {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: r.position,
     disabled: !canDrag,
     attributes: { roleDescription: 'item da fila reordenável' },
   });
   const cell = 'px-2 py-2 align-top';
+
   return (
     <tr
       ref={setNodeRef}
@@ -167,17 +169,22 @@ function Row({ r, a, canDrag }: { r: QueueRow; a: Actions; canDrag: boolean }) {
   );
 }
 
-/** Fila de prospecção (SPEC 6.5): ordem editável por arrastar (ou Espaço + setas) e ações por item. */
-export function QueueTable({ rows }: { rows: QueueRow[] }) {
+/**
+ * Fila de prospecção (SPEC 6.5): ordem editável por arrastar (ou Espaço +
+ * setas) e ações por item.
+ */
+export function QueueTable({ rows }: { rows: QueueRow[] }): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [items, setItems] = useState(rows);
   // novo `rows` do servidor (depois de router.refresh) substitui a ordem local
   const [seen, setSeen] = useState(rows);
+
   if (seen !== rows) {
     setSeen(rows);
     setItems(rows);
   }
+
   const [status, setStatus] = useState('');
   const [city, setCity] = useState('');
   const [niche, setNiche] = useState('');
@@ -194,24 +201,32 @@ export function QueueTable({ rows }: { rows: QueueRow[] }) {
   const filtered = !!(status || city || niche);
   const shown = items.filter(
     (r) =>
-      (!status || (status === 'skipped' ? r.skipped : !r.skipped && r.status === status)) &&
-      (!city || r.region.split(' - ')[1] === city) &&
-      (!niche || r.niche === niche),
+      (!status || (status === 'skipped' ? r.skipped : !r.skipped && r.status === status))
+      && (!city || r.region.split(' - ')[1] === city)
+      && (!niche || r.niche === niche),
   );
 
   const run: Actions['run'] = (fn, ok) =>
     start(async () => {
       const r = await fn();
-      if (!r.ok) return void toast.error(r.error ?? 'Erro');
+
+      if (!r.ok) {
+        toast.error(r.error ?? 'Erro');
+
+        return;
+      }
+
       toast.success(ok);
       router.refresh();
     });
 
-  function onDragEnd(e: DragEndEvent) {
+  function onDragEnd(e: DragEndEvent): void {
     if (!e.over || e.active.id === e.over.id) return;
+
     const from = items.findIndex((r) => r.position === e.active.id);
     const to = items.findIndex((r) => r.position === e.over!.id);
     const next = arrayMove(items, from, to);
+
     setItems(next);
     run(() => reorderQueueAction(next.map((r) => r.position)), 'Ordem salva');
   }

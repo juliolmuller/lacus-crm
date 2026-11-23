@@ -1,11 +1,16 @@
 import Link from 'next/link';
+
 import { ScoreBadge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import type { BestNext } from '@/lib/services/dashboard';
+import { type BestNext } from '@/lib/services/dashboard';
+
 import { Empty, Panel } from './panel';
 
-/** Top 5 para abordar. "Abordar" abre o lead (WhatsApp com modelo e "Registrar como abordado"). */
-export function BestNextCard({ leads }: { leads: BestNext }) {
+/**
+ * Top 5 para abordar. "Abordar" abre o lead (WhatsApp com modelo e "Registrar
+ * como abordado").
+ */
+export function BestNextCard({ leads }: { leads: BestNext }): React.JSX.Element {
   return (
     <Panel title="Melhores próximos">
       {leads.length ? (
@@ -17,7 +22,7 @@ export function BestNextCard({ leads }: { leads: BestNext }) {
                 <p className="truncate text-body font-medium">{l.name}</p>
                 <p className="truncate text-label text-text-muted">
                   {l.niche} · {l.region}
-                  {l.priority != null ? ` · prioridade ${l.priority}` : ''}
+                  {l.priority !== null ? ` · prioridade ${l.priority}` : ''}
                 </p>
               </div>
               <Link

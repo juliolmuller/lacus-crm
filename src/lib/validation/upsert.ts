@@ -2,13 +2,16 @@ import { z } from 'zod';
 
 const text = z.string().trim().min(1).max(2000);
 
-/** Lead que a rotina de prospecção envia (SPEC 9.1/9.2). Só campos de máquina; os humanos nunca são tocados. */
+/**
+ * Lead que a rotina de prospecção envia (SPEC 9.1/9.2). Só campos de máquina;
+ * os humanos nunca são tocados.
+ */
 export const leadInput = z.object({
   id: z.uuid().optional(),
   name: text.max(200),
   nicheName: text.max(100),
   regionLabel: text.max(200).describe('"PR - Curitiba - Xaxim" ou "Xaxim, Curitiba/PR"'),
-  // placeId e mapsUrl não têm ferramenta de correção: recusa valores provisórios (já houve "PLACEHOLDER")
+  // placeId e mapsUrl não têm ferramenta de correção: recusa na entrada valores provisórios (já houve "PLACEHOLDER")
   placeId: text
     .max(300)
     .refine((v) => !/placeholder|provis|^(?:tbd|todo|n\/?a|null|undefined|x+)$/i.test(v), {

@@ -60,6 +60,11 @@ export const settingDefaults: { [K in SettingKey]: z.infer<(typeof settingSchema
   owner_profile: {},
 };
 
-/** Valida o valor de uma chave de `settings`; lança ZodError se inválido. */
-export const parseSetting = <K extends SettingKey>(key: K, value: unknown) =>
+/**
+ * Valida o valor de uma chave de `settings`; lança ZodError se inválido.
+ */
+export const parseSetting = <K extends SettingKey>(
+  key: K,
+  value: unknown,
+): z.infer<(typeof settingSchemas)[K]> =>
   settingSchemas[key].parse(value) as z.infer<(typeof settingSchemas)[K]>;

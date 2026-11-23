@@ -1,5 +1,6 @@
-import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
+import { type Metadata } from 'next';
+import { type ReactNode } from 'react';
+
 import { Copyright } from '@/components/brand/copyright';
 import { Logo } from '@/components/brand/logo';
 import { DashboardDemo } from '@/components/design-system/dashboard-demo';
@@ -8,10 +9,10 @@ import { LeadsDemo } from '@/components/design-system/leads-demo';
 import { ToastDemo } from '@/components/design-system/toast-demo';
 import {
   Badge,
+  contactStatusMeta,
   ScoreBadge,
   StatusBadge,
   SyncBadge,
-  contactStatusMeta,
 } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
@@ -57,7 +58,7 @@ const groups = {
     'stage-won',
     'stage-lost',
   ],
-  Gráficos: ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5', 'chart-6'],
+  'Gráficos': ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5', 'chart-6'],
 };
 const scale = [
   ['Rótulo 12/16 · 500', 'text-label'],
@@ -97,7 +98,15 @@ const icons = [
   'icon.svg',
 ];
 
-const Section = ({ id, title, children }: { id: string; title: string; children: ReactNode }) => (
+const Section = ({
+  id,
+  title,
+  children,
+}: {
+  children: ReactNode;
+  id: string;
+  title: string;
+}): React.JSX.Element => (
   <section aria-labelledby={id} className="flex flex-col gap-4">
     <h2 id={id} className="text-section">
       {title}
@@ -106,8 +115,11 @@ const Section = ({ id, title, children }: { id: string; title: string; children:
   </section>
 );
 
-/** Mostra o conteúdo nos dois temas lado a lado (data-theme local, sem depender do tema ativo). */
-const BothThemes = ({ children }: { children: ReactNode }) => (
+/**
+ * Mostra o conteúdo nos dois temas lado a lado (data-theme local, sem depender
+ * do tema ativo).
+ */
+const BothThemes = ({ children }: { children: ReactNode }): React.JSX.Element => (
   <div className="grid gap-4 md:grid-cols-2">
     {THEMES.map((t) => (
       <div
@@ -122,7 +134,7 @@ const BothThemes = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
-const Swatches = ({ tokens }: { tokens: string[] }) => (
+const Swatches = ({ tokens }: { tokens: string[] }): React.JSX.Element => (
   <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
     {tokens.map((t) => (
       <li key={t} className="flex items-center gap-2">
@@ -136,7 +148,7 @@ const Swatches = ({ tokens }: { tokens: string[] }) => (
   </ul>
 );
 
-export default function DesignSystemPage() {
+export default function DesignSystemPage(): React.JSX.Element {
   return (
     <div className="flex max-w-5xl flex-col gap-10">
       <header className="flex flex-col gap-1">
@@ -290,7 +302,7 @@ export default function DesignSystemPage() {
         <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-1 p-4">
           <div className="flex flex-wrap gap-2">
             <Badge>Neutro</Badge>
-            {(Object.keys(contactStatusMeta) as (keyof typeof contactStatusMeta)[]).map((s) => (
+            {(Object.keys(contactStatusMeta) as Array<keyof typeof contactStatusMeta>).map((s) => (
               <StatusBadge key={s} status={s} />
             ))}
           </div>

@@ -1,6 +1,7 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Loader2 } from 'lucide-react';
-import type { ButtonHTMLAttributes } from 'react';
+import { type ButtonHTMLAttributes } from 'react';
+
 import { cn } from '@/lib/utils';
 
 export const buttonVariants = cva(
@@ -20,12 +21,24 @@ export const buttonVariants = cva(
   },
 );
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants> & { loading?: boolean };
+type Props = { loading?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>
+  & VariantProps<typeof buttonVariants>;
 
-/** `loading` mantém o texto, mostra o spinner e marca aria-busy (o clique fica bloqueado). */
-export function Button({ className, variant, size, loading, disabled, children, ...props }: Props) {
+/**
+ * `loading` mantém o texto, mostra o spinner e marca aria-busy (o clique fica
+ * bloqueado).
+ */
+export function Button({
+  className,
+  variant,
+  size,
+  loading,
+  disabled,
+  children,
+  ...props
+}: Props): React.JSX.Element {
   return (
+    // eslint-disable-next-line @eslint-react/dom-no-missing-button-type -- callers pass `type`; forms rely on the native submit default
     <button
       className={cn(buttonVariants({ variant, size }), variant === 'link' && 'px-0', className)}
       disabled={disabled}

@@ -3,43 +3,55 @@
 import { useRouter } from 'next/navigation';
 import { useId, useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import { createLeadAction } from '@/app/(app)/leads/actions';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field, SelectField } from '@/components/ui/field';
 import { siteLabel, websiteStatuses } from '@/lib/leads/labels';
 
-type Dup = { id: string; name: string; regionLabel: string; reasons: string[] };
+interface Dup {
+  id: string;
+  name: string;
+  reasons: string[];
+  regionLabel: string;
+}
 
-/** SPEC 6.2: validação no servidor, checagem de duplicata antes de salvar e "Abrir existente". */
+/**
+ * SPEC 6.2: validação no servidor, checagem de duplicata antes de salvar e
+ * "Abrir existente".
+ */
 export function CreateLeadDialog({
   open,
   onClose,
   niches,
   regions,
 }: {
-  open: boolean;
+  niches: Array<{ id: number; name: string }>;
   onClose: () => void;
-  niches: { id: number; name: string }[];
+  open: boolean;
   regions: string[];
-}) {
+}): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
   const [dups, setDups] = useState<Dup[]>();
   const [data, setData] = useState<FormData>();
-  const list = useId();
+  const listId = useId();
 
-  const submit = (fd: FormData, force: boolean) =>
+  const submit = (fd: FormData, force: boolean): void =>
     start(async () => {
       const r = await createLeadAction(fd, force);
+
       if (r.ok) {
         toast.success('Lead criado');
         onClose();
         setDups(undefined);
         router.push(`/leads?lead=${r.id}`);
+
         return;
       }
+
       setError(r.error);
       setDups(r.duplicates);
     });
@@ -55,7 +67,9 @@ export function CreateLeadDialog({
         className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
+
           const fd = new FormData(e.currentTarget);
+
           setData(fd);
           setError(undefined);
           setDups(undefined);
@@ -76,10 +90,10 @@ export function CreateLeadDialog({
           label="Cidade / bairro"
           required
           placeholder="Xaxim, Curitiba/PR"
-          list={list}
+          list={listId}
           help="Formato: Bairro, Cidade/UF. A região é criada se ainda não existir."
         />
-        <datalist id={list}>
+        <datalist id={listId}>
           {regions.map((r) => (
             <option key={r} value={r} />
           ))}

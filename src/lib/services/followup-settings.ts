@@ -1,26 +1,34 @@
 import { asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
+
+import { type Db, schema } from '@/lib/db';
 import { interactionTypes, outcomeLabel } from '@/lib/leads/labels';
 import { cadence, cancelOn } from '@/lib/validation/followups';
 import {
   parseSetting,
   settingDefaults,
-  settingSchemas,
   type SettingKey,
+  settingSchemas,
 } from '@/lib/validation/settings';
 
 const { settings, followupRules, messageTemplates } = schema;
 
 export async function getSetting<K extends SettingKey>(db: Db, key: K) {
   const [row] = await db.select().from(settings).where(eq(settings.key, key));
+
   return parseSetting(key, row?.value ?? settingDefaults[key]);
 }
 
-/** Valida com o Zod da chave e grava (upsert). */
-export async function saveSetting<K extends SettingKey>(db: Db, key: K, value: unknown) {
+/**
+ * Valida com o Zod da chave e grava (upsert).
+ */
+export async function saveSetting<K extends SettingKey>(
+  db: Db,
+  key: K,
+  value: unknown,
+): Promise<void> {
   const parsed = settingSchemas[key].parse(value);
+
   await db
     .insert(settings)
     .values({ key, value: parsed })
@@ -43,7 +51,7 @@ export type RuleInput = z.infer<typeof ruleInput>;
 export const listRules = (db: Db) =>
   db.select().from(followupRules).orderBy(asc(followupRules.sort), asc(followupRules.id));
 
-export async function saveRule(db: Db, id: number | null, input: RuleInput) {
+export async function saveRule(db: Db, id: null | number, input: RuleInput): Promise<void> {
   // gatilhos de etapa não usam filtros de interação, e vice-versa
   const v =
     input.trigger === 'interaction_logged'
@@ -54,14 +62,16 @@ export async function saveRule(db: Db, id: number | null, input: RuleInput) {
     interactionOutcome:
       v.interactionOutcome as (typeof followupRules.$inferInsert)['interactionOutcome'],
   };
+
   if (id) await db.update(followupRules).set(values).where(eq(followupRules.id, id));
   else {
     const rows = await listRules(db);
+
     await db.insert(followupRules).values({ ...values, sort: (rows.at(-1)?.sort ?? 0) + 1 });
   }
 }
 
-export const deleteRule = async (db: Db, id: number) => {
+export const deleteRule = async (db: Db, id: number): Promise<void> => {
   await db.delete(followupRules).where(eq(followupRules.id, id)); // lembretes ficam (rule_id vira null)
 };
 
@@ -80,7 +90,7 @@ export type TemplateInput = z.infer<typeof templateInput>;
 export const listTemplates = (db: Db) =>
   db.select().from(messageTemplates).orderBy(asc(messageTemplates.id));
 
-export async function saveTemplate(db: Db, id: number | null, input: TemplateInput) {
+export async function saveTemplate(db: Db, id: null | number, input: TemplateInput): Promise<void> {
   if (id) {
     // a chave identifica o modelo nas regras: não muda
     const set = {
@@ -89,10 +99,11 @@ export async function saveTemplate(db: Db, id: number | null, input: TemplateInp
       body: input.body,
       active: input.active,
     };
+
     await db.update(messageTemplates).set(set).where(eq(messageTemplates.id, id));
   } else await db.insert(messageTemplates).values(input);
 }
 
-export const deleteTemplate = async (db: Db, id: number) => {
+export const deleteTemplate = async (db: Db, id: number): Promise<void> => {
   await db.delete(messageTemplates).where(eq(messageTemplates.id, id));
 };

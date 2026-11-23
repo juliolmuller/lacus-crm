@@ -1,4 +1,5 @@
 import { ArrowRightLeft, Bot, MessageSquare } from 'lucide-react';
+
 import { HBarChart, Sparkline } from '@/components/dashboard/charts';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { Timeline } from '@/components/dashboard/timeline';
@@ -17,10 +18,13 @@ const usage = [4, 12, 30, 28, 0, 0, 22, 30, 18, 9, 30, 25, 31, 15].map((requests
   name: `${String(i + 6).padStart(2, '0')}/11`,
   requests,
 }));
-const at = (h: number) => new Date(Date.UTC(2026, 10, 19, h));
+const at = (h: number): Date => new Date(Date.UTC(2026, 10, 19, h));
 
-/** KPI card, gráfico, linha do tempo e navegação inferior com dados fictícios (SPEC 7.3). */
-export function DashboardDemo() {
+/**
+ * KPI card, gráfico, linha do tempo e navegação inferior com dados fictícios
+ * (SPEC 7.3).
+ */
+export function DashboardDemo(): React.JSX.Element {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="flex flex-col gap-3">

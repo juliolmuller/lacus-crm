@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { currentYear } from '@/lib/format';
 
 describe('currentYear', () => {

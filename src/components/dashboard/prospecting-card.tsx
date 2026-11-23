@@ -1,15 +1,21 @@
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
-import type { Prospecting } from '@/lib/services/dashboard';
+
+import { type Prospecting } from '@/lib/services/dashboard';
 import { cn } from '@/lib/utils';
+
 import { Sparkline } from './charts';
 import { Panel } from './panel';
 
-const dm = (ymd: string) => `${ymd.slice(8)}/${ymd.slice(5, 7)}`;
+const dm = (ymd: string): string => `${ymd.slice(8)}/${ymd.slice(5, 7)}`;
 
-/** Uso da API hoje × orçamento (estourou: vermelho, ícone e texto), 14 dias e a fila. */
-export function ProspectingCard({ p }: { p: Prospecting }) {
+/**
+ * Uso da API hoje × orçamento (estourou: vermelho, ícone e texto), 14 dias e a
+ * fila.
+ */
+export function ProspectingCard({ p }: { p: Prospecting }): React.JSX.Element {
   const pct = Math.min(100, (p.requestsToday / p.budget) * 100);
+
   return (
     <Panel
       title="Prospecção"

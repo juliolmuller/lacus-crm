@@ -2,22 +2,29 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+
 import { cn } from '@/lib/utils';
+
 import { isActive, mobileNav } from './nav';
 
-/** "Mais" também ativa nas rotas que vivem dentro dele. */
+/**
+ * "Mais" também ativa nas rotas que vivem dentro dele.
+ */
 const moreRoutes = ['/fila', '/configuracoes', '/design-system'];
 
-/** Barra com os 5 itens, alvos ≥ 44px. Sem posição própria: quem usa decide (fixa no shell, em quadro no /design-system). */
+/**
+ * Barra com os 5 itens, alvos ≥ 44px. Sem posição própria: quem usa decide
+ * (fixa no shell, em quadro no /design-system).
+ */
 export function BottomNavBar({
   pathname,
   label = 'Principal',
   className,
 }: {
-  pathname: string;
-  label?: string;
   className?: string;
-}) {
+  label?: string;
+  pathname: string;
+}): React.JSX.Element {
   return (
     <nav
       aria-label={label}
@@ -26,8 +33,9 @@ export function BottomNavBar({
       <ul className="grid grid-cols-5">
         {mobileNav.map(({ href, label, Icon }) => {
           const active =
-            isActive(href, pathname) ||
-            (href === '/mais' && moreRoutes.some((r) => isActive(r, pathname)));
+            isActive(href, pathname)
+            || (href === '/mais' && moreRoutes.some((r) => isActive(r, pathname)));
+
           return (
             <li key={href}>
               <Link
@@ -49,8 +57,10 @@ export function BottomNavBar({
   );
 }
 
-/** Navegação inferior (< 1024px), fixa, respeitando safe-area-inset. */
-export function BottomNav() {
+/**
+ * Navegação inferior (< 1024px), fixa, respeitando safe-area-inset.
+ */
+export function BottomNav(): React.JSX.Element {
   return (
     <BottomNavBar pathname={usePathname()} className="fixed inset-x-0 bottom-0 z-20 lg:hidden" />
   );

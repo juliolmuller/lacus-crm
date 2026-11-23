@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import { logInteractionAction } from '@/app/(app)/funil/actions';
 import { Button } from '@/components/ui/button';
 import { Field, SelectField, TextareaField } from '@/components/ui/field';
@@ -13,9 +14,13 @@ import {
   outcomeLabel,
 } from '@/lib/leads/labels';
 
-/** Campos de uma interação (formulário rápido e "concluir lembrete"). Leia com `readInteraction`. */
-export function InteractionFields() {
+/**
+ * Campos de uma interação (formulário rápido e "concluir lembrete"). Leia com
+ * `readInteraction`.
+ */
+export function InteractionFields(): React.JSX.Element {
   const [outcome, setOutcome] = useState('');
+
   return (
     <>
       <SelectField label="Tipo" name="type" defaultValue="whatsapp">
@@ -73,8 +78,19 @@ export function InteractionFields() {
   );
 }
 
-export function readInteraction(f: FormData) {
+export interface InteractionFields {
+  body: null | string;
+  direction: FormDataEntryValue | null;
+  meetingOn: string | undefined;
+  outcome: FormDataEntryValue | null;
+  resumeInDays: number | undefined;
+  summary: FormDataEntryValue | null;
+  type: FormDataEntryValue | null;
+}
+
+export function readInteraction(f: FormData): InteractionFields {
   const resume = String(f.get('resumeInDays') ?? '');
+
   return {
     type: f.get('type'),
     direction: f.get('direction'),
@@ -86,8 +102,17 @@ export function readInteraction(f: FormData) {
   };
 }
 
-/** Criação rápida de interação (SPEC 6.3). Os efeitos no status e na etapa são do serviço (PLAN D3). */
-export function InteractionForm({ leadId, disabled }: { leadId: string; disabled?: boolean }) {
+/**
+ * Criação rápida de interação (SPEC 6.3). Os efeitos no status e na etapa são
+ * do serviço (PLAN D3).
+ */
+export function InteractionForm({
+  leadId,
+  disabled,
+}: {
+  disabled?: boolean;
+  leadId: string;
+}): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [key, setKey] = useState(0); // zera o formulário depois de salvar
@@ -98,10 +123,18 @@ export function InteractionForm({ leadId, disabled }: { leadId: string; disabled
       className="grid gap-3 rounded-md border border-border bg-surface-1 p-3 sm:grid-cols-2"
       onSubmit={(e) => {
         e.preventDefault();
+
         const f = new FormData(e.currentTarget);
+
         start(async () => {
           const r = await logInteractionAction({ leadId, ...readInteraction(f) });
-          if (!r.ok) return void toast.error(r.error);
+
+          if (!r.ok) {
+            toast.error(r.error);
+
+            return;
+          }
+
           toast.success(
             r.reminders
               ? `Interação registrada. ${r.reminders} ${r.reminders === 1 ? 'lembrete criado' : 'lembretes criados'}.`

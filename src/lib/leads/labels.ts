@@ -1,4 +1,6 @@
-/** Rótulos pt-BR dos enums de lead (SPEC 4.2 e planilha). */
+/**
+ * Rótulos pt-BR dos enums de lead (SPEC 4.2 e planilha).
+ */
 export const statusLabel = {
   new: 'Novo',
   to_contact: 'A abordar',

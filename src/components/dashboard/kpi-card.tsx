@@ -1,18 +1,22 @@
-import type { ReactNode } from 'react';
+import { type ReactNode } from 'react';
+
 import { cn } from '@/lib/utils';
 
-/** Card de KPI: rótulo, número grande com tabular-nums e uma linha de contexto (nunca só cor). */
+/**
+ * Card de KPI: rótulo, número grande com tabular-nums e uma linha de contexto
+ * (nunca só cor).
+ */
 export function KpiCard({
   label,
   value,
   hint,
   tone = 'neutral',
 }: {
-  label: string;
-  value: ReactNode;
   hint?: ReactNode;
-  tone?: 'neutral' | 'danger';
-}) {
+  label: string;
+  tone?: 'danger' | 'neutral';
+  value: ReactNode;
+}): React.JSX.Element {
   return (
     <div
       className={cn(
@@ -22,7 +26,7 @@ export function KpiCard({
     >
       <p className="text-label text-text-muted">{label}</p>
       <p className="tabular text-kpi break-words">{value}</p>
-      {hint && <p className="text-label text-text-muted">{hint}</p>}
+      {hint ? <p className="text-label text-text-muted">{hint}</p> : null}
     </div>
   );
 }

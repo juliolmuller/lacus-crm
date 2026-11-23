@@ -1,11 +1,17 @@
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
-import type { Alert } from '@/lib/services/dashboard';
 
-/** Alertas de fila e orçamento. Google e sincronização já aparecem no banner do shell. */
-export function DashboardAlerts({ alerts }: { alerts: Alert[] }) {
+import { type Alert } from '@/lib/services/dashboard';
+
+/**
+ * Alertas de fila e orçamento. Google e sincronização já aparecem no banner do
+ * shell.
+ */
+export function DashboardAlerts({ alerts }: { alerts: Alert[] }): null | React.JSX.Element {
   const own = alerts.filter((a) => a.kind === 'queue_errors' || a.kind === 'over_budget');
+
   if (!own.length) return null;
+
   return (
     <ul className="flex flex-col gap-2" aria-label="Alertas">
       {own.map((a) => (

@@ -3,7 +3,8 @@ import { config } from 'dotenv';
 import { eq } from 'drizzle-orm';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { SettingKey } from '@/lib/validation/settings';
+
+import { type SettingKey } from '@/lib/validation/settings';
 
 config({ path: '.env.local', quiet: true });
 
@@ -110,7 +111,7 @@ const step = (
   title: string,
   templateKey?: string,
   suggestStatus?: 'no_response',
-) => ({
+): Record<string, number | string> => ({
   offsetBusinessDays,
   time,
   title,
@@ -167,6 +168,7 @@ const existing = new Set(
   (await db.select({ name: s.followupRules.name }).from(s.followupRules)).map((r) => r.name),
 );
 const fresh = rules.filter((r) => !existing.has(r.name));
+
 if (fresh.length) {
   await db.insert(s.followupRules).values(
     fresh.map((r, i) => ({
@@ -181,14 +183,16 @@ if (fresh.length) {
 // --- Nichos: só do CSV exportado da aba "Nichos" (.data/ fica fora do git) ---
 const csvPath = join(import.meta.dirname, '..', '.data', 'nichos.csv');
 let nichesNote = 'PENDENTE: .data/nichos.csv não encontrado, nichos não importados';
+
 if (process.env.SEED_SKIP_NICHES) nichesNote = 'nichos ignorados (SEED_SKIP_NICHES)';
 else if (existsSync(csvPath)) {
   const rows = parseNichesCsv(readFileSync(csvPath, 'utf8'));
+
   await db.insert(s.niches).values(rows).onConflictDoNothing({ target: s.niches.name });
   nichesNote = `${rows.length} nichos lidos de .data/nichos.csv`;
 }
 
-console.log(
+console.info(
   `Seed ok: ${stages.length} etapas, settings, ${templates.length} modelos, ${fresh.length} regras novas; ${nichesNote}`,
 );
 process.exit(0);

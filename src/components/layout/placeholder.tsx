@@ -1,7 +1,9 @@
 import { Construction } from 'lucide-react';
 
-/** Página provisória das rotas que as próximas fases preenchem. */
-export function Placeholder({ title, phase }: { title: string; phase: number }) {
+/**
+ * Página provisória das rotas que as próximas fases preenchem.
+ */
+export function Placeholder({ title, phase }: { phase: number; title: string }): React.JSX.Element {
   return (
     <section className="flex max-w-xl flex-col items-start gap-3">
       <h1 className="text-page">{title}</h1>

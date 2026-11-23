@@ -1,6 +1,7 @@
 import { AlertTriangle, Check, Clock } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { contactStatuses, statusLabel, type ContactStatus } from '@/lib/leads/labels';
+import { type ReactNode } from 'react';
+
+import { type ContactStatus, contactStatuses, statusLabel } from '@/lib/leads/labels';
 import { cn } from '@/lib/utils';
 
 const tones = {
@@ -15,9 +16,9 @@ export function Badge({
   tone = 'neutral',
   children,
 }: {
-  tone?: keyof typeof tones;
   children: ReactNode;
-}) {
+  tone?: keyof typeof tones;
+}): React.JSX.Element {
   return (
     <span
       className={cn(
@@ -46,13 +47,21 @@ export const contactStatusMeta = Object.fromEntries(
   contactStatuses.map((s) => [s, { label: statusLabel[s], tone: statusTone[s] }]),
 ) as Record<ContactStatus, { label: string; tone: keyof typeof tones }>;
 
-export function StatusBadge({ status }: { status: keyof typeof contactStatusMeta }) {
+export function StatusBadge({
+  status,
+}: {
+  status: keyof typeof contactStatusMeta;
+}): React.JSX.Element {
   const { label, tone } = contactStatusMeta[status];
+
   return <Badge tone={tone}>{label}</Badge>;
 }
 
-/** Faixas: >= 70 alto, 40-69 médio, < 40 baixo. O número vai com rótulo acessível, nunca só cor. */
-export function ScoreBadge({ score }: { score: number }) {
+/**
+ * Faixas: >= 70 alto, 40-69 médio, < 40 baixo. O número vai com rótulo
+ * acessível, nunca só cor.
+ */
+export function ScoreBadge({ score }: { score: number }): React.JSX.Element {
   const [band, label] =
     score >= 70 ? ['high', 'alto'] : score >= 40 ? ['mid', 'médio'] : ['low', 'baixo'];
   const color = {
@@ -60,6 +69,7 @@ export function ScoreBadge({ score }: { score: number }) {
     mid: 'bg-score-mid-bg text-score-mid-fg',
     low: 'bg-score-low-bg text-score-low-fg',
   }[band];
+
   return (
     <span
       aria-label={`Score ${label}: ${score}`}
@@ -79,8 +89,9 @@ const sync = {
   error: { label: 'Erro de sincronização', tone: 'danger', Icon: AlertTriangle },
 } as const;
 
-export function SyncBadge({ status }: { status: keyof typeof sync }) {
+export function SyncBadge({ status }: { status: keyof typeof sync }): React.JSX.Element {
   const { label, tone, Icon } = sync[status];
+
   return (
     <Badge tone={tone}>
       <Icon className="size-3" aria-hidden />

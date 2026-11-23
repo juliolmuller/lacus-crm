@@ -2,42 +2,53 @@
 
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
 import { cn } from '@/lib/utils';
 
-type Theme = 'system' | 'dark' | 'light';
+type Theme = 'dark' | 'light' | 'system';
 const options = [
   { value: 'system', label: 'Sistema', Icon: Monitor },
   { value: 'dark', label: 'Escuro', Icon: Moon },
   { value: 'light', label: 'Claro', Icon: Sun },
 ] as const;
 
-const resolve = (t: Theme) =>
+const resolve = (t: Theme): 'dark' | 'light' =>
   t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t;
 
-export function ThemeSelector() {
+export function ThemeSelector(): React.JSX.Element {
   const [theme, setTheme] = useState<Theme>('system');
 
   useEffect(() => {
     try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- lê o valor salvo só no cliente
+      // eslint-disable-next-line @eslint-react/set-state-in-effect -- lê o valor salvo só no cliente
       setTheme((localStorage.getItem('theme') as Theme) || 'system');
-    } catch {}
+    } catch {
+      // localStorage indisponível (navegação privada ou bloqueado): segue com o padrão
+    }
   }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolve(theme);
+
     if (theme !== 'system') return;
+
     const mq = matchMedia('(prefers-color-scheme: light)');
-    const onChange = () => (document.documentElement.dataset.theme = resolve('system'));
+    const onChange = (): 'dark' | 'light' =>
+      (document.documentElement.dataset.theme = resolve('system'));
+
     mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+
+    return (): void => mq.removeEventListener('change', onChange);
   }, [theme]);
 
-  const choose = (t: Theme) => {
+  const choose = (t: Theme): void => {
     setTheme(t);
+
     try {
       localStorage.setItem('theme', t);
-    } catch {}
+    } catch {
+      // localStorage indisponível (navegação privada ou bloqueado): segue com o padrão
+    }
   };
 
   return (

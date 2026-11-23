@@ -1,13 +1,25 @@
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+
 import { ReminderItem, type ReminderView } from '@/components/reminders/reminder-item';
+
 import { Empty, Panel } from './panel';
 
-type Band = { id: string; title: string; count: number; items: ReminderView[]; tab: string };
+interface Band {
+  count: number;
+  id: string;
+  items: ReminderView[];
+  tab: string;
+  title: string;
+}
 
-/** Atrasados (vermelho, com ícone), hoje e próximos 7 dias; Concluir e Adiar são os do `/lembretes`. */
-export function FollowupsCard({ bands }: { bands: Band[] }) {
+/**
+ * Atrasados (vermelho, com ícone), hoje e próximos 7 dias; Concluir e Adiar são
+ * os do `/lembretes`.
+ */
+export function FollowupsCard({ bands }: { bands: Band[] }): React.JSX.Element {
   const total = bands.reduce((s, b) => s + b.count, 0);
+
   return (
     <Panel
       title="Follow-ups"

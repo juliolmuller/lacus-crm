@@ -1,15 +1,20 @@
 import { desc, eq } from 'drizzle-orm';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
+
+import { type Db, schema } from '@/lib/db';
+
 import { getSetting, listTemplates } from './followup-settings';
 import { getLead, getScoreSettings } from './leads';
 
 const { interactions, deals, dealStages, reminders } = schema;
 
-/** Tudo que o drawer/página do lead mostra, numa chamada. */
+/**
+ * Tudo que o drawer/página do lead mostra, numa chamada.
+ */
 export async function getLeadDetail(db: Db, id: string) {
   const base = await getLead(db, id);
+
   if (!base) return null;
+
   const [timeline, dealRows, reminderRows, settings, templates, profile] = await Promise.all([
     db
       .select()
@@ -33,6 +38,7 @@ export async function getLeadDetail(db: Db, id: string) {
     listTemplates(db),
     getSetting(db, 'owner_profile'),
   ]);
+
   return {
     ...base,
     interactions: timeline,

@@ -2,18 +2,27 @@
 
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import { loseDealAction, winDealAction } from '@/app/(app)/funil/actions';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field, SelectField, TextareaField } from '@/components/ui/field';
 import { lossReasons } from '@/lib/funnel/status-sync';
 
-export type Closing = { dealId: string; title: string; kind: 'won' | 'lost'; value: string | null };
+export interface Closing {
+  dealId: string;
+  kind: 'lost' | 'won';
+  title: string;
+  value: null | string;
+}
 
-const today = () =>
+const today = (): string =>
   new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Sao_Paulo' }).format(new Date());
 
-/** Ganho (valor final + data) e Perdido (motivo + texto): obrigatórios ao soltar nessas colunas. */
+/**
+ * Ganho (valor final + data) e Perdido (motivo + texto): obrigatórios ao soltar
+ * nessas colunas.
+ */
 export function CloseDialogs({
   closing,
   onClose,
@@ -22,15 +31,22 @@ export function CloseDialogs({
   closing: Closing | null;
   onClose: () => void;
   onDone: () => void;
-}) {
+}): null | React.JSX.Element {
   const [pending, start] = useTransition();
   const [reason, setReason] = useState('');
+
   if (!closing) return null; // o estado dos campos nasce a cada abertura
 
-  const submit = (fn: () => Promise<{ ok: boolean; error?: string }>, ok: string) =>
+  const submit = (fn: () => Promise<{ error?: string; ok: boolean }>, ok: string): void =>
     start(async () => {
       const r = await fn().catch(() => ({ ok: false, error: 'Sem conexão. Tente de novo.' }));
-      if (!r.ok) return void toast.error(r.error ?? 'Erro');
+
+      if (!r.ok) {
+        toast.error(r.error ?? 'Erro');
+
+        return;
+      }
+
       toast.success(ok);
       onDone();
     });
@@ -41,7 +57,9 @@ export function CloseDialogs({
         className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
+
           const f = new FormData(e.currentTarget);
+
           submit(
             () => winDealAction(closing.dealId, String(f.get('value')), String(f.get('date'))),
             'Negociação ganha. O lead virou cliente.',
@@ -76,7 +94,9 @@ export function CloseDialogs({
         className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
+
           const f = new FormData(e.currentTarget);
+
           submit(
             () => loseDealAction(closing.dealId, reason, String(f.get('note'))),
             'Negociação marcada como perdida',

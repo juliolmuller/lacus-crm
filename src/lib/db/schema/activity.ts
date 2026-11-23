@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { boolean, index, integer, jsonb, pgTable, serial, text, uuid } from 'drizzle-orm/pg-core';
+
 import { createdAt, tstz, updatedAt } from './_helpers';
 import { niches } from './catalog';
 import {
@@ -13,7 +14,7 @@ import {
   syncStatus,
   templateChannel,
 } from './enums';
-import { dealStages, deals } from './funnel';
+import { deals, dealStages } from './funnel';
 import { leads } from './leads';
 
 export const followupRules = pgTable('followup_rules', {

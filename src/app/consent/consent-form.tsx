@@ -1,24 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { authClient } from '@/lib/auth/client';
 
-export function ConsentForm({ scope }: { scope: string }) {
+export function ConsentForm({ scope }: { scope: string }): React.JSX.Element {
   const [busy, setBusy] = useState<'allow' | 'deny' | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<null | string>(null);
 
-  async function answer(accept: boolean) {
+  async function answer(accept: boolean): Promise<void> {
     setBusy(accept ? 'allow' : 'deny');
+
     const { data, error } = await authClient.oauth2.consent({
       accept,
       scope: accept ? scope : undefined,
     });
+
     if (error || !data?.url) {
       setBusy(null);
       setError('Não foi possível concluir. Volte ao aplicativo e tente de novo.');
+
       return;
     }
+
     window.location.href = data.url; // redirect em tela cheia, também no app instalado
   }
 

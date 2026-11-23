@@ -3,12 +3,13 @@
 import { Command } from 'cmdk';
 import { Bell, Columns3, ListChecks, Plus, Search, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+
 import { searchLeadsForPalette } from '@/app/(app)/palette-actions';
 import { normalizeName } from '@/lib/normalize';
 
 type Hit = Awaited<ReturnType<typeof searchLeadsForPalette>>[number];
-const ACTIONS: { label: string; href: string; icon: ReactNode }[] = [
+const ACTIONS: Array<{ href: string; icon: ReactNode; label: string }> = [
   { label: 'Novo lead', href: '/leads?novo=1', icon: <Plus className="size-4" aria-hidden /> },
   { label: 'Lembretes de hoje', href: '/lembretes', icon: <Bell className="size-4" aria-hidden /> },
   { label: 'Funil', href: '/funil', icon: <Columns3 className="size-4" aria-hidden /> },
@@ -17,52 +18,59 @@ const ACTIONS: { label: string; href: string; icon: ReactNode }[] = [
 ];
 
 // Só no desktop e sem um drawer/diálogo nativo aberto: ele deixa o resto da página inerte (o campo da paleta não receberia digitação).
-const canOpen = () =>
+const canOpen = (): boolean =>
   matchMedia('(min-width: 1024px)').matches && !document.querySelector('dialog[open]');
 
-/** Paleta ⌘K / Ctrl+K (desktop): busca de leads e ações rápidas. */
-export function CommandPalette() {
+/**
+ * Paleta ⌘K / Ctrl+K (desktop): busca de leads e ações rápidas.
+ */
+export function CommandPalette(): React.JSX.Element {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<Hit[]>([]);
   const [sel, setSel] = useState(''); // item destacado (controlado: Enter nunca age sobre um item que já saiu da lista)
-  const seq = useRef(0);
+  const seqRef = useRef(0);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && canOpen()) {
         e.preventDefault();
         setOpen((o) => !o);
       }
     };
-    const onOpen = () => canOpen() && setOpen(true);
-    addEventListener('keydown', onKey);
-    addEventListener('open-palette', onOpen);
-    return () => {
-      removeEventListener('keydown', onKey);
-      removeEventListener('open-palette', onOpen);
+    const onOpen = (): false | void => canOpen() && setOpen(true);
+
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('open-palette', onOpen);
+
+    return (): void => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('open-palette', onOpen);
     };
   }, []);
 
   useEffect(() => {
-    const mine = ++seq.current;
+    const mine = ++seqRef.current;
     const t = setTimeout(async () => {
       const r = q.trim().length >= 2 ? await searchLeadsForPalette(q).catch(() => []) : [];
-      if (mine === seq.current) setHits(r);
+
+      if (mine === seqRef.current) setHits(r);
     }, 200);
-    return () => clearTimeout(t);
+
+    return (): void => clearTimeout(t);
   }, [q]);
 
-  const go = (href: string) => {
+  const go = (href: string): void => {
     setOpen(false);
     setQ('');
     setHits([]);
     setSel('');
     router.push(href);
   };
-  const matching = (text: string) => {
+  const matching = (text: string): Array<{ href: string; icon: ReactNode; label: string }> => {
     const needle = normalizeName(text);
+
     return ACTIONS.filter((a) => !needle || normalizeName(a.label).includes(needle));
   };
   const actions = matching(q);
@@ -72,6 +80,7 @@ export function CommandPalette() {
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
+
         if (!o) {
           setQ('');
           setHits([]);
@@ -92,7 +101,9 @@ export function CommandPalette() {
           value={q}
           onValueChange={(v) => {
             setQ(v);
+
             const first = matching(v)[0];
+
             setSel(first ? `action-${first.href}` : '');
           }}
           placeholder="Buscar lead por nome, telefone ou bairro…"

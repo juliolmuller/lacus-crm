@@ -1,4 +1,5 @@
 import { char, integer, pgTable, serial, text, unique } from 'drizzle-orm/pg-core';
+
 import { createdAt, updatedAt } from './_helpers';
 import { nicheOpenness, nicheTicket } from './enums';
 

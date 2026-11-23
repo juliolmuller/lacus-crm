@@ -3,16 +3,22 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MessageCircle } from 'lucide-react';
+
 import { ScoreBadge } from '@/components/ui/badge';
 import { formatMoney, formatWhen } from '@/lib/format';
 import { whatsappUrl } from '@/lib/leads/links';
-import type { BoardCard } from '@/lib/services/deals';
+import { type BoardCard } from '@/lib/services/deals';
 import { cn } from '@/lib/utils';
 
-export type StageOption = { id: number; name: string };
+export interface StageOption {
+  id: number;
+  name: string;
+}
 
-/** Só o visual: serve ao cartão da coluna e ao DragOverlay. */
-export function CardBody({ card }: { card: BoardCard }) {
+/**
+ * Só o visual: serve ao cartão da coluna e ao DragOverlay.
+ */
+export function CardBody({ card }: { card: BoardCard }): React.JSX.Element {
   return (
     <>
       <p className="truncate text-body font-medium">{card.leadName}</p>
@@ -37,20 +43,21 @@ export function CardBody({ card }: { card: BoardCard }) {
   );
 }
 
-type Props = {
+interface Props {
   card: BoardCard;
-  stages: StageOption[];
   dragging: boolean; // algum cartão está sendo arrastado
-  onOpen: (id: string) => void;
   onMoveTo: (id: string, stageId: number) => void;
-};
+  onOpen: (id: string) => void;
+  stages: StageOption[];
+}
 
-export function DealCard({ card, stages, dragging, onOpen, onMoveTo }: Props) {
+export function DealCard({ card, stages, dragging, onOpen, onMoveTo }: Props): React.JSX.Element {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     attributes: { roleDescription: 'cartão do funil' },
   });
   const wa = whatsappUrl(card.whatsapp);
+
   return (
     <li
       ref={setNodeRef}
@@ -61,6 +68,7 @@ export function DealCard({ card, stages, dragging, onOpen, onMoveTo }: Props) {
       )}
     >
       {/* O corpo é o arrastável (mouse, toque e teclado); os controles ficam fora dele, sem aninhar foco. */}
+      {/* eslint-disable-next-line jsx-a11y-x/no-static-element-interactions -- dnd-kit `attributes` give it role="button" and tabIndex */}
       <div
         {...attributes}
         {...listeners}
@@ -68,6 +76,7 @@ export function DealCard({ card, stages, dragging, onOpen, onMoveTo }: Props) {
         onClick={() => onOpen(card.id)}
         onKeyDown={(e) => {
           listeners?.onKeyDown?.(e);
+
           if (e.key === 'Enter' && !dragging) onOpen(card.id);
         }}
       >

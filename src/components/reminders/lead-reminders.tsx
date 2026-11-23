@@ -3,33 +3,44 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import { createReminderAction } from '@/app/(app)/lembretes/actions';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
-import { snoozeLabel, snoozePresets, type SnoozePreset } from '@/lib/followups/snooze';
+import { snoozeLabel, type SnoozePreset, snoozePresets } from '@/lib/followups/snooze';
+
 import { ReminderItem, type ReminderView } from './reminder-item';
 
-/** Lembretes de um lead/negociação (drawers) com criação rápida: título + atalhos de data. */
+/**
+ * Lembretes de um lead/negociação (drawers) com criação rápida: título +
+ * atalhos de data.
+ */
 export function LeadReminders({
   leadId,
   dealId,
   reminders,
   disabled,
 }: {
-  leadId: string;
-  dealId?: string | null;
-  reminders: ReminderView[];
+  dealId?: null | string;
   disabled?: boolean;
-}) {
+  leadId: string;
+  reminders: ReminderView[];
+}): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [title, setTitle] = useState('Follow-up');
   const [custom, setCustom] = useState('');
 
-  const create = (when: SnoozePreset | { at: string }) =>
+  const create = (when: { at: string } | SnoozePreset): void =>
     start(async () => {
       const r = await createReminderAction({ leadId, dealId: dealId ?? null, title, when });
-      if (!r.ok) return void toast.error(r.error);
+
+      if (!r.ok) {
+        toast.error(r.error);
+
+        return;
+      }
+
       toast.success('Lembrete criado');
       setCustom('');
       router.refresh();

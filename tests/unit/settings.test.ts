@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+
 import { cadence } from '@/lib/validation/followups';
 import {
   parseSetting,
   settingDefaults,
-  settingSchemas,
   type SettingKey,
+  settingSchemas,
 } from '@/lib/validation/settings';
 
 describe('settings', () => {

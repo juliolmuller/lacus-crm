@@ -6,37 +6,41 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { debounce, useQueryStates } from 'nuqs';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import { deleteView, loadMoreLeads, saveView, updateInline } from '@/app/(app)/leads/actions';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-import { Field, SelectField, bareControl } from '@/components/ui/field';
+import { bareControl, Field, SelectField } from '@/components/ui/field';
 import {
-  TABLE_COLUMNS,
   leadSearchParams,
-  tableColumnIds,
+  TABLE_COLUMNS,
   type TableColumn,
+  tableColumnIds,
 } from '@/lib/leads/filters';
 import { contactStatuses, siteLabel, statusLabel, websiteStatuses } from '@/lib/leads/labels';
-import type { LeadListRow } from '@/lib/services/lead-list';
+import { type LeadListRow } from '@/lib/services/lead-list';
 import { cn } from '@/lib/utils';
+
 import { CreateLeadDialog } from './create-lead-dialog';
 import { LeadsTable } from './leads-table';
 
-type Props = {
+interface Props {
+  cursor: null | string;
+  niches: Array<{ id: number; name: string }>;
+  regions: Array<{ id: number; label: string }>;
   rows: LeadListRow[];
-  cursor: string | null;
-  total: number;
-  niches: { id: number; name: string }[];
-  regions: { id: number; label: string }[];
   sources: string[];
-  views: { id: number; name: string; qs: string }[];
   thresholds: { green: number; yellow: number };
-};
+  total: number;
+  views: Array<{ id: number; name: string; qs: string }>;
+}
 
-const canon = (qs: URLSearchParams | string) => {
+const canon = (qs: string | URLSearchParams): string => {
   const p = new URLSearchParams(qs);
+
   p.delete('lead');
   p.sort();
+
   return p.toString();
 };
 
@@ -47,10 +51,10 @@ function MultiSelect<T extends string>({
   onChange,
 }: {
   label: string;
-  options: { value: T; label: string }[];
-  value: T[];
   onChange: (v: T[]) => void;
-}) {
+  options: Array<{ label: string; value: T }>;
+  value: T[];
+}): React.JSX.Element {
   return (
     <details className="relative">
       <summary className={cn(bareControl, 'flex cursor-pointer list-none items-center gap-1')}>
@@ -81,41 +85,47 @@ function MultiSelect<T extends string>({
   );
 }
 
-export function LeadsView(p: Props) {
+export function LeadsView(p: Props): React.JSX.Element {
   const router = useRouter();
   const search = useSearchParams();
   const [pending, start] = useTransition();
   const [f, setF] = useQueryStates(leadSearchParams, { shallow: false, startTransition: start });
-  const [draft, setDraft] = useState<string | null>(null); // texto em edição; null = segue a URL
+  const [draft, setDraft] = useState<null | string>(null); // texto em edição; null = segue a URL
   const [showFilters, setShowFilters] = useState(false);
   const [creating, setCreating] = useState(search.get('novo') === '1'); // atalho do PWA
   const [saving, setSaving] = useState(false);
   const [viewName, setViewName] = useState('');
 
   const currentQs = canon(search);
-  const filterQs = (() => {
+  const filterQs = ((): string => {
     const q = new URLSearchParams(search);
+
     q.delete('lead');
+
     return q.toString();
   })();
   const active = p.views.find((v) => canon(v.qs) === currentQs);
-  const exportQs = (sep: string) => {
+  const exportQs = (sep: string): string => {
     const q = new URLSearchParams(search);
+
     q.delete('lead');
     q.set('sep', sep);
+
     return `/api/leads/export?${q}`;
   };
-  const isMobile = () => window.matchMedia('(max-width: 767px)').matches;
-  const open = (id: string) => (isMobile() ? router.push(`/leads/${id}`) : setF({ lead: id }));
+  const isMobile = (): boolean => window.matchMedia('(max-width: 767px)').matches;
+  const open = (id: string): Promise<URLSearchParams> | void =>
+    isMobile() ? router.push(`/leads/${id}`) : setF({ lead: id });
   const hasFilters = currentQs !== '';
 
-  const band = (min: number | null, max: number | null) => setF({ smin: min, smax: max });
+  const band = (min: null | number, max: null | number): Promise<URLSearchParams> =>
+    setF({ smin: min, smax: max });
   const bandValue =
-    f.smin === p.thresholds.green && f.smax == null
+    f.smin === p.thresholds.green && f.smax === null
       ? 'high'
       : f.smin === p.thresholds.yellow && f.smax === p.thresholds.green - 1
         ? 'mid'
-        : f.smin == null && f.smax === p.thresholds.yellow - 1
+        : f.smin === null && f.smax === p.thresholds.yellow - 1
           ? 'low'
           : '';
 
@@ -130,6 +140,7 @@ export function LeadsView(p: Props) {
       >
         {[{ id: 0, name: 'Todos', qs: '' }, ...p.views].map((v) => {
           const on = canon(v.qs) === currentQs;
+
           return (
             <span key={v.id} className="flex items-center">
               <Link
@@ -214,6 +225,7 @@ export function LeadsView(p: Props) {
                   checked={f.cols.includes(c)}
                   onChange={(e) => {
                     const next = e.target.checked ? [...f.cols, c] : f.cols.filter((x) => x !== c);
+
                     setF({ cols: next.length === tableColumnIds.length ? null : next });
                   }}
                 />
@@ -314,7 +326,7 @@ export function LeadsView(p: Props) {
           <SelectField
             label="WhatsApp"
             value={f.wa ?? ''}
-            onChange={(e) => setF({ wa: (e.target.value || null) as 'yes' | 'no' | null })}
+            onChange={(e) => setF({ wa: (e.target.value || null) as 'no' | 'yes' | null })}
           >
             <option value="">Tanto faz</option>
             <option value="yes">Tem</option>
@@ -323,7 +335,7 @@ export function LeadsView(p: Props) {
           <SelectField
             label="Não contatar"
             value={f.dnc}
-            onChange={(e) => setF({ dnc: e.target.value as 'hide' | 'show' | 'only' })}
+            onChange={(e) => setF({ dnc: e.target.value as 'hide' | 'only' | 'show' })}
           >
             <option value="hide">Ocultar</option>
             <option value="show">Mostrar junto</option>
@@ -332,7 +344,7 @@ export function LeadsView(p: Props) {
           <SelectField
             label="Negociação"
             value={f.deal ?? ''}
-            onChange={(e) => setF({ deal: (e.target.value || null) as 'open' | 'none' | null })}
+            onChange={(e) => setF({ deal: (e.target.value || null) as 'none' | 'open' | null })}
           >
             <option value="">Tanto faz</option>
             <option value="open">Com negociação aberta</option>
@@ -413,7 +425,9 @@ export function LeadsView(p: Props) {
           className="flex flex-col gap-4"
           onSubmit={async (e) => {
             e.preventDefault();
+
             const r = await saveView(viewName, canon(search));
+
             if (r.ok) {
               toast.success('Visão salva');
               setSaving(false);

@@ -5,9 +5,10 @@ const syncReminders = vi.fn().mockResolvedValue({});
 let afterThrows = false;
 
 vi.mock('server-only', () => ({}));
-vi.mock('next/server', () => ({
+vi.mock('next/server', (): { after: (fn: () => Promise<void>) => void } => ({
   after: (fn: () => Promise<void>) => {
     if (afterThrows) throw new Error('after fora do escopo de request');
+
     queued.push(fn);
   },
 }));

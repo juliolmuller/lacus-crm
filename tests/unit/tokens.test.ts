@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+
 import {
-  RATE_LIMIT_PER_MIN,
   allows,
   hashToken,
   looksLikePat,
+  RATE_LIMIT_PER_MIN,
   withinRateLimit,
 } from '@/lib/services/tokens';
 

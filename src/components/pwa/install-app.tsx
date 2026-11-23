@@ -2,17 +2,20 @@
 
 import { Download, Share } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
 import { Button } from '@/components/ui/button';
 
 type InstallEvent = Event & { prompt(): Promise<void> };
 
-const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
-const isStandalone = () =>
-  matchMedia('(display-mode: standalone)').matches ||
-  (navigator as Navigator & { standalone?: boolean }).standalone === true;
+const isIos = (): boolean => /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = (): boolean =>
+  matchMedia('(display-mode: standalone)').matches
+  || (navigator as { standalone?: boolean } & Navigator).standalone === true;
 
-/** Instruções do iOS (Safari não tem `beforeinstallprompt`). */
-export function IosSteps() {
+/**
+ * Instruções do iOS (Safari não tem `beforeinstallprompt`).
+ */
+export function IosSteps(): React.JSX.Element {
   return (
     <ol className="list-decimal space-y-1 pl-5 text-body">
       <li>
@@ -24,28 +27,35 @@ export function IosSteps() {
   );
 }
 
-/** "Mais": botão "Instalar app" (Chrome/Android) ou as instruções (iOS). Some com o app instalado. */
-export function InstallApp() {
+/**
+ * "Mais": botão "Instalar app" (Chrome/Android) ou as instruções (iOS). Some
+ * com o app instalado.
+ */
+export function InstallApp(): null | React.JSX.Element {
   const [prompt, setPrompt] = useState<InstallEvent | null>(null);
-  const [mode, setMode] = useState<'ios' | 'other' | 'installed'>('other');
+  const [mode, setMode] = useState<'installed' | 'ios' | 'other'>('other');
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- detecção só no cliente
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- detecção só no cliente
     setMode(isStandalone() ? 'installed' : isIos() ? 'ios' : 'other');
-    const onPrompt = (e: Event) => {
+
+    const onPrompt = (e: Event): void => {
       e.preventDefault();
       setPrompt(e as InstallEvent);
     };
-    const onInstalled = () => setMode('installed');
+    const onInstalled = (): void => setMode('installed');
+
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
-    return () => {
+
+    return (): void => {
       window.removeEventListener('beforeinstallprompt', onPrompt);
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
 
   if (mode === 'installed') return null;
+
   if (mode === 'ios')
     return (
       <div className="flex flex-col gap-2">
@@ -53,7 +63,9 @@ export function InstallApp() {
         <IosSteps />
       </div>
     );
+
   if (!prompt) return null;
+
   return (
     <Button
       variant="secondary"

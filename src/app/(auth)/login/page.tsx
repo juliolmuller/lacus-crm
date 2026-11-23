@@ -1,17 +1,24 @@
-import type { Metadata } from 'next';
+import { type Metadata } from 'next';
 import { redirect } from 'next/navigation';
+
 import { Copyright } from '@/components/brand/copyright';
 import { Logo } from '@/components/brand/logo';
 import { getSession } from '@/lib/auth/dal';
 import { getEnv } from '@/lib/env';
+
 import { LoginButton } from './login-button';
 
 export const metadata: Metadata = { title: 'Entrar' };
 
 type SearchParams = Promise<{ error?: string; error_description?: string }>;
 
-export default async function LoginPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<React.JSX.Element> {
   const { error, error_description } = await searchParams;
+
   // Com `error` presente a sessão pode existir mas não ser do dono; nesse caso não redireciona.
   if (!error && (await getSession())) redirect('/');
 

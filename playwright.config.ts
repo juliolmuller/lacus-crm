@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+
 import { pointToE2eDatabase } from './tests/e2e/env';
 
 const db = pointToE2eDatabase(); // servidor e testes usam `<banco>_e2e`, nunca o de desenvolvimento

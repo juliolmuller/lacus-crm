@@ -1,18 +1,21 @@
-import type { ReactNode } from 'react';
+import { type ReactNode } from 'react';
+
 import { cn } from '@/lib/utils';
 
-/** Bloco da tela inicial: título, ação opcional no canto e o conteúdo. */
+/**
+ * Bloco da tela inicial: título, ação opcional no canto e o conteúdo.
+ */
 export function Panel({
   title,
   action,
   children,
   className,
 }: {
-  title: string;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
-}) {
+  title: string;
+}): React.JSX.Element {
   return (
     <section
       aria-label={title}
@@ -30,6 +33,6 @@ export function Panel({
   );
 }
 
-export const Empty = ({ children }: { children: ReactNode }) => (
+export const Empty = ({ children }: { children: ReactNode }): React.JSX.Element => (
   <p className="text-body text-text-muted">{children}</p>
 );

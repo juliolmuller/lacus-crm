@@ -1,8 +1,9 @@
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { encrypt } from '@/lib/crypto';
-import type { Db } from '@/lib/db';
-import { createDeal, moveDeal, winDeal } from '@/lib/services/deals';
+
+import { encrypt, type KeyRing } from '@/lib/crypto';
+import { type Db } from '@/lib/db';
+import { type GoogleDeps } from '@/lib/google/calendar-api';
 import {
   connectGoogle,
   getConnection,
@@ -10,19 +11,21 @@ import {
   syncOverview,
   syncReminders,
 } from '@/lib/services/calendar-sync';
+import { createDeal, moveDeal, winDeal } from '@/lib/services/deals';
 import { logInteraction } from '@/lib/services/interactions';
 import { runFollowupsJob } from '@/lib/services/jobs';
+import { setDoNotContact } from '@/lib/services/leads';
 import {
-  ReminderError,
   cancelReminder,
   completeReminder,
   createReminder,
   listReminders,
+  ReminderError,
   snoozeReminder,
   updateReminder,
 } from '@/lib/services/reminders';
 import { applyRules } from '@/lib/services/rules';
-import { setDoNotContact } from '@/lib/services/leads';
+
 import { inTx, schema } from './db';
 import { fakeGoogle, keys } from './google-fake';
 
@@ -38,7 +41,12 @@ const {
   googleConnections,
 } = schema;
 
-const step = (offsetBusinessDays: number, time: string, title: string, extra: object = {}) => ({
+const step = (
+  offsetBusinessDays: number,
+  time: string,
+  title: string,
+  extra: object = {},
+): { offsetBusinessDays: number; time: string; title: string } => ({
   offsetBusinessDays,
   time,
   title,
@@ -77,6 +85,7 @@ async function world(tx: Db) {
     .returning();
   const won = stages.find((s) => s.key === 'won')!;
   const both = { inboundInteraction: true, stageLeft: true };
+
   await tx.insert(followupRules).values([
     {
       name: 'Sem resposta',
@@ -119,6 +128,7 @@ async function world(tx: Db) {
       sort: 4,
     },
   ]);
+
   const [lead] = await tx
     .insert(leads)
     .values({
@@ -131,6 +141,7 @@ async function world(tx: Db) {
     .returning();
   const rems = (leadId = lead!.id) =>
     tx.select().from(reminders).where(eq(reminders.leadId, leadId)).orderBy(reminders.dueAt);
+
   return { lead: lead!, rems };
 }
 
@@ -140,7 +151,9 @@ describe('motor de regras + lembretes', () => {
   it('interação Proposta cria 3 lembretes nos dias úteis certos (com feriado no meio)', () =>
     inTx(async (tx) => {
       const { lead, rems } = await world(tx);
+
       await createDeal(tx, { leadId: lead.id, source: 'ui' });
+
       const { reminderIds } = await logInteraction(tx, {
         leadId: lead.id,
         type: 'proposal',
@@ -148,8 +161,11 @@ describe('motor de regras + lembretes', () => {
         summary: 'Proposta enviada',
         occurredAt: MON,
       });
+
       expect(reminderIds).toHaveLength(3);
+
       const rs = await rems();
+
       expect(rs.map((r) => r.dueAt.toISOString())).toEqual([
         '2026-11-18T13:00:00.000Z',
         '2026-11-24T13:00:00.000Z', // 20/11 (Consciência Negra) pulado
@@ -163,6 +179,7 @@ describe('motor de regras + lembretes', () => {
   it('inbound cancela os pendentes; mudar de etapa também', () =>
     inTx(async (tx) => {
       const { lead, rems } = await world(tx);
+
       await logInteraction(tx, {
         leadId: lead.id,
         type: 'whatsapp',
@@ -177,11 +194,14 @@ describe('motor de regras + lembretes', () => {
         direction: 'inbound',
         summary: 'Resposta',
       });
+
       const after = await rems();
+
       expect(after.every((r) => r.status === 'canceled' && r.syncStatus === 'pending')).toBe(true);
 
       // etapa deixada: proposta num deal; mover o deal cancela
       const deal = await createDeal(tx, { leadId: lead.id, source: 'ui' });
+
       await logInteraction(tx, {
         leadId: lead.id,
         type: 'proposal',
@@ -190,7 +210,9 @@ describe('motor de regras + lembretes', () => {
         occurredAt: MON,
       });
       expect((await rems()).filter((r) => r.status === 'open')).toHaveLength(3);
+
       const [talking] = await tx.select().from(dealStages).where(eq(dealStages.key, 'talking'));
+
       await moveDeal(tx, { dealId: deal.id, stageId: talking!.id });
       expect((await rems()).filter((r) => r.status === 'open')).toHaveLength(0);
     }));
@@ -211,6 +233,7 @@ describe('motor de regras + lembretes', () => {
         leadId: lead.id,
         dealId: null,
       } as const;
+
       expect(await applyRules(tx, ev)).toEqual([]);
       expect(await applyRules(tx, ev, { replay: true })).toEqual([]);
       expect(await rems()).toHaveLength(3);
@@ -220,6 +243,7 @@ describe('motor de regras + lembretes', () => {
     inTx(async (tx) => {
       const { lead, rems } = await world(tx);
       const deal = await createDeal(tx, { leadId: lead.id, source: 'ui' });
+
       await winDeal(tx, { dealId: deal.id });
       expect((await rems()).map((r) => r.title)).toEqual(['Onboarding']);
       await logInteraction(tx, {
@@ -231,13 +255,16 @@ describe('motor de regras + lembretes', () => {
       });
       expect(await rems()).toHaveLength(1);
       await setDoNotContact(tx, lead.id, { reason: 'pediu', optOut: true });
+
       const [only] = await rems();
+
       expect(only!.status).toBe('canceled');
     }));
 
   it('CRUD: adiar, editar, concluir (sugere sem resposta no último passo), cancelar; todos marcam pending', () =>
     inTx(async (tx) => {
       const { lead, rems } = await world(tx);
+
       await logInteraction(tx, {
         leadId: lead.id,
         type: 'whatsapp',
@@ -245,34 +272,51 @@ describe('motor de regras + lembretes', () => {
         summary: 'Oi',
         occurredAt: MON,
       });
+
       const [f1, f2, f3] = await rems();
+
       await tx.update(reminders).set({ syncStatus: 'synced' }).where(eq(reminders.leadId, lead.id));
+
       const s = await snoozeReminder(tx, f1!.id, '1h', MON);
+
       expect(s.dueAt.toISOString()).toBe('2026-11-16T16:00:00.000Z');
       expect(s.snoozeCount).toBe(1);
       expect(s.syncStatus).toBe('pending');
+
       const tomorrow = await snoozeReminder(tx, f1!.id, 'tomorrow', MON);
+
       expect(tomorrow.dueAt.toISOString()).toBe('2026-11-17T12:30:00.000Z');
+
       const plus2 = await snoozeReminder(tx, f1!.id, 'plus2bd', MON);
+
       expect(plus2.dueAt.toISOString()).toBe('2026-11-18T12:30:00.000Z');
+
       const edited = await updateReminder(tx, f2!.id, { title: 'Novo título' });
+
       expect(edited.title).toBe('Novo título');
+
       const mid = await completeReminder(tx, f2!.id);
+
       expect(mid.suggestion).toBeNull();
+
       const last = await completeReminder(tx, f3!.id, {
         interaction: { type: 'note', direction: 'internal', summary: 'Tentei de novo' },
       });
+
       expect(last.suggestion).toEqual({ leadId: lead.id, status: 'no_response' });
       await expect(completeReminder(tx, f3!.id)).rejects.toMatchObject({ code: 'NOT_OPEN' });
       await cancelReminder(tx, f1!.id);
       expect((await rems()).map((r) => r.status).sort()).toEqual(['canceled', 'done', 'done']);
+
       const l = await listReminders(tx, 'done', MON);
+
       expect(l.rows).toHaveLength(2);
     }));
 
   it('concluir um passo registrando interação não reinicia a cadência', () =>
     inTx(async (tx) => {
       const { lead, rems } = await world(tx);
+
       await logInteraction(tx, {
         leadId: lead.id,
         type: 'whatsapp',
@@ -280,6 +324,7 @@ describe('motor de regras + lembretes', () => {
         summary: 'Oi',
         occurredAt: MON,
       });
+
       const [f1] = await rems();
       const out = await completeReminder(tx, f1!.id, {
         interaction: {
@@ -289,8 +334,11 @@ describe('motor de regras + lembretes', () => {
           occurredAt: MON,
         },
       });
+
       expect(out.reminderIds).toEqual([]);
+
       const all = await rems();
+
       expect(all).toHaveLength(3);
       expect(all.map((r) => r.status).sort()).toEqual(['done', 'open', 'open']);
     }));
@@ -298,6 +346,7 @@ describe('motor de regras + lembretes', () => {
   it('lembrete manual de lead "Não contatar" vira erro de domínio', () =>
     inTx(async (tx) => {
       const { lead } = await world(tx);
+
       await setDoNotContact(tx, lead.id, { reason: 'x', optOut: false });
       await expect(
         createReminder(tx, { leadId: lead.id, title: 'x', dueAt: MON }),
@@ -307,12 +356,15 @@ describe('motor de regras + lembretes', () => {
   it('abas: atrasados, hoje e próximos', () =>
     inTx(async (tx) => {
       const { lead } = await world(tx);
-      const at = (h: number) => new Date(MON.getTime() + h * 3_600_000);
+      const at = (h: number): Date => new Date(MON.getTime() + h * 3_600_000);
+
       await createReminder(tx, { leadId: lead.id, title: 'a', dueAt: at(-2) });
       await createReminder(tx, { leadId: lead.id, title: 'b', dueAt: at(2) });
       await createReminder(tx, { leadId: lead.id, title: 'c', dueAt: at(48) });
-      const t = async (tab: 'overdue' | 'today' | 'upcoming') =>
+
+      const t = async (tab: 'overdue' | 'today' | 'upcoming'): Promise<string[]> =>
         (await listReminders(tx, tab, MON)).rows.map((r) => r.title);
+
       expect(await t('overdue')).toEqual(['a']);
       expect(await t('today')).toEqual(['b']);
       expect(await t('upcoming')).toEqual(['c']);
@@ -321,13 +373,18 @@ describe('motor de regras + lembretes', () => {
 });
 
 describe('job de follow-ups', () => {
-  const ctx = (g = fakeGoogle()) => ({ deps: g.deps, keys, appUrl: 'http://localhost:3000' });
+  const ctx = (g = fakeGoogle()): { appUrl: string; deps: GoogleDeps; keys: KeyRing } => ({
+    deps: g.deps,
+    keys,
+    appUrl: 'http://localhost:3000',
+  });
 
   it('mesma execução duas vezes: a segunda não faz nada', () =>
     inTx(async (tx) => {
       const { lead } = await world(tx);
       const first = await runFollowupsJob(tx, ctx(), { executionId: 'run-1', now: MON });
       const second = await runFollowupsJob(tx, ctx(), { executionId: 'run-1', now: MON });
+
       expect(first.duplicate).toBe(false);
       expect(second).toEqual({ duplicate: true });
       expect(await tx.select().from(jobRuns).where(eq(jobRuns.executionId, 'run-1'))).toHaveLength(
@@ -341,9 +398,12 @@ describe('job de follow-ups', () => {
       const { lead, rems } = await world(tx);
       const deal = await createDeal(tx, { leadId: lead.id, source: 'ui' });
       const old = new Date('2026-10-30T15:00:00Z'); // 12 dias úteis antes de 17/11 (com feriados)
+
       await tx.update(deals).set({ stageEnteredAt: old }).where(eq(deals.id, deal.id));
+
       const now = new Date('2026-11-17T15:00:00Z');
       const r1 = await runFollowupsJob(tx, ctx(), { executionId: 'a', now });
+
       expect(r1.duplicate === false && r1.stats.stalled).toBe(1);
       expect((await rems()).map((r) => r.title)).toEqual(['Destravar negociação']);
       // concluir e rodar de novo: não recria (mesma permanência na etapa)
@@ -364,6 +424,7 @@ describe('job de follow-ups', () => {
     inTx(async (tx) => {
       const { lead, rems } = await world(tx);
       const now = new Date();
+
       await logInteraction(tx, {
         leadId: lead.id,
         type: 'proposal',
@@ -382,6 +443,7 @@ describe('sincronização com o Google Calendar (mock)', () => {
   const setup = async (tx: Db, g = fakeGoogle()) => {
     const { lead, rems } = await world(tx);
     const sc = { deps: g.deps, keys, appUrl: 'http://localhost:3000' };
+
     await connectGoogle(tx, sc, {
       email: 'a@b.c',
       refreshToken: 'rt',
@@ -389,6 +451,7 @@ describe('sincronização com o Google Calendar (mock)', () => {
       expiresAt: new Date(Date.now() + 3_600_000),
       scope: 's',
     });
+
     return { lead, rems, g, sc };
   };
 
@@ -397,6 +460,7 @@ describe('sincronização com o Google Calendar (mock)', () => {
       const { lead, rems } = await world(tx);
       const g = fakeGoogle();
       const sc = { deps: g.deps, keys, appUrl: 'x' };
+
       await createReminder(tx, { leadId: lead.id, title: 't', dueAt: MON });
       expect(await syncReminders(tx, sc)).toMatchObject({ skipped: 'no_connection' });
       expect((await rems())[0]!.syncStatus).toBe('disabled');
@@ -420,11 +484,16 @@ describe('sincronização com o Google Calendar (mock)', () => {
         dueAt: MON,
         notes: 'n1',
       });
+
       await syncReminders(tx, sc);
+
       let [row] = await rems();
+
       expect(row).toMatchObject({ syncStatus: 'synced' });
       expect(g.events.size).toBe(1);
+
       const ev = [...g.events.values()][0]!;
+
       expect(ev.summary).toBe('Follow-up: Lead 1 – Ligar');
       expect(ev.description).toContain('https://wa.me/5541999990000');
       expect(ev.extendedProperties.private).toEqual({ crmReminderId: r.id, crmLeadId: lead.id });
@@ -449,6 +518,7 @@ describe('sincronização com o Google Calendar (mock)', () => {
     inTx(async (tx) => {
       const { lead, rems, g, sc } = await setup(tx);
       const r = await createReminder(tx, { leadId: lead.id, title: 'x', dueAt: MON });
+
       await syncReminders(tx, sc);
       g.events.clear();
       await updateReminder(tx, r.id, { title: 'y' });
@@ -464,12 +534,17 @@ describe('sincronização com o Google Calendar (mock)', () => {
     inTx(async (tx) => {
       const { lead, rems, g, sc } = await setup(tx);
       const real = g.deps.fetch;
-      g.deps.fetch = async (i, init) =>
+
+      g.deps.fetch = async (i, init): Promise<Response> =>
         init?.method === 'POST' ? new Response('boom', { status: 500 }) : real(i, init);
       await createReminder(tx, { leadId: lead.id, title: 'x', dueAt: MON });
+
       const now = new Date();
+
       expect(await syncReminders(tx, sc, { mode: 'after', now })).toMatchObject({ errors: 1 });
+
       let [row] = await rems();
+
       expect(row).toMatchObject({ syncStatus: 'error', syncAttempts: 1 });
       expect(row!.syncError).toContain('500');
       // dentro do backoff, o after() não tenta
@@ -486,6 +561,7 @@ describe('sincronização com o Google Calendar (mock)', () => {
   it('invalid_grant: conexão needs_reauth, lembretes continuam pending e o resumo avisa', () =>
     inTx(async (tx) => {
       const { lead, rems, sc } = await setup(tx, fakeGoogle({ failRefresh: true }));
+
       // access token vencido força o refresh
       await tx.update(googleConnections).set({
         accessTokenExpiresAt: new Date(Date.now() - 1000),
@@ -508,6 +584,7 @@ describe('sincronização com o Google Calendar (mock)', () => {
       for (const id of ['old-1', 'old-2'])
         g.events.set(id, { id, extendedProperties: { private: { crmReminderId: r.id } } });
       const stats = await resyncAll(tx, sc);
+
       expect(stats.synced).toBe(1);
       expect(g.events.size).toBe(1);
       expect((await rems())[0]!.googleEventId).toBe('old-1');
@@ -518,6 +595,7 @@ describe('sincronização com o Google Calendar (mock)', () => {
     inTx(async (tx) => {
       const { sc, g } = await setup(tx);
       const before = g.calls.filter((c) => c === 'POST /calendars').length;
+
       await connectGoogle(tx, sc, {
         email: 'a@b.c',
         refreshToken: 'rt2',

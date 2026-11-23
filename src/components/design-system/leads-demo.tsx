@@ -2,6 +2,7 @@
 
 import { SearchX } from 'lucide-react';
 import { useState } from 'react';
+
 import { LeadTabs } from '@/components/leads/lead-tabs';
 import { LeadsTable } from '@/components/leads/leads-table';
 import { ScoreBreakdown } from '@/components/leads/score-breakdown';
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
-import type { LeadListRow } from '@/lib/services/lead-list';
+import { type LeadListRow } from '@/lib/services/lead-list';
 
 const sample: LeadListRow[] = [
   ['Clínica Exemplo Um', 85, 'new', 'social_only', '5.0', 83, true, 'Abordar por WhatsApp', 1],
@@ -21,12 +22,12 @@ const sample: LeadListRow[] = [
   score: score as number,
   contactStatus: status as LeadListRow['contactStatus'],
   websiteStatus: site as LeadListRow['websiteStatus'],
-  mapsRating: rating as string | null,
-  mapsReviews: reviews as number | null,
+  mapsRating: rating as null | string,
+  mapsReviews: reviews as null | number,
   hasWhatsapp: wa as boolean,
-  nextAction: next as string | null,
+  nextAction: next as null | string,
   lastContactAt: i === 1 ? new Date('2026-11-15T15:00:00Z') : null,
-  priority: priority as number | null,
+  priority: priority as null | number,
   doNotContact: i === 2,
   phone: null,
   placeId: null,
@@ -35,10 +36,13 @@ const sample: LeadListRow[] = [
   sortValue: '',
 }));
 
-/** Os componentes da fase 2 com dados fictícios (nada aqui toca o banco). */
-export function LeadsDemo() {
+/**
+ * Os componentes da fase 2 com dados fictícios (nada aqui toca o banco).
+ */
+export function LeadsDemo(): React.JSX.Element {
   const [side, setSide] = useState(false);
   const [center, setCenter] = useState(false);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">

@@ -3,30 +3,40 @@
 import { PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
+
 import { Logo } from '@/components/brand/logo';
 import { cn } from '@/lib/utils';
+
 import { LogoutButton } from './logout-button';
 import { desktopNav, isActive } from './nav';
 import { ThemeSelector } from './theme-selector';
 
-/** Sidebar recolhível (≥ 1024px). `footer` recebe o copyright, renderizado no servidor. */
-export function Sidebar({ footer }: { footer: ReactNode }) {
+/**
+ * Sidebar recolhível (≥ 1024px). `footer` recebe o copyright, renderizado no
+ * servidor.
+ */
+export function Sidebar({ footer }: { footer: ReactNode }): React.JSX.Element {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- lê o valor salvo só no cliente
+      // eslint-disable-next-line @eslint-react/set-state-in-effect -- lê o valor salvo só no cliente
       setCollapsed(localStorage.getItem('sidebar') === 'collapsed');
-    } catch {}
+    } catch {
+      // localStorage indisponível (navegação privada ou bloqueado): segue com o padrão
+    }
   }, []);
 
-  const toggle = () => {
+  const toggle = (): void => {
     setCollapsed(!collapsed);
+
     try {
       localStorage.setItem('sidebar', collapsed ? 'open' : 'collapsed');
-    } catch {}
+    } catch {
+      // localStorage indisponível (navegação privada ou bloqueado): segue com o padrão
+    }
   };
 
   return (

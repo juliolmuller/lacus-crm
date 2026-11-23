@@ -1,11 +1,20 @@
 'use client';
 
 import { AlertTriangle } from 'lucide-react';
+
 import { Button } from './button';
 import { EmptyState } from './empty-state';
 
-/** Estado de erro de rota (`error.tsx`): mensagem curta e "Tentar novamente". */
-export function RouteError({ what, reset }: { what: string; reset: () => void }) {
+/**
+ * Estado de erro de rota (`error.tsx`): mensagem curta e "Tentar novamente".
+ */
+export function RouteError({
+  what,
+  reset,
+}: {
+  reset: () => void;
+  what: string;
+}): React.JSX.Element {
   return (
     <EmptyState
       icon={AlertTriangle}

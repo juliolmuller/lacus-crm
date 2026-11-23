@@ -1,37 +1,47 @@
-import type { z } from 'zod';
-import type { scoreThresholds, scoreWeights } from '@/lib/validation/settings';
+import { type z } from 'zod';
+
+import { type scoreThresholds, type scoreWeights } from '@/lib/validation/settings';
 
 export type ScoreWeights = z.infer<typeof scoreWeights>;
 export type ScoreThresholds = z.infer<typeof scoreThresholds>;
-export type ScoreSettings = { weights: ScoreWeights; thresholds: ScoreThresholds };
+export interface ScoreSettings {
+  thresholds: ScoreThresholds;
+  weights: ScoreWeights;
+}
 
-export type ScoreLead = {
-  websiteStatus: 'none' | 'social_only' | 'bad' | 'good' | 'unknown' | null;
-  mapsRating: number | string | null;
-  mapsReviews: number | null;
+export interface ScoreLead {
+  decisionMakerContact: null | string;
   hasActiveAds: boolean | null;
-  instagramActive: boolean | null;
   hasWhatsapp: boolean | null;
-  decisionMakerContact: string | null;
+  instagramActive: boolean | null;
+  mapsRating: null | number | string;
+  mapsReviews: null | number;
   strongLocalCompetition: boolean | null;
-};
-export type ScoreNiche = { ticket: 'alto' | 'medio' | 'baixo' | null } | null;
+  websiteStatus: 'bad' | 'good' | 'none' | 'social_only' | 'unknown' | null;
+}
+export type ScoreNiche = { ticket: 'alto' | 'baixo' | 'medio' | null } | null;
 
 export type ScoreBreakdown = Record<keyof ScoreWeights, number>;
 
-/** SPEC 4.6. Pura: o mesmo cálculo serve ao app, à importação e ao REST/MCP. */
-export function computeScore(lead: ScoreLead, niche: ScoreNiche, s: ScoreSettings) {
+/**
+ * SPEC 4.6. Pura: o mesmo cálculo serve ao app, à importação e ao REST/MCP.
+ */
+export function computeScore(
+  lead: ScoreLead,
+  niche: ScoreNiche,
+  s: ScoreSettings,
+): { breakdown: ScoreBreakdown; score: number } {
   const { weights: w, thresholds: t } = s;
-  const rating = lead.mapsRating == null ? null : Number(lead.mapsRating);
+  const rating = lead.mapsRating === null ? null : Number(lead.mapsRating);
   const maxTicket = Math.max(t.ticketPoints.alto, t.ticketPoints.medio, t.ticketPoints.baixo);
   const ticketRaw = niche?.ticket ? t.ticketPoints[niche.ticket] : 0;
   const breakdown: ScoreBreakdown = {
     website: ['none', 'social_only', 'bad'].includes(lead.websiteStatus ?? '') ? w.website : 0,
     reputation:
-      rating != null &&
-      rating >= t.minRating &&
-      lead.mapsReviews != null &&
-      lead.mapsReviews >= t.minReviews
+      rating !== null
+      && rating >= t.minRating
+      && lead.mapsReviews !== null
+      && lead.mapsReviews >= t.minReviews
         ? w.reputation
         : 0,
     marketing: lead.hasActiveAds || lead.instagramActive ? w.marketing : 0,
@@ -40,8 +50,11 @@ export function computeScore(lead: ScoreLead, niche: ScoreNiche, s: ScoreSetting
     competition: lead.strongLocalCompetition ? w.competition : 0,
   };
   const sum = Object.values(breakdown).reduce((a, b) => a + b, 0);
+
   return { score: Math.min(100, Math.max(0, Math.round(sum))), breakdown };
 }
 
-export const scoreBand = (score: number, t: Pick<ScoreThresholds, 'green' | 'yellow'>) =>
-  score >= t.green ? 'high' : score >= t.yellow ? 'mid' : 'low';
+export const scoreBand = (
+  score: number,
+  t: Pick<ScoreThresholds, 'green' | 'yellow'>,
+): 'high' | 'low' | 'mid' => (score >= t.green ? 'high' : score >= t.yellow ? 'mid' : 'low');

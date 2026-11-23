@@ -4,36 +4,52 @@ import {
   Bar,
   BarChart,
   Cell,
+  LabelList,
   Line,
   LineChart,
   ReferenceLine,
   XAxis,
   YAxis,
-  LabelList,
 } from 'recharts';
+
 import {
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  type ChartConfig,
 } from '@/components/ui/chart';
 
-export type BarDatum = {
-  name: string;
-  value: number;
-  /** rótulo direto no fim da barra (ex.: "12 · R$ 3.000,00") */
-  text: string;
-  /** cor da marca; padrão: série 1 */
+export interface BarDatum {
+  /**
+   * Cor da marca; padrão: série 1.
+   */
   fill?: string;
-};
+  name: string;
+  /**
+   * Rótulo direto no fim da barra (ex.: "12 · R$ 3.000,00")
+   */
+  text: string;
+  value: number;
+}
 
 const barConfig = { value: { label: 'Total', color: 'var(--chart-1)' } } satisfies ChartConfig;
 const lineConfig = {
   requests: { label: 'Requisições', color: 'var(--chart-1)' },
 } satisfies ChartConfig;
 
-/** Resumo para leitores de tela: o gráfico é uma imagem e a tabela traz os mesmos números. */
-function DataTable({ caption, head, rows }: { caption: string; head: string[]; rows: string[][] }) {
+/**
+ * Resumo para leitores de tela: o gráfico é uma imagem e a tabela traz os
+ * mesmos números.
+ */
+function DataTable({
+  caption,
+  head,
+  rows,
+}: {
+  caption: string;
+  head: string[];
+  rows: string[][];
+}): React.JSX.Element {
   return (
     <div className="sr-only">
       <table>
@@ -52,8 +68,10 @@ function DataTable({ caption, head, rows }: { caption: string; head: string[]; r
             <tr key={r[0]}>
               {r.map((c, i) =>
                 i ? (
+                  // eslint-disable-next-line @eslint-react/no-array-index-key -- cells are positional columns
                   <td key={i}>{c}</td>
                 ) : (
+                  // eslint-disable-next-line @eslint-react/no-array-index-key -- cells are positional columns
                   <th key={i} scope="row">
                     {c}
                   </th>
@@ -67,7 +85,10 @@ function DataTable({ caption, head, rows }: { caption: string; head: string[]; r
   );
 }
 
-/** Barras horizontais de uma série só (magnitude): rótulo direto, grade discreta, uma cor. */
+/**
+ * Barras horizontais de uma série só (magnitude): rótulo direto, grade
+ * discreta, uma cor.
+ */
 export function HBarChart({
   data,
   label,
@@ -75,13 +96,18 @@ export function HBarChart({
   nameWidth = 120,
 }: {
   data: BarDatum[];
-  /** o que o gráfico mostra; vira o texto alternativo e a legenda da tabela */
+  /**
+   * O que o gráfico mostra; vira o texto alternativo e a legenda da tabela.
+   */
   label: string;
-  /** espaço à direita para o rótulo direto */
+  /**
+   * Espaço à direita para o rótulo direto.
+   */
   labelWidth?: number;
   nameWidth?: number;
-}) {
+}): React.JSX.Element {
   const height = data.length * 34 + 8;
+
   return (
     <figure className="flex flex-col">
       <div role="img" aria-label={label} className="w-full">
@@ -102,6 +128,7 @@ export function HBarChart({
               axisLine={false}
               tickFormatter={(v: string) => {
                 const max = Math.floor(nameWidth / 6.5);
+
                 return v.length > max ? `${v.slice(0, max - 1)}…` : v;
               }}
             />
@@ -156,17 +183,21 @@ export function HBarChart({
   );
 }
 
-/** Linha de 14 dias com o orçamento diário tracejado; o tooltip mostra dia e valor. */
+/**
+ * Linha de 14 dias com o orçamento diário tracejado; o tooltip mostra dia e
+ * valor.
+ */
 export function Sparkline({
   data,
   budget,
   label,
 }: {
-  data: { name: string; requests: number }[];
   budget: number;
+  data: Array<{ name: string; requests: number }>;
   label: string;
-}) {
+}): React.JSX.Element {
   const top = Math.max(budget, ...data.map((d) => d.requests), 1);
+
   return (
     <figure className="flex flex-col">
       <div role="img" aria-label={label} className="w-full">

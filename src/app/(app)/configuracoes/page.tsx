@@ -1,34 +1,35 @@
-import { desc } from 'drizzle-orm';
-import type { Metadata } from 'next';
+import { desc, eq } from 'drizzle-orm';
+import { type Metadata } from 'next';
+
+import { Copyright } from '@/components/brand/copyright';
 import { StageSettings } from '@/components/funnel/stage-settings';
+import { AppearanceSettings } from '@/components/settings/appearance-settings';
+import { DataSettings } from '@/components/settings/data-settings';
 import { FollowupSettings } from '@/components/settings/followup-settings';
 import { GoogleSettings } from '@/components/settings/google-settings';
 import { ProfileSettings } from '@/components/settings/profile-settings';
-import { AppearanceSettings } from '@/components/settings/appearance-settings';
-import { DataSettings } from '@/components/settings/data-settings';
 import { ScoreSettingsForm } from '@/components/settings/score-settings';
 import { TemplateSettings } from '@/components/settings/template-settings';
 import { TokenSettings } from '@/components/settings/token-settings';
-import pkg from '../../../../package.json';
-import { Copyright } from '@/components/brand/copyright';
-import { getScoreSettings } from '@/lib/services/leads';
-import { listSuppression } from '@/lib/services/suppression';
-import { listConnectors } from '@/lib/services/connectors';
-import { listTokens } from '@/lib/services/tokens';
 import { getDb, schema } from '@/lib/db';
 import { spYmd } from '@/lib/followups/business-days';
 import { googleAvailable, googleConfigured } from '@/lib/google/oauth';
 import { syncOverview } from '@/lib/services/calendar-sync';
+import { listConnectors } from '@/lib/services/connectors';
 import { getSetting, listRules, listTemplates } from '@/lib/services/followup-settings';
+import { getScoreSettings } from '@/lib/services/leads';
 import { listStages } from '@/lib/services/stages';
+import { listSuppression } from '@/lib/services/suppression';
+import { listTokens } from '@/lib/services/tokens';
 import { cadence, cancelOn } from '@/lib/validation/followups';
-import { eq } from 'drizzle-orm';
+
+import pkg from '../../../../package.json';
 
 export const metadata: Metadata = { title: 'Configurações' };
 
 const { leads, niches, regions } = schema;
 
-const H = ({ id, children }: { id: string; children: string }) => (
+const H = ({ id, children }: { children: string; id: string }): React.JSX.Element => (
   <h2 id={id} className="text-section scroll-mt-4">
     {children}
   </h2>
@@ -38,7 +39,7 @@ export default async function Page({
   searchParams,
 }: {
   searchParams: Promise<{ google?: string }>;
-}) {
+}): Promise<React.JSX.Element> {
   const { google } = await searchParams;
   const db = getDb();
   const [
@@ -88,6 +89,7 @@ export default async function Page({
   const validRules = rules.flatMap((r) => {
     const c = cadence.safeParse(r.cadence);
     const o = cancelOn.safeParse(r.cancelOn);
+
     return c.success && o.success
       ? [
           {
@@ -187,7 +189,6 @@ export default async function Page({
           available={googleAvailable()}
           status={overview.status}
           email={overview.email}
-          calendarId={overview.calendarId}
           lastError={overview.lastError}
           errors={overview.errors}
           pending={overview.pending}

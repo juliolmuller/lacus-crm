@@ -1,5 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
+import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+
 import { removeLeads, seedDeals } from './db';
 
 test('paleta ⌘K: abre com Ctrl+K, acha lead por nome, executa ação e fecha com Esc', async ({
@@ -7,17 +8,23 @@ test('paleta ⌘K: abre com Ctrl+K, acha lead por nome, executa ação e fecha c
   isMobile,
 }) => {
   test.skip(isMobile, 'a paleta é do desktop');
+
   const [lead] = await seedDeals([`Paleta Teste ${Date.now()}`], null);
+
   try {
     await page.goto('/api/e2e/login?next=/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
     const palette = page.getByRole('dialog', { name: 'Paleta de comandos' });
+
     await expect(async () => {
       await page.keyboard.press('Control+k');
       await expect(palette).toBeVisible({ timeout: 1500 });
     }).toPass(); // o atalho só existe depois da hidratação
     await expect(palette.getByRole('option', { name: 'Funil' })).toBeVisible();
+
     const axe = await new AxeBuilder({ page }).include('[cmdk-root]').analyze();
+
     expect(axe.violations.filter((v) => ['serious', 'critical'].includes(v.impact ?? ''))).toEqual(
       [],
     );
@@ -49,7 +56,9 @@ test('paleta ⌘K: abre com Ctrl+K, acha lead por nome, executa ação e fecha c
 
 test('configurações: score com prévia, aparência (densidade), dados e sobre', async ({ page }) => {
   await page.goto('/api/e2e/login?next=/configuracoes');
+
   const preview = page.getByTestId('score-preview');
+
   await expect(preview).toContainText('leads mudam de faixa');
   await page.getByLabel('Verde a partir de').fill('5');
   await expect(preview).toContainText(/\d+ de \d+ leads mudam de faixa/);

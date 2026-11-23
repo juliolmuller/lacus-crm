@@ -1,17 +1,17 @@
 'use client';
 
 import {
+  closestCenter,
   DndContext,
+  type DragEndEvent,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from '@dnd-kit/core';
 import {
-  SortableContext,
   arrayMove,
+  SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
@@ -21,6 +21,7 @@ import { Archive, ArchiveRestore, GripVertical, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import {
   archiveStageAction,
   reorderStagesAction,
@@ -32,17 +33,17 @@ import { stageColors } from '@/lib/funnel/status-sync';
 import { contactStatuses, statusLabel } from '@/lib/leads/labels';
 import { cn } from '@/lib/utils';
 
-export type StageRow = {
-  id: number;
-  name: string;
-  color: string;
-  defaultProbability: number | null;
-  leadStatus: (typeof contactStatuses)[number] | null;
-  isWon: boolean;
-  isLost: boolean;
+export interface StageRow {
   archived: boolean;
+  color: string;
+  defaultProbability: null | number;
+  id: number;
+  isLost: boolean;
+  isWon: boolean;
+  leadStatus: (typeof contactStatuses)[number] | null;
+  name: string;
   open: number;
-};
+}
 
 const dot: Record<string, string> = {
   'stage-1': 'bg-stage-1',
@@ -55,21 +56,31 @@ const dot: Record<string, string> = {
   'stage-lost': 'bg-stage-lost',
 };
 
-/** Uma linha por etapa: editar e salvar, arquivar e arrastar (ou Espaço + setas) para reordenar. */
-function Row({ s, onChanged }: { s: StageRow; onChanged: () => void }) {
+/**
+ * Uma linha por etapa: editar e salvar, arquivar e arrastar (ou Espaço + setas)
+ * para reordenar.
+ */
+function Row({ s, onChanged }: { onChanged: () => void; s: StageRow }): React.JSX.Element {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: s.id,
     attributes: { roleDescription: 'etapa reordenável' },
   });
   const [pending, start] = useTransition();
-  const run = (fn: () => Promise<{ ok: boolean; error?: string }>, ok: string) =>
+  const run = (fn: () => Promise<{ error?: string; ok: boolean }>, ok: string): void =>
     start(async () => {
       const r = await fn();
-      if (!r.ok) return void toast.error(r.error ?? 'Erro');
+
+      if (!r.ok) {
+        toast.error(r.error ?? 'Erro');
+
+        return;
+      }
+
       toast.success(ok);
       onChanged();
     });
   const tag = s.isWon ? 'Ganho' : s.isLost ? 'Perdido' : null;
+
   return (
     <li
       ref={setNodeRef}
@@ -84,8 +95,10 @@ function Row({ s, onChanged }: { s: StageRow; onChanged: () => void }) {
         className="flex flex-wrap items-end gap-3"
         onSubmit={(e) => {
           e.preventDefault();
+
           const f = new FormData(e.currentTarget);
           const prob = String(f.get('prob')).trim();
+
           run(
             () =>
               saveStageAction(s.id, {
@@ -184,37 +197,47 @@ function Row({ s, onChanged }: { s: StageRow; onChanged: () => void }) {
   );
 }
 
-export function StageSettings({ stages }: { stages: StageRow[] }) {
+export function StageSettings({ stages }: { stages: StageRow[] }): React.JSX.Element {
   const router = useRouter();
   const [rows, setRows] = useState(stages);
   const [prev, setPrev] = useState(stages);
+
   if (stages !== prev) {
     setPrev(stages);
     setRows(stages);
   }
+
   const [adding, startAdd] = useTransition();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const onDragEnd = async ({ active, over }: DragEndEvent) => {
+  const onDragEnd = async ({ active, over }: DragEndEvent): Promise<undefined> => {
     if (!over || active.id === over.id) return;
+
     const before = rows;
     const next = arrayMove(
       rows,
       rows.findIndex((r) => r.id === active.id),
       rows.findIndex((r) => r.id === over.id),
     );
+
     setRows(next);
+
     const r = await reorderStagesAction(next.map((x) => x.id)).catch(() => ({
       ok: false as const,
       error: 'Sem conexão',
     }));
+
     if (!r.ok) {
       setRows(before);
-      return void toast.error(r.error);
+
+      toast.error(r.error);
+
+      return;
     }
+
     router.refresh();
   };
 
@@ -242,8 +265,10 @@ export function StageSettings({ stages }: { stages: StageRow[] }) {
         className="flex flex-wrap items-end gap-3 rounded-md border border-dashed border-border-strong p-3"
         onSubmit={(e) => {
           e.preventDefault();
+
           const form = e.currentTarget;
           const f = new FormData(form);
+
           startAdd(async () => {
             const r = await saveStageAction(null, {
               name: f.get('name'),
@@ -251,7 +276,13 @@ export function StageSettings({ stages }: { stages: StageRow[] }) {
               defaultProbability: null,
               leadStatus: null,
             });
-            if (!r.ok) return void toast.error(r.error);
+
+            if (!r.ok) {
+              toast.error(r.error);
+
+              return;
+            }
+
             toast.success('Etapa criada antes de Ganho');
             form.reset();
             router.refresh();

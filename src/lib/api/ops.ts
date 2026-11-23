@@ -1,23 +1,22 @@
 import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Scope } from '@/lib/auth/mcp-resources';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
-import { renderTemplate, templateValues } from '@/lib/followups/templates';
+
+import { type Scope } from '@/lib/auth/mcp-resources';
+import { type Db, schema } from '@/lib/db';
 import { snoozePresets } from '@/lib/followups/snooze';
-import { whatsappUrl } from '@/lib/leads/links';
-import { contactStatuses, interactionTypes } from '@/lib/leads/labels';
+import { renderTemplate, templateValues } from '@/lib/followups/templates';
 import { parseFilters } from '@/lib/leads/filters-server';
-import { upsertInput } from '@/lib/validation/upsert';
-import { usageToday, logUsage } from '@/lib/services/api-usage';
+import { contactStatuses, interactionTypes } from '@/lib/leads/labels';
+import { whatsappUrl } from '@/lib/leads/links';
+import { logUsage, usageToday } from '@/lib/services/api-usage';
 import { audit } from '@/lib/services/audit';
 import { getCatalog } from '@/lib/services/catalog';
 import { getDashboard } from '@/lib/services/dashboard';
 import { createDeal, loseDeal, moveDeal, winDeal } from '@/lib/services/deals';
 import { getSetting } from '@/lib/services/followup-settings';
 import { logInteraction } from '@/lib/services/interactions';
-import { getLead, setDoNotContact, updateLead, type LeadValues } from '@/lib/services/leads';
 import { listLeads } from '@/lib/services/lead-list';
+import { getLead, type LeadValues, setDoNotContact, updateLead } from '@/lib/services/leads';
 import { claimNext, completeItem } from '@/lib/services/queue';
 import {
   completeReminder,
@@ -26,44 +25,68 @@ import {
   snoozeReminder,
 } from '@/lib/services/reminders';
 import { upsertLeads } from '@/lib/services/upsert-leads';
+import { upsertInput } from '@/lib/validation/upsert';
+
 import { ApiError } from './errors';
 
 const { leads, deals, dealStages, interactions, reminders, messageTemplates, niches, regions } =
   schema;
 
-export type OpCtx = { db: Db; actor: string };
+export interface OpCtx {
+  actor: string;
+  db: Db;
+}
 
-/** Uma operação de negócio: serve de ferramenta MCP e de endpoint REST (adaptadores finos). */
-export type Op<S extends z.ZodType = z.ZodType> = {
-  /** nome da ferramenta MCP */
-  name: string;
+/**
+ * Uma operação de negócio: serve de ferramenta MCP e de endpoint REST
+ * (adaptadores finos).
+ */
+export interface Op<S extends z.ZodType = z.ZodType> {
   description: string;
-  /** basta um destes escopos (`write` cobre `read`) */
-  scopes: Scope[];
-  /** também exposta em `/api/mcp/prospecting` */
-  prospecting?: boolean;
   input: S;
+  /**
+   * Nome da ferramenta MCP.
+   */
+  name: string;
+  /**
+   * Também exposta em `/api/mcp/prospecting`
+   */
+  prospecting?: boolean;
   run: (args: z.infer<S>, ctx: OpCtx) => Promise<unknown>;
-};
-const op = <S extends z.ZodType>(o: Op<S>) => o;
+  /**
+   * Basta um destes escopos (`write` cobre `read`)
+   */
+  scopes: Scope[];
+}
+const op = <S extends z.ZodType>(o: Op<S>): Op<S> => o;
 
 const id = z.uuid();
-/** ISO 8601 com fuso; texto puro para o JSON Schema do MCP. */
+/**
+ * ISO 8601 com fuso; texto puro para o JSON Schema do MCP.
+ */
 const when = z.iso.datetime({ offset: true });
 const limit = z.number().int().min(1).max(50).default(50);
 const cursor = z.string().optional().describe('`nextCursor` da página anterior');
 
-/** Cursor de offset para listas já carregadas (lembretes, nichos, regiões). */
-const page = <T>(rows: T[], cur: string | undefined, lim: number) => {
+/**
+ * Cursor de offset para listas já carregadas (lembretes, nichos, regiões).
+ */
+const page = <T>(
+  rows: T[],
+  cur: string | undefined,
+  lim: number,
+): { items: T[]; nextCursor: null | string } => {
   const from = cur ? Number(Buffer.from(cur, 'base64url').toString()) || 0 : 0;
   const items = rows.slice(from, from + lim);
   const next =
     from + lim < rows.length ? Buffer.from(String(from + lim)).toString('base64url') : null;
+
   return { items, nextCursor: next };
 };
 
-const found = <T>(v: T | null | undefined, what = 'Lead'): T => {
+const found = <T>(v: null | T | undefined, what = 'Lead'): T => {
   if (!v) throw new ApiError('not_found', `${what} não encontrado`);
+
   return v;
 };
 
@@ -84,19 +107,23 @@ export const searchLeads = op({
     cursor,
   }),
   async run(a, { db }) {
-    let region: number | null = null;
+    let region: null | number = null;
+
     if (a.regionLabel) {
       const [r] = await db
         .select({ id: regions.id })
         .from(regions)
         .where(eq(regions.label, a.regionLabel));
+
       if (!r) return { items: [], nextCursor: null };
+
       region = r.id;
     }
+
     const f = {
       ...parseFilters({}),
       q: a.query ?? '',
-      status: (a.status ?? []) as (typeof contactStatuses)[number][],
+      status: (a.status ?? []) as Array<(typeof contactStatuses)[number]>,
       niche: a.nicheId ?? null,
       region,
       smin: a.minScore ?? null,
@@ -106,6 +133,7 @@ export const searchLeads = op({
       dir: 'desc' as const,
     };
     const { rows, nextCursor } = await listLeads(db, f, a.cursor, a.limit);
+
     return {
       items: rows.map((r) => ({ ...r, sortValue: undefined })),
       nextCursor,
@@ -125,8 +153,9 @@ export const getLeadFull = op({
     }),
   async run(a, { db }) {
     const leadId =
-      a.id ??
-      (await db.select({ id: leads.id }).from(leads).where(eq(leads.placeId, a.placeId!)))[0]?.id;
+      a.id
+      ?? (await db.select({ id: leads.id }).from(leads).where(eq(leads.placeId, a.placeId!)))[0]
+        ?.id;
     const base = found(leadId ? await getLead(db, leadId) : null);
     const [openDeal, recent, open] = await Promise.all([
       db
@@ -146,6 +175,7 @@ export const getLeadFull = op({
         .where(and(eq(reminders.leadId, base.lead.id), eq(reminders.status, 'open')))
         .orderBy(asc(reminders.dueAt)),
     ]);
+
     return {
       lead: base.lead,
       niche: base.niche.name,
@@ -173,6 +203,7 @@ export const listRemindersOp = op({
             ),
           ]
         : (await listReminders(db, a.range, now)).rows;
+
     return page(
       rows.map((r) => ({
         id: r.id,
@@ -201,12 +232,15 @@ export const renderMessage = op({
       .select()
       .from(messageTemplates)
       .where(eq(messageTemplates.key, a.templateKey));
+
     found(tpl, 'Modelo');
+
     const profile = await getSetting(db, 'owner_profile');
     const m = renderTemplate(
       tpl!.body,
       templateValues(base.lead, base.niche, base.region, profile),
     );
+
     return {
       text: m.text,
       missing: m.missing,
@@ -234,6 +268,7 @@ export const nichesList = op({
   input: z.object({ cursor, limit }),
   async run(a, { db }) {
     const rows = await db.select().from(niches).orderBy(asc(niches.name));
+
     return page(rows, a.cursor, a.limit);
   },
 });
@@ -246,6 +281,7 @@ export const regionsList = op({
   input: z.object({ cursor, limit }),
   async run(a, { db }) {
     const { regions: all } = await getCatalog(db);
+
     return page(all, a.cursor, a.limit);
   },
 });
@@ -285,8 +321,10 @@ export const updateLeadOp = op({
       ...('channel' in p ? { channel: p.channel } : {}),
       ...('response_or_objection' in p ? { responseOrObjection: p.response_or_objection } : {}),
     };
+
     return db.transaction(async (tx) => {
       const lead = await updateLead(tx, a.id, values);
+
       await audit(tx, {
         entity: 'lead',
         entityId: a.id,
@@ -294,6 +332,7 @@ export const updateLeadOp = op({
         actor,
         diff: { fields: Object.keys(p) },
       });
+
       return lead;
     });
   },
@@ -316,6 +355,7 @@ export const setDnc = op({
         diff: { optOut: a.optOut },
       });
     });
+
     return { id: a.id, doNotContact: true, optOut: a.optOut };
   },
 });
@@ -352,6 +392,7 @@ export const logInteractionOp = op({
         type: a.type as Parameters<typeof logInteraction>[1]['type'],
         createdBy: 'mcp',
       });
+
       await audit(tx, {
         entity: 'interaction',
         entityId: String(r.interaction.id),
@@ -359,6 +400,7 @@ export const logInteractionOp = op({
         actor,
         diff: { leadId: a.leadId },
       });
+
       return r;
     });
   },
@@ -377,6 +419,7 @@ export const createDealOp = op({
   async run(a, { db, actor }) {
     return db.transaction(async (tx) => {
       const d = await createDeal(tx, { ...a, source: 'mcp' });
+
       await audit(tx, {
         entity: 'deal',
         entityId: d.id,
@@ -384,6 +427,7 @@ export const createDealOp = op({
         actor,
         diff: { leadId: a.leadId },
       });
+
       return d;
     });
   },
@@ -403,12 +447,16 @@ export const moveDealOp = op({
   async run(a, { db, actor }) {
     return db.transaction(async (tx) => {
       const [stage] = await tx.select().from(dealStages).where(eq(dealStages.key, a.stageKey));
+
       found(stage, 'Etapa');
+
       let out;
+
       if (stage!.isWon) out = await winDeal(tx, { dealId: a.dealId });
       else if (stage!.isLost) {
         if (!a.lostReason)
           throw new ApiError('validation_error', 'lostReason é obrigatório para Perdido');
+
         out = await loseDeal(tx, { dealId: a.dealId, reason: a.lostReason });
       } else {
         const [first] =
@@ -426,6 +474,7 @@ export const moveDealOp = op({
                 .orderBy(asc(deals.position))
                 .limit(1)
             : [];
+
         out = await moveDeal(tx, {
           dealId: a.dealId,
           stageId: stage!.id,
@@ -433,6 +482,7 @@ export const moveDealOp = op({
           nextId: first?.id ?? null,
         });
       }
+
       await audit(tx, {
         entity: 'deal',
         entityId: a.dealId,
@@ -440,6 +490,7 @@ export const moveDealOp = op({
         actor,
         diff: { stageKey: a.stageKey },
       });
+
       return out;
     });
   },
@@ -460,7 +511,9 @@ export const createReminderOp = op({
   async run(a, { db, actor }) {
     return db.transaction(async (tx) => {
       const r = await createReminder(tx, { ...a, dueAt: new Date(a.dueAt), source: 'mcp' });
+
       await audit(tx, { entity: 'reminder', entityId: r.id, action: 'create', actor });
+
       return r;
     });
   },
@@ -474,7 +527,9 @@ export const completeReminderOp = op({
   async run(a, { db, actor }) {
     return db.transaction(async (tx) => {
       const r = await completeReminder(tx, a.id);
+
       await audit(tx, { entity: 'reminder', entityId: a.id, action: 'complete', actor });
+
       return r;
     });
   },
@@ -490,7 +545,9 @@ export const snoozeReminderOp = op({
   async run(a, { db, actor }) {
     return db.transaction(async (tx) => {
       const r = await snoozeReminder(tx, a.id, a.until ? { at: new Date(a.until) } : a.preset!);
+
       await audit(tx, { entity: 'reminder', entityId: a.id, action: 'snooze', actor });
+
       return r;
     });
   },

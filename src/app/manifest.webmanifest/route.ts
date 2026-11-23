@@ -1,7 +1,10 @@
-import type { MetadataRoute } from 'next';
+import { type MetadataRoute } from 'next';
 
 // SPEC 8. Ícones gerados por `bun run icons` (scripts/generate-icons.ts).
-const icon = (size: number, purpose: 'any' | 'maskable') => ({
+const icon = (
+  size: number,
+  purpose: 'any' | 'maskable',
+): NonNullable<MetadataRoute.Manifest['icons']>[number] => ({
   src: `/brand/${purpose === 'any' ? 'icon' : 'icon-maskable'}-${size}.png`,
   sizes: `${size}x${size}`,
   type: 'image/png',
@@ -30,5 +33,5 @@ const manifest: MetadataRoute.Manifest = {
 // crossorigin (só em preview da Vercel), e o SPEC 8 pede use-credentials; o link fica no layout.
 export const dynamic = 'force-static';
 
-export const GET = () =>
+export const GET = (): Response =>
   Response.json(manifest, { headers: { 'Content-Type': 'application/manifest+json' } });

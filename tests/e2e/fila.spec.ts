@@ -1,15 +1,18 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
+
 import { query } from './db';
 
 const stamp = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
 let base = 0;
 let regionId = 0;
 const niche = `E2E Fila ${stamp}`;
-const pos = (n: number) => base + n;
-const row = (page: Page, n: number) => page.getByTestId(`queue-row-${pos(n)}`);
+const pos = (n: number): number => base + n;
+const row = (page: Page, n: number): Locator => page.getByTestId(`queue-row-${pos(n)}`);
 
+// eslint-disable-next-line no-empty-pattern -- Playwright reads fixtures from the destructured first argument
 test.beforeEach(async ({}, info) => {
   base = 800_000_000 + Math.floor(Math.random() * 90_000_000) * 10;
+
   const label = `PR - E2E ${stamp}-${info.project.name}`;
   const [r] = await query<{ id: number }>(
     `insert into regions (state, city, label) values ('PR', $1, $2) returning id`,
@@ -21,13 +24,17 @@ test.beforeEach(async ({}, info) => {
     const [nn] = await query<{ id: number }>(`insert into niches (name) values ($1) returning id`, [
       `${niche}-${info.project.name}-${i}`,
     ]);
+
     await query(
       `insert into prospecting_queue (position, region_id, niche_id, sort_order) values ($1, $2, $3, $4)`,
       [pos(i), regionId, nn!.id, -1_000_000_000 + (base - 800_000_000) + i],
     );
   }
 });
+
 let onTestEnd: (() => Promise<unknown>) | null = null;
+
+// eslint-disable-next-line no-empty-pattern -- Playwright reads fixtures from the destructured first argument
 test.afterEach(async ({}, info) => {
   await onTestEnd?.();
   onTestEnd = null;
@@ -36,22 +43,25 @@ test.afterEach(async ({}, info) => {
   await query('delete from niches where name like $1', [`${niche}%${info.project.name}%`]);
 });
 
-const order = (page: Page) =>
+const order = (page: Page): Promise<number[]> =>
   page
     .locator('[data-testid^="queue-row-"]')
     .evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-testid')!.split('-').pop())));
-const mine = async (page: Page) => (await order(page)).filter((p) => p > base && p <= base + 3);
+const mine = async (page: Page): Promise<number[]> =>
+  (await order(page)).filter((p) => p > base && p <= base + 3);
 
 test('reordenar por teclado persiste; mover para o topo; pular e reativar; marcar pendente', async ({
   page,
 }, info) => {
   // reordenar regrava o sort_order da fila inteira: dois projetos em paralelo se atropelariam
   test.skip(info.project.name !== 'desktop', 'só no desktop');
+
   // ...e deixa a ordem real da fila como estava
   const saved = await query<{ position: number; sort_order: number }>(
     'select position, sort_order from prospecting_queue where position < 700000000',
   );
-  onTestEnd = () =>
+
+  onTestEnd = (): Promise<Array<Record<string, unknown>>> =>
     query(
       `update prospecting_queue p set sort_order = v.s from unnest($1::int[], $2::int[]) v(pos, s) where p.position = v.pos`,
       [saved.map((r) => r.position), saved.map((r) => r.sort_order)],
@@ -63,9 +73,12 @@ test('reordenar por teclado persiste; mover para o topo; pular e reativar; marca
 
   // Espaço levanta, seta move, Espaço solta
   const handle = row(page, 1).getByRole('button', { name: /^Reordenar/ });
+
   await handle.focus();
+
   // o dnd-kit anuncia cada passo numa região aria-live: espera o anúncio antes da próxima tecla
   const live = page.locator('[aria-live]');
+
   await page.keyboard.press('Space');
   await expect(live.first()).toContainText(`item ${pos(1)} was moved over`);
   await page.keyboard.press('ArrowDown');

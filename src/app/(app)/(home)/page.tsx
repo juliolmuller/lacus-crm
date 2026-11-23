@@ -1,6 +1,7 @@
 import { Inbox } from 'lucide-react';
-import type { Metadata } from 'next';
+import { type Metadata } from 'next';
 import Link from 'next/link';
+
 import { ActivityTimeline } from '@/components/dashboard/activity';
 import { DashboardAlerts } from '@/components/dashboard/alerts';
 import { BestNextCard } from '@/components/dashboard/best-next';
@@ -11,11 +12,12 @@ import { FunnelCard } from '@/components/dashboard/funnel-card';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { Empty, Panel } from '@/components/dashboard/panel';
 import { ProspectingCard } from '@/components/dashboard/prospecting-card';
+import { type ReminderView } from '@/components/reminders/reminder-item';
 import { rowToView } from '@/components/reminders/view';
 import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { parseDashboardFilters, periodLabel } from '@/lib/dashboard/filters';
 import { getDb, schema } from '@/lib/db';
-import { periodLabel, parseDashboardFilters } from '@/lib/dashboard/filters';
 import { formatMoney, formatPercent } from '@/lib/format';
 import { getCatalog } from '@/lib/services/catalog';
 import { getDashboard } from '@/lib/services/dashboard';
@@ -25,7 +27,11 @@ export const metadata: Metadata = { title: 'Início' };
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
-export default async function Page({ searchParams }: { searchParams: SP }) {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: SP;
+}): Promise<React.JSX.Element> {
   const filters = parseDashboardFilters(await searchParams);
   const db = getDb();
   const now = new Date();
@@ -60,7 +66,7 @@ export default async function Page({ searchParams }: { searchParams: SP }) {
 
   const allRows = [...d.followups.overdue, ...d.followups.today, ...d.followups.next7];
   const links = await whatsappLinks(db, allRows, now);
-  const view = (rows: typeof allRows) =>
+  const view = (rows: typeof allRows): ReminderView[] =>
     rows.map((r) => rowToView(r, now, links.get(r.id) ?? null));
   const bands = [
     {
@@ -113,7 +119,7 @@ export default async function Page({ searchParams }: { searchParams: SP }) {
         <KpiCard
           label="Score médio"
           value={
-            k.avgScore == null
+            k.avgScore === null
               ? '—'
               : k.avgScore.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
           }
@@ -143,6 +149,7 @@ export default async function Page({ searchParams }: { searchParams: SP }) {
               <div
                 role="region"
                 aria-label="Atividade recente, rolável"
+                // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- a scrollable region must be keyboard reachable
                 tabIndex={0}
                 className="max-h-120 overflow-y-auto pr-1"
               >

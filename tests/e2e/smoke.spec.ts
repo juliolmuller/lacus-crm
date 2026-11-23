@@ -4,6 +4,7 @@ const copyright = /© \d{4} Lacus Solutions\. Todos os direitos reservados\./;
 
 test('login mostra logo, título e rodapé de copyright', async ({ page }) => {
   const response = await page.goto('/login');
+
   await expect(page).toHaveTitle('Entrar · Lacus CRM');
   await expect(page.getByText('Lacus CRM', { exact: true })).toBeVisible();
   await expect(page.getByRole('main').locator('svg').first()).toBeVisible();
@@ -20,19 +21,23 @@ test('sem sessão, rotas protegidas redirecionam para /login', async ({ page }) 
 test('com o bypass, o shell renderiza e o rodapé aparece', async ({ page, isMobile }) => {
   await page.goto('/api/e2e/login');
   await expect(page).toHaveURL('/');
+
   const nav = page.getByRole('navigation', { name: 'Principal' });
+
   await expect(nav).toBeVisible();
   for (const label of isMobile
     ? ['Início', 'Leads', 'Funil', 'Lembretes', 'Mais']
     : ['Início', 'Leads', 'Funil', 'Lembretes', 'Fila', 'Configurações', 'Design System']) {
     await expect(nav.getByRole('link', { name: label })).toBeVisible();
   }
+
   if (isMobile) {
     await expect(async () => {
       await nav.getByRole('link', { name: 'Mais' }).click(); // antes da hidratação o clique pode se perder
       await expect(page).toHaveURL(/\/mais$/, { timeout: 3000 });
     }).toPass();
   }
+
   await expect(page.getByText(copyright).locator('visible=true')).toBeVisible();
 });
 

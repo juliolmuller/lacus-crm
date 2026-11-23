@@ -1,29 +1,34 @@
 import { and, eq, sql } from 'drizzle-orm';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
+
+import { type Db, schema } from '@/lib/db';
 import { syncedStatus } from '@/lib/funnel/status-sync';
+
 import { advanceOpenDeal } from './deals';
 import { LeadError, setDoNotContact } from './leads';
 import { applyRules } from './rules';
 
 const { interactions, leads, deals } = schema;
 
-export type InteractionInput = {
-  leadId: string;
-  dealId?: string | null;
-  type: (typeof interactions.$inferInsert)['type'];
-  direction: (typeof interactions.$inferInsert)['direction'];
-  outcome?: (typeof interactions.$inferInsert)['outcome'];
-  summary: string;
-  body?: string | null;
-  occurredAt?: Date;
-  templateId?: number | null;
+export interface InteractionInput {
+  body?: null | string;
   createdBy?: (typeof interactions.$inferInsert)['createdBy'];
-  /** reunião marcada: data (AAAA-MM-DD) que ancora "Preparar diagnóstico" */
+  dealId?: null | string;
+  direction: (typeof interactions.$inferInsert)['direction'];
+  leadId: string;
+  /**
+   * Reunião marcada: data (AAAA-MM-DD) que ancora "Preparar diagnóstico"
+   */
   meetingOn?: string;
-  /** pediu para retomar depois: dias úteis até o lembrete (padrão da regra: 20) */
+  occurredAt?: Date;
+  outcome?: (typeof interactions.$inferInsert)['outcome'];
+  /**
+   * Pediu para retomar depois: dias úteis até o lembrete (padrão da regra: 20)
+   */
   resumeInDays?: number;
-};
+  summary: string;
+  templateId?: null | number;
+  type: (typeof interactions.$inferInsert)['type'];
+}
 
 const channelLabel: Partial<Record<InteractionInput['type'], string>> = {
   whatsapp: 'WhatsApp',
@@ -36,10 +41,12 @@ const channelLabel: Partial<Record<InteractionInput['type'], string>> = {
 
 /**
  * Registra a interação e aplica os efeitos do PLAN D3, tudo numa transação:
- * - outbound de contato: lead → Abordado (só avança), último contato e negociação → Abordado;
- * - inbound: lead → Respondeu (só avança) e negociação → Em conversa;
- * - resultado opt_out: fluxo "Não contatar" (SPEC 4.4).
- * `note` e `system` (internas) não mexem em nada.
+ *
+ * - Outbound de contato: lead → Abordado (só avança), último contato e negociação
+ *   → Abordado;
+ * - Inbound: lead → Respondeu (só avança) e negociação → Em conversa;
+ * - Resultado opt_out: fluxo "Não contatar" (SPEC 4.4). `note` e `system`
+ *   (internas) não mexem em nada.
  */
 export async function logInteraction(
   db: Db,
@@ -48,7 +55,9 @@ export async function logInteraction(
 ) {
   return db.transaction(async (tx) => {
     const [lead] = await tx.select().from(leads).where(eq(leads.id, input.leadId));
+
     if (!lead) throw new LeadError('NOT_FOUND', 'Lead não encontrado');
+
     // sem deal informado, a interação fica na negociação aberta do lead
     const dealId =
       input.dealId !== undefined
@@ -77,8 +86,10 @@ export async function logInteraction(
       .returning();
 
     const contact = input.type !== 'note' && input.type !== 'system';
+
     if (contact && input.direction === 'outbound') {
       const status = syncedStatus(lead.contactStatus, 'contacted');
+
       await tx
         .update(leads)
         .set({
@@ -90,13 +101,16 @@ export async function logInteraction(
       await advanceOpenDeal(tx, lead.id, 'contacted');
     } else if (contact && input.direction === 'inbound') {
       const status = syncedStatus(lead.contactStatus, 'replied');
+
       if (status)
         await tx
           .update(leads)
           .set({ contactStatus: status, contactStatusChangedAt: new Date() })
           .where(eq(leads.id, lead.id));
+
       await advanceOpenDeal(tx, lead.id, 'talking');
     }
+
     if (input.outcome === 'opt_out' && !lead.doNotContact)
       await setDoNotContact(tx, lead.id, { reason: input.summary, optOut: true });
 
@@ -112,6 +126,7 @@ export async function logInteraction(
       },
       { skipRuleIds: opts.skipRuleIds },
     );
+
     return { interaction: row!, reminderIds };
   });
 }

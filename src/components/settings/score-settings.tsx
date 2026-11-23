@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import {
   previewScoreAction,
   recomputeScoresAction,
@@ -10,7 +11,7 @@ import {
 } from '@/app/(app)/configuracoes/actions';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
-import type { ScoreSettings } from '@/lib/score';
+import { type ScoreSettings } from '@/lib/score';
 
 const WEIGHTS = [
   ['website', 'Site (ausente, só rede social ou ruim)'],
@@ -21,29 +22,34 @@ const WEIGHTS = [
   ['competition', 'Concorrência local forte'],
 ] as const;
 
-/** Pesos e limiares do score (SPEC 4.6): prévia ao vivo de quem muda de faixa, Salvar e Recalcular. */
-export function ScoreSettingsForm({ initial }: { initial: ScoreSettings }) {
+/**
+ * Pesos e limiares do score (SPEC 4.6): prévia ao vivo de quem muda de faixa,
+ * Salvar e Recalcular.
+ */
+export function ScoreSettingsForm({ initial }: { initial: ScoreSettings }): React.JSX.Element {
   const router = useRouter();
   const [s, setS] = useState(initial);
   const [preview, setPreview] = useState<{ changed: number; total: number } | null>(null);
   const [pending, start] = useTransition();
-  const seq = useRef(0);
+  const seqRef = useRef(0);
 
   useEffect(() => {
-    const mine = ++seq.current;
+    const mine = ++seqRef.current;
     const t = setTimeout(async () => {
       const r = await previewScoreAction(s);
-      if (mine === seq.current && r.ok) setPreview({ changed: r.changed, total: r.total });
+
+      if (mine === seqRef.current && r.ok) setPreview({ changed: r.changed, total: r.total });
     }, 400);
-    return () => clearTimeout(t);
+
+    return (): void => clearTimeout(t);
   }, [s]);
 
-  const num = (v: string) => (v === '' ? 0 : Number(v));
-  const setW = (k: keyof ScoreSettings['weights'], v: string) =>
+  const num = (v: string): number => (v === '' ? 0 : Number(v));
+  const setW = (k: keyof ScoreSettings['weights'], v: string): void =>
     setS({ ...s, weights: { ...s.weights, [k]: num(v) } });
-  const setT = (k: 'green' | 'yellow' | 'minRating' | 'minReviews', v: string) =>
+  const setT = (k: 'green' | 'minRating' | 'minReviews' | 'yellow', v: string): void =>
     setS({ ...s, thresholds: { ...s.thresholds, [k]: num(v) } });
-  const setTicket = (k: 'alto' | 'medio' | 'baixo', v: string) =>
+  const setTicket = (k: 'alto' | 'baixo' | 'medio', v: string): void =>
     setS({
       ...s,
       thresholds: { ...s.thresholds, ticketPoints: { ...s.thresholds.ticketPoints, [k]: num(v) } },
@@ -132,7 +138,13 @@ export function ScoreSettingsForm({ initial }: { initial: ScoreSettings }) {
           onClick={() =>
             start(async () => {
               const r = await saveScoreAction(s);
-              if (!r.ok) return void toast.error(r.error);
+
+              if (!r.ok) {
+                toast.error(r.error);
+
+                return;
+              }
+
               toast.success('Pesos salvos. Clique em Recalcular para aplicar aos leads.');
               router.refresh();
             })
@@ -145,7 +157,13 @@ export function ScoreSettingsForm({ initial }: { initial: ScoreSettings }) {
           onClick={() =>
             start(async () => {
               const r = await recomputeScoresAction();
-              if (!r.ok) return void toast.error(r.error);
+
+              if (!r.ok) {
+                toast.error(r.error);
+
+                return;
+              }
+
               toast.success(`${r.changed} lead(s) recalculado(s)`);
               router.refresh();
             })

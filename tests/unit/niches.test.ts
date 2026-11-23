@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { parseNichesCsv } from '@/lib/niches';
 
 const header =
@@ -7,6 +8,7 @@ const header =
 describe('parseNichesCsv', () => {
   it('converte rótulos pt-BR (com acento) para os enums', () => {
     const [n] = parseNichesCsv(`${header}\n"Clínicas","Médio","Média","porque, sim","oferta"`);
+
     expect(n).toMatchObject({
       name: 'Clínicas',
       ticket: 'medio',

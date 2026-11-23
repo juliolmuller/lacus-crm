@@ -1,28 +1,33 @@
 'use client';
 
-import { createContext, useContext, useId, type ComponentProps, type ReactNode } from 'react';
+import { type ComponentProps, createContext, type ReactNode, use, useId } from 'react';
 import { ResponsiveContainer, Tooltip, type TooltipContentProps } from 'recharts';
+
 import { cn } from '@/lib/utils';
 
 // Base: componente `chart` do shadcn/ui (recharts 3), enxuto e com os tokens deste projeto.
-export type ChartConfig = Record<string, { label: string; color: string }>;
+export type ChartConfig = Record<string, { color: string; label: string }>;
 
 const ChartContext = createContext<ChartConfig | null>(null);
-const useChartConfig = () => useContext(ChartContext) ?? {};
+const useChartConfig = (): ChartConfig => use(ChartContext) ?? {};
 
-/** Define `--color-<chave>` por gráfico; as marcas usam `fill="var(--color-chave)"`. */
+/**
+ * Define `--color-<chave>` por gráfico; as marcas usam
+ * `fill="var(--color-chave)"`.
+ */
 export function ChartContainer({
   config,
   className,
   children,
   ...props
-}: ComponentProps<'div'> & { config: ChartConfig; children: ReactNode }) {
+}: { children: ReactNode; config: ChartConfig } & ComponentProps<'div'>): React.JSX.Element {
   const id = `chart-${useId().replace(/:/g, '')}`;
   const vars = Object.entries(config)
     .map(([k, v]) => `--color-${k}: ${v.color};`)
     .join(' ');
+
   return (
-    <ChartContext.Provider value={config}>
+    <ChartContext value={config}>
       <div
         data-chart={id}
         className={cn(
@@ -39,26 +44,36 @@ export function ChartContainer({
           {children as React.ReactElement}
         </ResponsiveContainer>
       </div>
-    </ChartContext.Provider>
+    </ChartContext>
   );
 }
 
 export const ChartTooltip = Tooltip;
 
-/** Tooltip no estilo do projeto: rótulo, bolinha da cor da série, valor com tabular-nums. */
+const formatPtBr = (v: number): string => v.toLocaleString('pt-BR');
+
+/**
+ * Tooltip no estilo do projeto: rótulo, bolinha da cor da série, valor com
+ * tabular-nums.
+ */
 export function ChartTooltipContent({
   active,
   payload,
   label,
-  valueFormatter = (v: number) => v.toLocaleString('pt-BR'),
-}: Partial<TooltipContentProps<number, string>> & { valueFormatter?: (v: number) => string }) {
+  valueFormatter = formatPtBr,
+}: Partial<TooltipContentProps<number, string>> & {
+  valueFormatter?: (v: number) => string;
+}): null | React.JSX.Element {
   const config = useChartConfig();
+
   if (!active || !payload?.length) return null;
+
   return (
     <div className="grid min-w-32 gap-1.5 rounded-md border border-border-strong bg-surface-2 px-3 py-2 text-label shadow-e2">
-      {label != null && <p className="font-medium text-text">{String(label)}</p>}
+      {label !== undefined && <p className="font-medium text-text">{String(label)}</p>}
       {payload.map((p) => {
         const key = String(p.dataKey ?? p.name);
+
         return (
           <div key={key} className="flex items-center gap-2 text-text-muted">
             <span

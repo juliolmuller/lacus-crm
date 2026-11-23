@@ -1,12 +1,19 @@
 import { statusLabel } from '@/lib/leads/labels';
-import type { Distributions } from '@/lib/services/dashboard';
-import { HBarChart, type BarDatum } from './charts';
+import { type Distributions } from '@/lib/services/dashboard';
+
+import { type BarDatum, HBarChart } from './charts';
 import { Empty, Panel } from './panel';
 
-const bars = (rows: { name: string; count: number; fill?: string }[]): BarDatum[] =>
+const bars = (rows: Array<{ count: number; fill?: string; name: string }>): BarDatum[] =>
   rows.map((r) => ({ name: r.name, value: r.count, text: String(r.count), fill: r.fill }));
 
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
+function Block({
+  title,
+  children,
+}: {
+  children: React.ReactNode;
+  title: string;
+}): React.JSX.Element {
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <h3 className="text-label font-semibold text-text-muted">{title}</h3>
@@ -15,10 +22,14 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-/** Leads por status, nicho (top 10), região (top 10) e faixa de score, no período escolhido. */
-export function DistributionsCard({ d }: { d: Distributions }) {
+/**
+ * Leads por status, nicho (top 10), região (top 10) e faixa de score, no
+ * período escolhido.
+ */
+export function DistributionsCard({ d }: { d: Distributions }): React.JSX.Element {
   const total = d.score.high + d.score.mid + d.score.low;
   const { green, yellow } = d.score.thresholds;
+
   return (
     <Panel title="Distribuição dos leads">
       {total === 0 ? (

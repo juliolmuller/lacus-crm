@@ -1,5 +1,6 @@
-import type { Metadata } from 'next';
-import { QueueTable, type QueueRow } from '@/components/queue/queue-table';
+import { type Metadata } from 'next';
+
+import { type QueueRow, QueueTable } from '@/components/queue/queue-table';
 import { UsagePanel } from '@/components/queue/usage-panel';
 import { getDb } from '@/lib/db';
 import { recentUsage, usageToday } from '@/lib/services/api-usage';
@@ -8,7 +9,7 @@ import { LEASE_MS, listQueue } from '@/lib/services/queue';
 export const metadata: Metadata = { title: 'Fila' };
 export const dynamic = 'force-dynamic';
 
-export default async function Page() {
+export default async function Page(): Promise<React.JSX.Element> {
   const db = getDb();
   const now = new Date().getTime();
   const [items, today, usage] = await Promise.all([listQueue(db), usageToday(db), recentUsage(db)]);
@@ -29,6 +30,7 @@ export default async function Page() {
         : null,
     leaseUntil: i.claimedAt ? new Date(i.claimedAt.getTime() + LEASE_MS).toISOString() : null,
   }));
+
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-page">Fila</h1>

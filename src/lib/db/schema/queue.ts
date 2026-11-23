@@ -1,4 +1,5 @@
 import { date, index, integer, pgTable, serial, text, time, unique } from 'drizzle-orm/pg-core';
+
 import { tstz } from './_helpers';
 import { niches, regions } from './catalog';
 import { queueStatus } from './enums';

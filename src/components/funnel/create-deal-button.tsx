@@ -4,19 +4,24 @@ import { Handshake } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
+
 import { createDealAction } from '@/app/(app)/funil/actions';
 import { Button } from '@/components/ui/button';
 
-/** "Criar negociação": abre em A diagnosticar e leva para o drawer da negociação no funil. */
+/**
+ * "Criar negociação": abre em A diagnosticar e leva para o drawer da negociação
+ * no funil.
+ */
 export function CreateDealButton({
   leadId,
   variant = 'secondary',
 }: {
   leadId: string;
-  variant?: 'secondary' | 'primary';
-}) {
+  variant?: 'primary' | 'secondary';
+}): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
+
   return (
     <Button
       variant={variant}
@@ -25,7 +30,13 @@ export function CreateDealButton({
       onClick={() =>
         start(async () => {
           const r = await createDealAction(leadId);
-          if (!r.ok) return void toast.error(r.error);
+
+          if (!r.ok) {
+            toast.error(r.error);
+
+            return;
+          }
+
           toast.success('Negociação criada em A diagnosticar');
           router.push(`/funil?deal=${r.id}`);
         })

@@ -1,10 +1,10 @@
 'use client';
 
 import {
+  AtSign,
   Ban,
   Copy,
   ExternalLink,
-  AtSign,
   MapPin,
   MessageCircle,
   Phone,
@@ -12,8 +12,9 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition, type ReactNode } from 'react';
+import { type ReactNode, useState, useTransition } from 'react';
 import { toast } from 'sonner';
+
 import {
   deleteLeadAction,
   markDoNotContact,
@@ -28,22 +29,22 @@ import { renderTemplate, type TemplateValues } from '@/lib/followups/templates';
 import { instagramUrl, safeUrl, telUrl, whatsappUrl } from '@/lib/leads/links';
 import { cn } from '@/lib/utils';
 
-type Props = {
+interface Props {
   lead: {
-    id: string;
-    name: string;
-    mapsUrl: string | null;
-    phoneE164: string | null;
-    instagram: string | null;
-    pitch: string | null;
-    sessionUrl: string | null;
+    contacted: boolean;
     doNotContact: boolean;
     hasOpenDeal: boolean;
-    contacted: boolean;
+    id: string;
+    instagram: null | string;
+    mapsUrl: null | string;
+    name: string;
+    phoneE164: null | string;
+    pitch: null | string;
+    sessionUrl: null | string;
   };
-  templates: { id: number; key: string; name: string; body: string }[];
+  templates: Array<{ body: string; id: number; key: string; name: string }>;
   values: TemplateValues;
-};
+}
 
 const linkCls = buttonVariants({ variant: 'secondary', size: 'sm' });
 
@@ -52,10 +53,10 @@ function Item({
   icon,
   children,
 }: {
-  href: string | null;
-  icon: ReactNode;
   children: ReactNode;
-}) {
+  href: null | string;
+  icon: ReactNode;
+}): React.JSX.Element {
   if (!href)
     return (
       <span aria-disabled className={cn(linkCls, 'opacity-50')}>
@@ -63,6 +64,7 @@ function Item({
         {children}
       </span>
     );
+
   return (
     <a
       href={href}
@@ -76,11 +78,14 @@ function Item({
   );
 }
 
-/** Barra fixa do drawer (SPEC 6.2). WhatsApp e "Copiar mensagem" usam o modelo escolhido. */
-export function QuickActions({ lead, templates, values }: Props) {
+/**
+ * Barra fixa do drawer (SPEC 6.2). WhatsApp e "Copiar mensagem" usam o modelo
+ * escolhido.
+ */
+export function QuickActions({ lead, templates, values }: Props): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [dialog, setDialog] = useState<'dnc' | 'delete' | 'session' | null>(null);
+  const [dialog, setDialog] = useState<'delete' | 'dnc' | 'session' | null>(null);
   const [reason, setReason] = useState('');
   const [optOut, setOptOut] = useState(true);
   const [typed, setTyped] = useState('');
@@ -90,13 +95,18 @@ export function QuickActions({ lead, templates, values }: Props) {
   const [tplKey, setTplKey] = useState(templates.find((t) => t.key === first)?.key ?? '');
   const tpl = templates.find((t) => t.key === tplKey);
   const missing = tpl ? renderTemplate(tpl.body, values).missing : [];
-  const close = () => setDialog(null);
+  const close = (): void => setDialog(null);
   const icon = 'size-4';
 
-  /** Texto final do modelo (a saudação usa a hora do clique); undefined sem modelo. */
-  const message = () => (tpl ? renderTemplate(tpl.body, values, new Date()).text : undefined);
-  const askRegister = () => {
+  /**
+   * Texto final do modelo (a saudação usa a hora do clique); undefined sem
+   * modelo.
+   */
+  const message = (): string | undefined =>
+    tpl ? renderTemplate(tpl.body, values, new Date()).text : undefined;
+  const askRegister = (): void => {
     const sent = tpl && { templateId: tpl.id, name: tpl.name, body: message() ?? '' };
+
     toast('Registrar como abordado?', {
       duration: 15000,
       action: {
@@ -106,10 +116,20 @@ export function QuickActions({ lead, templates, values }: Props) {
     });
   };
 
-  const run = (fn: () => Promise<{ ok: boolean; error?: string }>, ok: string, then?: () => void) =>
+  const run = (
+    fn: () => Promise<{ error?: string; ok: boolean }>,
+    ok: string,
+    then?: () => void,
+  ): void =>
     start(async () => {
       const r = await fn();
-      if (!r.ok) return void toast.error(r.error ?? 'Erro');
+
+      if (!r.ok) {
+        toast.error(r.error ?? 'Erro');
+
+        return;
+      }
+
       toast.success(ok);
       close();
       then?.();
@@ -145,6 +165,7 @@ export function QuickActions({ lead, templates, values }: Props) {
         title={missing.length ? `Faltam dados do lead: ${missing.join(', ')}` : undefined}
         onClick={() => {
           const text = message();
+
           window.open(whatsappUrl(lead.phoneE164, text) ?? '', '_blank', 'noopener,noreferrer');
           askRegister();
         }}

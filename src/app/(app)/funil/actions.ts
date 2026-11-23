@@ -1,21 +1,27 @@
 'use server';
 
 import { z } from 'zod';
+
 import { fail, type Result } from '@/lib/action-result';
 import { requireOwner } from '@/lib/auth/dal';
 import { getDb } from '@/lib/db';
-import { syncAfterResponse } from '@/lib/google/context';
 import { lossReasons } from '@/lib/funnel/status-sync';
+import { syncAfterResponse } from '@/lib/google/context';
 import { parseContactDate, parseDate, parseNumber } from '@/lib/leads/csv';
 import { createDeal, loseDeal, moveDeal, updateDeal, winDeal } from '@/lib/services/deals';
 import { logInteraction } from '@/lib/services/interactions';
 
-/** "1.500,00" → "1500.00"; vazio → null. */
-const money = (s: string) => (s.trim() ? parseNumber(s).toFixed(2) : null);
+/**
+ * "1.500,00" → "1500.00"; vazio → null.
+ */
+const money = (s: string): null | string => (s.trim() ? parseNumber(s).toFixed(2) : null);
 const uuid = z.string().uuid();
 
-/** Erros de parse de data/número (mensagem já em pt-BR) vão para o usuário; o resto, para o log. */
-const formError = (e: unknown) =>
+/**
+ * Erros de parse de data/número (mensagem já em pt-BR) vão para o usuário; o
+ * resto, para o log.
+ */
+const formError = (e: unknown): { error: string; ok: false } =>
   e instanceof Error && /inválid|inexistente/.test(e.message)
     ? { ok: false as const, error: e.message }
     : fail(e);
@@ -29,11 +35,16 @@ const moveSchema = z.object({
 
 export async function moveDealAction(input: unknown): Promise<Result<{ reminders: number }>> {
   await requireOwner();
+
   const p = moveSchema.safeParse(input);
+
   if (!p.success) return { ok: false, error: 'Movimento inválido' };
+
   try {
     const r = await moveDeal(getDb(), p.data);
+
     syncAfterResponse();
+
     return { ok: true, reminders: r.reminderIds.length };
   } catch (e) {
     return fail(e);
@@ -42,6 +53,7 @@ export async function moveDealAction(input: unknown): Promise<Result<{ reminders
 
 export async function winDealAction(dealId: string, value: string, date: string): Promise<Result> {
   await requireOwner();
+
   try {
     await winDeal(getDb(), {
       dealId: uuid.parse(dealId),
@@ -49,6 +61,7 @@ export async function winDealAction(dealId: string, value: string, date: string)
       wonAt: date ? parseContactDate(parseDate(date)) : undefined,
     });
     syncAfterResponse();
+
     return { ok: true };
   } catch (e) {
     return formError(e);
@@ -61,13 +74,17 @@ export async function loseDealAction(
   note: string,
 ): Promise<Result> {
   await requireOwner();
+
   const p = z
     .object({ dealId: uuid, reason: z.enum(lossReasons), note: z.string().max(500) })
     .safeParse({ dealId, reason, note });
+
   if (!p.success) return { ok: false, error: 'Escolha o motivo da perda' };
+
   try {
     await loseDeal(getDb(), p.data);
     syncAfterResponse();
+
     return { ok: true };
   } catch (e) {
     return fail(e);
@@ -76,9 +93,12 @@ export async function loseDealAction(
 
 export async function createDealAction(leadId: string): Promise<Result<{ id: string }>> {
   await requireOwner();
+
   try {
     const d = await createDeal(getDb(), { leadId: uuid.parse(leadId), source: 'ui' });
+
     syncAfterResponse();
+
     return { ok: true, id: d.id };
   } catch (e) {
     return fail(e);
@@ -87,9 +107,12 @@ export async function createDealAction(leadId: string): Promise<Result<{ id: str
 
 export async function updateDealAction(id: string, fd: FormData): Promise<Result> {
   await requireOwner();
-  const f = (k: string) => String(fd.get(k) ?? '').trim();
+
+  const f = (k: string): string => String(fd.get(k) ?? '').trim();
+
   try {
     const probability = f('probability');
+
     await updateDeal(getDb(), uuid.parse(id), {
       title: f('title') || undefined,
       value: money(f('value')),
@@ -100,6 +123,7 @@ export async function updateDealAction(id: string, fd: FormData): Promise<Result
       expectedCloseOn: f('expectedCloseOn') ? parseDate(f('expectedCloseOn')) : null,
       notes: f('notes') || null,
     });
+
     return { ok: true };
   } catch (e) {
     return formError(e);
@@ -140,14 +164,21 @@ const interactionSchema = z.object({
   resumeInDays: z.number().int().min(1).max(250).optional(),
 });
 
-/** Criação rápida de interação (drawer do lead e da negociação). */
+/**
+ * Criação rápida de interação (drawer do lead e da negociação).
+ */
 export async function logInteractionAction(input: unknown): Promise<Result<{ reminders: number }>> {
   await requireOwner();
+
   const p = interactionSchema.safeParse(input);
+
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? 'Dados inválidos' };
+
   try {
     const r = await logInteraction(getDb(), { ...p.data, createdBy: 'user' });
+
     syncAfterResponse();
+
     return { ok: true, reminders: r.reminderIds.length };
   } catch (e) {
     return fail(e);

@@ -10,6 +10,7 @@ import {
   text,
   uuid,
 } from 'drizzle-orm/pg-core';
+
 import { createdAt, tstz, updatedAt } from './_helpers';
 import { niches, regions } from './catalog';
 import { contactStatus, websiteStatus } from './enums';

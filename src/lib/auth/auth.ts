@@ -1,12 +1,14 @@
-import { betterAuth, type BetterAuthOptions } from 'better-auth';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { cimd } from '@better-auth/cimd';
 import { fetchClientMetadataResource } from '@better-auth/cimd/node';
 import { mcp } from '@better-auth/mcp';
+import { betterAuth, type BetterAuthOptions } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
 import { jwt } from 'better-auth/plugins';
+
 import { getDb, schema } from '@/lib/db';
 import { getEnv } from '@/lib/env';
+
 import { isOwner } from './allowlist';
 import { mcpResources, SCOPES } from './mcp-resources';
 
@@ -49,12 +51,14 @@ function buildOptions() {
         const sub =
           typeof source.oauth?.profile?.sub === 'string' ? source.oauth.profile.sub : undefined;
         const ok =
-          source.oauth?.providerId === 'vercel' &&
-          isOwner(
+          source.oauth?.providerId === 'vercel'
+          && isOwner(
             { sub, email: user.email, emailVerified: user.emailVerified },
             { sub: env.OWNER_VERCEL_USER_ID, email: env.OWNER_EMAIL },
           );
+
         if (ok) return;
+
         // Em dev, mostra o sub recebido para preencher OWNER_VERCEL_USER_ID.
         return {
           error: 'access_denied',
@@ -110,5 +114,7 @@ export const authOptions = buildOptions;
 const globalForAuth = globalThis as unknown as { __auth?: ReturnType<typeof create> };
 const create = () => betterAuth(buildOptions());
 
-/** Singleton lazy: evita validar env/abrir pool durante imports em build. */
+/**
+ * Singleton lazy: evita validar env/abrir pool durante imports em build.
+ */
 export const getAuth = () => (globalForAuth.__auth ??= create());

@@ -15,22 +15,26 @@ const args = process.argv.slice(2);
 const insertOnly = args.includes('--insert-only');
 const dryRun = args.includes('--dry-run');
 const dir = '.data';
-const text = (f: string) => readFileSync(`${dir}/${f}`, 'utf8').replace(/^﻿/, '');
-const table = (f: string) =>
+const text = (f: string): string => readFileSync(`${dir}/${f}`, 'utf8').replace(/^\ufeff/, '');
+const table = (f: string): Array<Record<string, string>> =>
   Papa.parse<Record<string, string>>(text(f), { header: true, skipEmptyLines: true }).data;
-const matrix = (f: string) => Papa.parse<string[]>(text(f), { skipEmptyLines: false }).data;
+const matrix = (f: string): string[][] =>
+  Papa.parse<string[]>(text(f), { skipEmptyLines: false }).data;
 
 const db = getDb();
 const out: Record<string, unknown> = {};
 
 if (existsSync(`${dir}/nichos.csv`))
   out.nichos = await cat.importNiches(db, text('nichos.csv'), { dryRun });
+
 if (existsSync(`${dir}/cidades.csv`))
   out.cidades = await cat.importRegions(db, table('cidades.csv'), { dryRun });
+
 if (existsSync(`${dir}/fila.csv`))
   out.fila = await cat.importQueue(db, table('fila.csv'), { dryRun });
 
 const leadsFile = `leads_PR-Curitiba.csv`;
+
 if (existsSync(`${dir}/${leadsFile}`)) {
   const rows = table(leadsFile);
   const mapping = autoMapHeaders(Object.keys(rows[0] ?? {}));
@@ -41,23 +45,26 @@ if (existsSync(`${dir}/${leadsFile}`)) {
   );
   out.leads = rep;
 }
+
 if (existsSync(`${dir}/top-leads.csv`))
   out.topLeads = await cat.importTopLeads(db, table('top-leads.csv'), { dryRun });
+
 if (existsSync(`${dir}/uso-da-api.csv`))
   out.usoApi = await cat.importApiUsage(db, matrix('uso-da-api.csv'), { dryRun });
 
 writeFileSync(`${dir}/import-report.json`, JSON.stringify(out, null, 2));
 
 // Candidatos a "Não contatar": só relatório, nada é aplicado (PLAN, decisão 4).
-const cands = new Map<string, { id: string; name: string; status: string; evidence: string[] }>();
+const cands = new Map<string, { evidence: string[]; id: string; name: string; status: string }>();
 for (const k of ['leads', 'topLeads'] as const)
   for (const c of (
     out[k] as
-      | { dncCandidates?: { id: string; name: string; status: string; evidence: string[] }[] }
+      | { dncCandidates?: Array<{ evidence: string[]; id: string; name: string; status: string }> }
       | undefined
   )?.dncCandidates ?? [])
     cands.set(c.id, c);
-const cell = (t: string) => t.replace(/\|/g, '\\|').replace(/\s+/g, ' ').slice(0, 160);
+const cell = (t: string): string => t.replace(/\|/g, '\\|').replace(/\s+/g, ' ').slice(0, 160);
+
 writeFileSync(
   `${dir}/dnc-candidates.md`,
   [
@@ -75,11 +82,14 @@ writeFileSync(
     '',
   ].join('\n'),
 );
-const short = (r: { messages?: string[] }) => ({
+
+const short = (r: {
+  messages?: string[];
+}): { messages: string[] | undefined; rows: undefined } => ({
   ...r,
   rows: undefined,
   messages: r.messages?.slice(0, 5),
 });
 for (const [k, v] of Object.entries(out))
-  console.log(k, JSON.stringify(short(v as { messages?: string[] })));
+  console.info(k, JSON.stringify(short(v as { messages?: string[] })));
 process.exit(0);

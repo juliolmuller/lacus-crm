@@ -1,19 +1,22 @@
 import { whatsappUrl } from '@/lib/leads/links';
-import type { CalendarEvent } from './calendar-api';
+
+import { type CalendarEvent } from './calendar-api';
 
 const TZ = 'America/Sao_Paulo';
 
-/** Mapeamento lembrete → evento (SPEC 10). */
+/**
+ * Mapeamento lembrete → evento (SPEC 10).
+ */
 export function buildEvent(
   r: {
-    id: string;
-    leadId: string;
-    title: string;
-    notes: string | null;
     dueAt: Date;
     durationMin: number;
+    id: string;
+    leadId: string;
+    notes: null | string;
+    title: string;
   },
-  lead: { name: string; phoneE164: string | null; nextAction: string | null },
+  lead: { name: string; nextAction: null | string; phoneE164: null | string },
   opts: { appUrl: string; popupMinutes: number[] },
 ): CalendarEvent {
   const wa = whatsappUrl(lead.phoneE164);
@@ -26,6 +29,7 @@ export function buildEvent(
   ]
     .filter(Boolean)
     .join('\n');
+
   return {
     summary: `Follow-up: ${lead.name} – ${r.title}`,
     description,

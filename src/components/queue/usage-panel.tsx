@@ -1,23 +1,33 @@
 import { cn } from '@/lib/utils';
 
-type Day = { day: string; at: string; requests: number; leadsSaved: number };
+interface Day {
+  at: string;
+  day: string;
+  leadsSaved: number;
+  requests: number;
+}
 
-const dm = (ymd: string) => `${ymd.slice(8)}/${ymd.slice(5, 7)}`;
+const dm = (ymd: string): string => `${ymd.slice(8)}/${ymd.slice(5, 7)}`;
 
-/** Uso da API hoje × orçamento e os registros dos últimos 30 dias (somados por dia). */
+/**
+ * Uso da API hoje × orçamento e os registros dos últimos 30 dias (somados por
+ * dia).
+ */
 export function UsagePanel({
   today,
   days,
 }: {
-  today: { requestsToday: number; budget: number; remaining: number };
   days: Day[];
-}) {
+  today: { budget: number; remaining: number; requestsToday: number };
+}): React.JSX.Element {
   const over = today.requestsToday > today.budget;
-  const byDay = new Map<string, { requests: number; leads: number }>();
+  const byDay = new Map<string, { leads: number; requests: number }>();
   for (const d of days) {
     const c = byDay.get(d.day) ?? { requests: 0, leads: 0 };
+
     byDay.set(d.day, { requests: c.requests + d.requests, leads: c.leads + d.leadsSaved });
   }
+
   return (
     <aside
       aria-label="Uso da API"

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { computeScore, scoreBand, type ScoreLead } from '@/lib/score';
 import { settingDefaults } from '@/lib/validation/settings';
 
@@ -16,7 +17,7 @@ const base: ScoreLead = {
   decisionMakerContact: null,
   strongLocalCompetition: false,
 };
-const score = (l: Partial<ScoreLead>, ticket: 'alto' | 'medio' | 'baixo' | null = null) =>
+const score = (l: Partial<ScoreLead>, ticket: 'alto' | 'baixo' | 'medio' | null = null): number =>
   computeScore({ ...base, ...l }, { ticket }, settings).score;
 
 describe('computeScore', () => {
@@ -35,6 +36,7 @@ describe('computeScore', () => {
       { ticket: 'alto' },
       settings,
     );
+
     expect(r.score).toBe(85);
     expect(r.breakdown).toEqual({
       website: 30,
@@ -78,7 +80,9 @@ describe('computeScore', () => {
 
   it('escala o ticket pelo peso editado e limita a 0..100', () => {
     const w = { ...settings.weights, ticket: 30 };
+
     expect(computeScore(base, { ticket: 'medio' }, { ...settings, weights: w }).score).toBe(15);
+
     const all = {
       website: 60,
       reputation: 60,
@@ -87,6 +91,7 @@ describe('computeScore', () => {
       directContact: 60,
       competition: 60,
     };
+
     expect(
       computeScore(
         { ...base, websiteStatus: 'none' },
@@ -98,6 +103,7 @@ describe('computeScore', () => {
 
   it('faixas: 70 verde, 69 amarelo, 40 amarelo, 39 vermelho', () => {
     const t = settings.thresholds;
+
     expect([70, 69, 40, 39].map((n) => scoreBand(n, t))).toEqual(['high', 'mid', 'mid', 'low']);
   });
 });

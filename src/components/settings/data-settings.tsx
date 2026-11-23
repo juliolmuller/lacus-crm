@@ -1,13 +1,17 @@
 import Link from 'next/link';
+
 import { buttonVariants } from '@/components/ui/button';
 import { formatWhen } from '@/lib/format';
-import type { listSuppression } from '@/lib/services/suppression';
+import { type listSuppression } from '@/lib/services/suppression';
 import { cn } from '@/lib/utils';
 
 type Suppression = Awaited<ReturnType<typeof listSuppression>>;
 
-/** Dados: importar e exportar CSV, lista de supressão e a explicação de LGPD/opt-out. */
-export function DataSettings({ suppression }: { suppression: Suppression }) {
+/**
+ * Dados: importar e exportar CSV, lista de supressão e a explicação de
+ * LGPD/opt-out.
+ */
+export function DataSettings({ suppression }: { suppression: Suppression }): React.JSX.Element {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">

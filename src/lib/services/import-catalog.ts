@@ -1,30 +1,31 @@
 import { eq } from 'drizzle-orm';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
+
+import { type Db, schema } from '@/lib/db';
 import { sha256 } from '@/lib/hash';
 import { parseContactDate, parseDate, parseNumber } from '@/lib/leads/csv';
 import { dncEvidence } from '@/lib/leads/dnc';
-import { statusLabel, contactStatuses } from '@/lib/leads/labels';
+import { contactStatuses, statusLabel } from '@/lib/leads/labels';
 import { parseNichesCsv } from '@/lib/niches';
 import { normalizeName, parseCityNeighborhood } from '@/lib/normalize';
+
 import {
-  ensureImportDeal,
   emptyReport,
-  inRollbackableTx,
+  ensureImportDeal,
   type ImportOptions,
   type ImportReport,
+  inRollbackableTx,
 } from './import';
 import { resolveNiche, resolveRegion, updateLead } from './leads';
 
 const { niches, regions, prospectingQueue, apiUsageLog, leads } = schema;
 
-/** Relatório simples dos importadores de catálogo (sem score, deals ou histórico). */
-export type CatalogReport = Pick<
-  ImportReport,
-  'created' | 'updated' | 'unchanged' | 'skipped' | 'errors'
-> & {
+/**
+ * Relatório simples dos importadores de catálogo (sem score, deals ou
+ * histórico).
+ */
+export type CatalogReport = {
   messages: string[];
-};
+} & Pick<ImportReport, 'created' | 'errors' | 'skipped' | 'unchanged' | 'updated'>;
 const blank = (): CatalogReport => ({
   created: 0,
   updated: 0,
@@ -34,15 +35,26 @@ const blank = (): CatalogReport => ({
   messages: [],
 });
 
-const changedKeys = (cur: Record<string, unknown>, next: Record<string, unknown>) =>
-  Object.keys(next).filter((k) => (cur[k] ?? null) !== (next[k] ?? null));
+const changedKeys = (cur: object, next: object): string[] =>
+  Object.entries(next)
+    .filter(([k, v]) => ((cur as Record<string, unknown>)[k] ?? null) !== (v ?? null))
+    .map(([k]) => k);
 
-/** Nichos: cria os que faltam e atualiza os campos que mudaram. Nunca inventa ticket nem abertura. */
-export async function importNiches(db: Db, csv: string, opts: Pick<ImportOptions, 'dryRun'>) {
+/**
+ * Nichos: cria os que faltam e atualiza os campos que mudaram. Nunca inventa
+ * ticket nem abertura.
+ */
+export async function importNiches(
+  db: Db,
+  csv: string,
+  opts: Pick<ImportOptions, 'dryRun'>,
+): Promise<CatalogReport> {
   const rep = blank();
+
   await inRollbackableTx(db, opts.dryRun, async (tx) => {
     for (const n of parseNichesCsv(csv)) {
       const cur = await resolveNiche(tx, n.name);
+
       if (!cur) {
         await tx.insert(niches).values(n);
         rep.created++;
@@ -52,26 +64,33 @@ export async function importNiches(db: Db, csv: string, opts: Pick<ImportOptions
       } else rep.unchanged++;
     }
   });
+
   return rep;
 }
 
-/** Cidades/Regiões: label "PR - Pato Branco" + ID da planilha da cidade. */
+/**
+ * Cidades/Regiões: label "PR - Pato Branco" + ID da planilha da cidade.
+ */
 export async function importRegions(
   db: Db,
-  rows: Record<string, string>[],
+  rows: Array<Record<string, string>>,
   opts: Pick<ImportOptions, 'dryRun'>,
-) {
+): Promise<CatalogReport> {
   const rep = blank();
+
   await inRollbackableTx(db, opts.dryRun, async (tx) => {
     for (const [i, r] of rows.entries()) {
       const place = parseCityNeighborhood(r['Cidade']);
       const sheetId = r['ID da planilha']?.trim() || null;
+
       if (!place) {
         rep.errors++;
         rep.messages.push(`linha ${i + 2}: cidade inválida "${r['Cidade']}"`);
         continue;
       }
+
       const [cur] = await tx.select().from(regions).where(eq(regions.label, place.label));
+
       if (!cur) {
         await resolveRegion(tx, place, sheetId);
         rep.created++;
@@ -81,33 +100,44 @@ export async function importRegions(
       } else rep.unchanged++;
     }
   });
+
   return rep;
 }
 
 const QUEUE_STATUS = {
-  pendente: 'pending',
-  concluido: 'done',
+  'pendente': 'pending',
+  'concluido': 'done',
   'sem resultados': 'done',
-  erro: 'error',
+  'erro': 'error',
 } as const;
 
-/** Fila: `position` = coluna Ordem; reimportar não mexe em `sort_order` (reordenação do usuário). */
+/**
+ * Fila: `position` = coluna Ordem; reimportar não mexe em `sort_order`
+ * (reordenação do usuário).
+ */
 export async function importQueue(
   db: Db,
-  rows: Record<string, string>[],
+  rows: Array<Record<string, string>>,
   opts: Pick<ImportOptions, 'dryRun'>,
-) {
+): Promise<CatalogReport> {
   const rep = blank();
+
   await inRollbackableTx(db, opts.dryRun, async (tx) => {
     for (const [i, r] of rows.entries()) {
       try {
         const position = Math.round(parseNumber(r['Ordem'] ?? ''));
         const place = parseCityNeighborhood(r['Cidade']);
+
         if (!place) throw new Error(`cidade inválida "${r['Cidade']}"`);
+
         const niche = await resolveNiche(tx, r['Nicho'] ?? '');
+
         if (!niche) throw new Error(`nicho desconhecido "${r['Nicho']}"`);
+
         const status = QUEUE_STATUS[normalizeName(r['Status'] ?? '') as keyof typeof QUEUE_STATUS];
+
         if (!status) throw new Error(`status desconhecido "${r['Status']}"`);
+
         const region = await resolveRegion(
           tx,
           place,
@@ -128,6 +158,7 @@ export async function importQueue(
           .select()
           .from(prospectingQueue)
           .where(eq(prospectingQueue.position, position));
+
         if (!cur) {
           await tx.insert(prospectingQueue).values({ position, sortOrder: position, ...next });
           rep.created++;
@@ -149,26 +180,33 @@ export async function importQueue(
       }
     }
   });
+
   return rep;
 }
 
 /**
- * Uso da API: as 4 primeiras linhas da aba trazem o limite diário; o cabeçalho da tabela começa em "Data".
- * `rows` vem do CSV bruto (matriz). O run_id é um hash do conteúdo, então reimportar não duplica.
+ * Uso da API: as 4 primeiras linhas da aba trazem o limite diário; o cabeçalho
+ * da tabela começa em "Data". `rows` vem do CSV bruto (matriz). O run_id é um
+ * hash do conteúdo, então reimportar não duplica.
  */
 export async function importApiUsage(
   db: Db,
   matrix: string[][],
   opts: Pick<ImportOptions, 'dryRun'>,
-) {
+): Promise<CatalogReport> {
   const rep = blank();
   const head = matrix.findIndex((r) => r[0]?.trim() === 'Data');
+
   if (head < 0) throw new Error('Cabeçalho "Data" não encontrado na aba Uso da API');
+
   const limit = matrix.find((r) => normalizeName(r[0] ?? '').startsWith('limite diario'))?.[1];
+
   if (limit) rep.messages.push(`limite diário na planilha: ${limit}`);
+
   await inRollbackableTx(db, opts.dryRun, async (tx) => {
     for (const [i, r] of matrix.slice(head + 1).entries()) {
       if (!r[0]?.trim()) continue;
+
       try {
         const [h, m] = (r[1] ?? '').trim().split(':');
         const order = r[2]?.trim();
@@ -186,6 +224,7 @@ export async function importApiUsage(
           .values({ ...values, runId })
           .onConflictDoNothing({ target: apiUsageLog.runId })
           .returning({ id: apiUsageLog.id });
+
         if (ins.length) rep.created++;
         else rep.unchanged++;
       } catch (e) {
@@ -194,40 +233,49 @@ export async function importApiUsage(
       }
     }
   });
+
   return rep;
 }
 
 /**
- * Top leads sobrepõe prioridade, session_url e status (o do Top leads vence) e cria a negociação
- * da etapa equivalente quando o lead não tem nenhuma (PLAN D4, histórico source='import').
+ * Top leads sobrepõe prioridade, session_url e status (o do Top leads vence) e
+ * cria a negociação da etapa equivalente quando o lead não tem nenhuma (PLAN
+ * D4, histórico source='import').
  */
 export async function importTopLeads(
   db: Db,
-  rows: Record<string, string>[],
+  rows: Array<Record<string, string>>,
   opts: Pick<ImportOptions, 'dryRun'>,
-) {
+): Promise<ImportReport> {
   const report = emptyReport();
   const byLabel = new Map(contactStatuses.map((s) => [normalizeName(statusLabel[s]), s]));
+
   await inRollbackableTx(db, opts.dryRun, async (tx) => {
     for (const [i, r] of rows.entries()) {
       const line = i + 2;
       const name = r['Lead'] ?? '';
       const done = (
-        action: 'update' | 'unchanged' | 'error',
+        action: 'error' | 'unchanged' | 'update',
         reason?: string,
         changed?: string[],
-      ) => {
+      ): void => {
         report.rows.push({ line, name, action, reason, changed });
+
         if (action === 'update') report.updated++;
         else if (action === 'unchanged') report.unchanged++;
         else report.errors++;
       };
+
       try {
         const id = r['ID do lead']?.trim().toLowerCase();
         const [lead] = id ? await tx.select().from(leads).where(eq(leads.id, id)) : [];
+
         if (!lead) throw new Error('lead não existe no CRM (importe a aba Leads antes)');
+
         const status = byLabel.get(normalizeName(r['Status do contato'] ?? ''));
+
         if (!status) throw new Error(`status desconhecido "${r['Status do contato']}"`);
+
         const priority = r['Prioridade']?.trim() ? Math.round(parseNumber(r['Prioridade']!)) : null;
         const patch = {
           priority,
@@ -239,12 +287,15 @@ export async function importTopLeads(
           .map(([k]) => k);
         const cur = changed.length ? await updateLead(tx, lead.id, patch) : lead;
         const before = report.deals;
+
         await ensureImportDeal(tx, cur, report);
+
         const evidence = dncEvidence({
           notes: [cur.notes, r['Observações']].join(' '),
           responseOrObjection: cur.responseOrObjection,
           nextAction: cur.nextAction,
         });
+
         if (evidence.length && ['lost', 'discarded'].includes(cur.contactStatus))
           report.dncCandidates.push({
             id: cur.id,
@@ -252,6 +303,7 @@ export async function importTopLeads(
             status: statusLabel[cur.contactStatus],
             evidence,
           });
+
         if (changed.length || report.deals > before) done('update', undefined, changed);
         else done('unchanged');
       } catch (e) {
@@ -259,5 +311,6 @@ export async function importTopLeads(
       }
     }
   });
+
   return report;
 }

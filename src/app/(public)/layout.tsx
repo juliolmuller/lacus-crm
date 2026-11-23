@@ -1,6 +1,8 @@
 import Link from 'next/link';
+
 import { Copyright } from '@/components/brand/copyright';
 import { Logo } from '@/components/brand/logo';
+
 import { CONTACT_EMAIL } from './site';
 
 const LINKS = [
@@ -9,8 +11,14 @@ const LINKS = [
   { href: '/termos', label: 'Termos de Uso' },
 ];
 
-/** Páginas públicas (sem login): página inicial, privacidade e termos. */
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+/**
+ * Páginas públicas (sem login): página inicial, privacidade e termos.
+ */
+export default function PublicLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.JSX.Element {
   return (
     <div className="flex min-h-dvh flex-col pt-(--safe-top)">
       <header className="border-b border-border">

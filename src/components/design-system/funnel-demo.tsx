@@ -2,16 +2,17 @@
 
 import { DndContext } from '@dnd-kit/core';
 import { SortableContext } from '@dnd-kit/sortable';
-import { DealTimeline } from '@/components/funnel/timeline';
+
 import { DealCard } from '@/components/funnel/deal-card';
-import type { BoardCard } from '@/lib/services/deals';
+import { DealTimeline } from '@/components/funnel/timeline';
+import { type BoardCard } from '@/lib/services/deals';
 
 const card = (
   i: number,
   name: string,
-  value: string | null,
+  value: null | string,
   score: number,
-  whatsapp: string | null,
+  whatsapp: null | string,
 ): BoardCard => ({
   id: `demo-${i}`,
   leadId: `lead-${i}`,
@@ -38,8 +39,11 @@ const stages = [
   { id: 2, name: 'A abordar' },
 ];
 
-/** Coluna do funil e linha do tempo com dados fictícios (nada aqui toca o banco). */
-export function FunnelDemo() {
+/**
+ * Coluna do funil e linha do tempo com dados fictícios (nada aqui toca o
+ * banco).
+ */
+export function FunnelDemo(): React.JSX.Element {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className="flex flex-col gap-2">

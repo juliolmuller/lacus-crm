@@ -3,35 +3,47 @@
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
+
 import { updateDealAction } from '@/app/(app)/funil/actions';
 import { Button } from '@/components/ui/button';
 import { Field, TextareaField } from '@/components/ui/field';
 
-type Props = {
-  id: string;
+interface Props {
   deal: {
+    expectedCloseOn: null | string;
+    notes: null | string;
+    probability: null | number;
+    serviceType: null | string;
     title: string;
-    value: string | null;
-    probability: number | null;
-    serviceType: string | null;
-    expectedCloseOn: string | null;
-    notes: string | null;
+    value: null | string;
   };
-};
+  id: string;
+}
 
-/** Dados editáveis da negociação (SPEC 6.3). */
-export function DealForm({ id, deal }: Props) {
+/**
+ * Dados editáveis da negociação (SPEC 6.3).
+ */
+export function DealForm({ id, deal }: Props): React.JSX.Element {
   const router = useRouter();
   const [pending, start] = useTransition();
+
   return (
     <form
       className="grid gap-3 sm:grid-cols-2"
       onSubmit={(e) => {
         e.preventDefault();
+
         const fd = new FormData(e.currentTarget);
+
         start(async () => {
           const r = await updateDealAction(id, fd);
-          if (!r.ok) return void toast.error(r.error);
+
+          if (!r.ok) {
+            toast.error(r.error);
+
+            return;
+          }
+
           toast.success('Negociação salva');
           router.refresh();
         });

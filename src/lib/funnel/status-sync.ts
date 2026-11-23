@@ -1,6 +1,8 @@
-import type { ContactStatus } from '@/lib/leads/labels';
+import { type ContactStatus } from '@/lib/leads/labels';
 
-/** PLAN D3: ordem em que o status só avança. */
+/**
+ * PLAN D3: ordem em que o status só avança.
+ */
 const ORDER: ContactStatus[] = [
   'new',
   'to_contact',
@@ -10,12 +12,15 @@ const ORDER: ContactStatus[] = [
   'negotiating',
   'client',
 ];
-/** Sempre aplicados, em qualquer ordem. */
+/**
+ * Sempre aplicados, em qualquer ordem.
+ */
 const ALWAYS: ContactStatus[] = ['lost', 'client', 'discarded'];
 
 /**
- * Status que o lead deve ter ao entrar numa etapa cujo `lead_status` é `target`; null = não muda.
- * `force` (reabrir uma negociação encerrada): o status volta para o da etapa mesmo que retroceda.
+ * Status que o lead deve ter ao entrar numa etapa cujo `lead_status` é
+ * `target`; null = não muda. `force` (reabrir uma negociação encerrada): o
+ * status volta para o da etapa mesmo que retroceda.
  */
 export function syncedStatus(
   current: ContactStatus,
@@ -23,8 +28,11 @@ export function syncedStatus(
   force = false,
 ): ContactStatus | null {
   if (!target || target === current) return null;
+
   if (ALWAYS.includes(target) || force) return target;
+
   const [from, to] = [ORDER.indexOf(current), ORDER.indexOf(target)];
+
   return from >= 0 && to > from ? target : null;
 }
 
@@ -39,7 +47,9 @@ export const lossReasons = [
 ] as const;
 export const DNC_REASON = 'Não contatar';
 
-/** Tokens de cor das etapas (globals.css). */
+/**
+ * Tokens de cor das etapas (globals.css).
+ */
 export const stageColors = [
   'stage-1',
   'stage-2',

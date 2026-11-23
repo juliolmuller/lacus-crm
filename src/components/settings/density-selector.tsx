@@ -2,6 +2,7 @@
 
 import { Rows2, Rows3 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
 import { cn } from '@/lib/utils';
 
 type Density = 'comfortable' | 'compact';
@@ -10,24 +11,34 @@ const options = [
   { value: 'compact', label: 'Compacto', Icon: Rows3 },
 ] as const;
 
-function saveDensity(d: Density) {
+function saveDensity(d: Density): void {
   document.documentElement.dataset.density = d;
+
   try {
     localStorage.setItem('density', d);
-  } catch {}
+  } catch {
+    // localStorage indisponível (navegação privada ou bloqueado): segue com o padrão
+  }
 }
 
-/** Densidade das tabelas. O valor efetivo mora em `<html data-density>` (o script do layout aplica o padrão: confortável no celular, compacto no desktop). */
-export function DensitySelector() {
+/**
+ * Densidade das tabelas. O valor efetivo mora em `<html data-density>` (o
+ * script do layout aplica o padrão: confortável no celular, compacto no
+ * desktop).
+ */
+export function DensitySelector(): React.JSX.Element {
   const [density, setDensity] = useState<Density>('comfortable');
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- lê o valor efetivo só no cliente
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- lê o valor efetivo só no cliente
     setDensity((document.documentElement.dataset.density as Density) || 'comfortable');
   }, []);
-  const choose = (d: Density) => {
+
+  const choose = (d: Density): void => {
     setDensity(d);
     saveDensity(d);
   };
+
   return (
     <div
       role="radiogroup"

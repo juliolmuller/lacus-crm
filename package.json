@@ -11,7 +11,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "eslint --max-warnings=0 .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.sw.json",
     "test": "vitest run --project unit",
     "test:int": "vitest run --project int",
@@ -63,7 +63,6 @@
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
     "@modelcontextprotocol/client": "2.4.0",
-    "@next/eslint-plugin-next": "^16.4.6",
     "@playwright/test": "^1.65.1",
     "@serwist/turbopack": "^9.5.15",
     "@tailwindcss/postcss": "^4.3.5",
@@ -75,18 +74,20 @@
     "dotenv": "^18.0.10",
     "drizzle-kit": "0.31.11",
     "esbuild": "^0.28.2",
-    "eslint": "^9.39.5",
-    "eslint-config-next": "^16.4.6",
-    "eslint-config-prettier": "^10.1.8",
+    "eslint": "^10",
+    "eslint-config-any": "^3.0.0-beta.3",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.1",
     "postcss": "^8.5.33",
-    "prettier": "^3.10.1",
     "serwist": "^9.5.15",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.5",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.73.0",
+    "typescript": "~6.0.3",
     "vitest": "^5.1.1"
+  },
+  "lint-staged": {
+    "*.{js,mjs,ts,tsx}": [
+      "eslint --max-warnings=0 --fix"
+    ]
   }
 }

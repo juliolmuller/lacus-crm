@@ -1,9 +1,10 @@
 import { and, asc, desc, eq, gte, inArray, lt, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
+
+import { type Db, schema } from '@/lib/db';
 import { spDateTime, spYmd } from '@/lib/followups/business-days';
 import { contactStatuses } from '@/lib/leads/labels';
+
 import { syncOverview } from './calendar-sync';
 import { getSetting } from './followup-settings';
 import { reminderRow } from './reminders';
@@ -21,10 +22,16 @@ const {
   apiUsageLog,
 } = schema;
 
-export type Period = 7 | 30 | 90 | 'all';
-export type DashboardFilters = { period: Period; niche?: number | null; region?: number | null };
+export type Period = 'all' | 30 | 7 | 90;
+export interface DashboardFilters {
+  niche?: null | number;
+  period: Period;
+  region?: null | number;
+}
 
-/** Os 6 cards: `null` em taxas = denominador zero (a UI mostra "—"). */
+/**
+ * Os 6 cards: `null` em taxas = denominador zero (a UI mostra "—").
+ */
 export type Kpis = Awaited<ReturnType<typeof kpis>>;
 export type Followups = Awaited<ReturnType<typeof followups>>;
 export type Funnel = Awaited<ReturnType<typeof funnel>>;
@@ -36,16 +43,19 @@ export type Alerts = Awaited<ReturnType<typeof alerts>>;
 export type Dashboard = Awaited<ReturnType<typeof getDashboard>>;
 
 const DAY = 86_400_000;
-const addDays = (ymd: string, n: number) =>
+const addDays = (ymd: string, n: number): string =>
   new Date(Date.parse(`${ymd}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
-const iso = (d: Date) => sql`${d.toISOString()}::timestamptz`;
-const n = (v: unknown) => Number(v ?? 0);
-const rate = (num: number, den: number) => (den > 0 ? num / den : null);
+const iso = (d: Date): SQL<unknown> => sql`${d.toISOString()}::timestamptz`;
+const n = (v: unknown): number => Number(v ?? 0);
+const rate = (num: number, den: number): null | number => (den > 0 ? num / den : null);
 
-/** Janela do período em dias de São Paulo: "7 dias" = hoje e os 6 anteriores. */
+/**
+ * Janela do período em dias de São Paulo: "7 dias" = hoje e os 6 anteriores.
+ */
 function windowOf(f: DashboardFilters, now: Date) {
   const today = spYmd(now);
   const sinceYmd = f.period === 'all' ? null : addDays(today, -(f.period - 1));
+
   return {
     today,
     sinceYmd,
@@ -55,21 +65,27 @@ function windowOf(f: DashboardFilters, now: Date) {
   };
 }
 
-/** Nicho e região valem para tudo que passa por um lead. */
+/**
+ * Nicho e região valem para tudo que passa por um lead.
+ */
 const scope = (f: DashboardFilters): SQL[] => [
   ...(f.niche ? [eq(leads.nicheId, f.niche)] : []),
   ...(f.region ? [eq(leads.regionId, f.region)] : []),
 ];
-/** Data de entrada do lead: `included_at` ou, sem ela, o dia da criação em São Paulo. */
+/**
+ * Data de entrada do lead: `included_at` ou, sem ela, o dia da criação em São
+ * Paulo.
+ */
 const includedOn = sql`coalesce(${leads.includedAt}, (${leads.createdAt} at time zone 'America/Sao_Paulo')::date)`;
-const includedInPeriod = (w: ReturnType<typeof windowOf>) =>
+const includedInPeriod = (w: ReturnType<typeof windowOf>): SQL<unknown> | undefined =>
   w.sinceYmd ? sql`${includedOn} >= ${w.sinceYmd}::date` : undefined;
 const CONTACT = sql`${interactions.type} not in ('note', 'system')`;
 
 /**
- * KPIs. Fluxo (novos, abordados, respostas, ganho) respeita o período; estado (valor em aberto,
- * score médio) é o retrato de agora. Taxa de resposta = leads abordados que também responderam
- * ÷ leads abordados, contando só interações do período.
+ * KPIs. Fluxo (novos, abordados, respostas, ganho) respeita o período; estado
+ * (valor em aberto, score médio) é o retrato de agora. Taxa de resposta = leads
+ * abordados que também responderam ÷ leads abordados, contando só interações do
+ * período.
  */
 export async function kpis(db: Db, f: DashboardFilters, now = new Date()) {
   const w = windowOf(f, now);
@@ -91,7 +107,7 @@ export async function kpis(db: Db, f: DashboardFilters, now = new Date()) {
       .select({
         newLeads: sql<number>`count(*) filter (where ${includedInPeriod(w) ?? sql`true`})`,
         avgScore: sql<
-          string | null
+          null | string
         >`avg(${leads.score}) filter (where ${leads.contactStatus} in ('new', 'to_contact') and not ${leads.doNotContact})`,
       })
       .from(leads)
@@ -120,17 +136,21 @@ export async function kpis(db: Db, f: DashboardFilters, now = new Date()) {
   const replied = n(i?.replied);
   const won = n(d?.won);
   const lost = n(d?.lost);
+
   return {
     newLeads: n(l?.newLeads),
     contacted,
     responseRate: { rate: rate(replied, contacted), replied, contacted },
     winRate: { rate: rate(won, won + lost), won, lost },
     openValue: { value: n(d?.openValue), weighted: n(d?.weighted), deals: n(d?.openCount) },
-    avgScore: l?.avgScore == null ? null : Number(l.avgScore),
+    avgScore: l?.avgScore === null || l?.avgScore === undefined ? null : Number(l.avgScore),
   };
 }
 
-/** Lembretes abertos em 3 faixas (atrasados, resto de hoje, próximos 7 dias), até 8 por faixa. */
+/**
+ * Lembretes abertos em 3 faixas (atrasados, resto de hoje, próximos 7 dias),
+ * até 8 por faixa.
+ */
 export async function followups(db: Db, f: DashboardFilters, now = new Date()) {
   const w = windowOf(f, now);
   const base = and(eq(reminders.status, 'open'), ...scope(f));
@@ -162,6 +182,7 @@ export async function followups(db: Db, f: DashboardFilters, now = new Date()) {
     list(bands.today),
     list(bands.next7),
   ]);
+
   return {
     counts: { overdue: n(c?.overdue), today: n(c?.today), next7: n(c?.next7) },
     overdue,
@@ -171,11 +192,12 @@ export async function followups(db: Db, f: DashboardFilters, now = new Date()) {
 }
 
 /**
- * Barras por etapa (deals abertos agora; ganho e perdido só do período) e conversão entre etapas
- * consecutivas do caminho (abertas + ganho). "Chegou à etapa N" = o deal passou por N ou por
- * qualquer etapa seguinte (o histórico ou a etapa atual), então pular etapa não infla a taxa e ela
- * nunca passa de 100%. Perdido não é etapa do caminho: o deal conta até onde chegou. Coorte =
- * deals criados no período.
+ * Barras por etapa (deals abertos agora; ganho e perdido só do período) e
+ * conversão entre etapas consecutivas do caminho (abertas + ganho). "Chegou à
+ * etapa N" = o deal passou por N ou por qualquer etapa seguinte (o histórico ou
+ * a etapa atual), então pular etapa não infla a taxa e ela nunca passa de 100%.
+ * Perdido não é etapa do caminho: o deal conta até onde chegou. Coorte = deals
+ * criados no período.
  */
 export async function funnel(db: Db, f: DashboardFilters, now = new Date()) {
   const w = windowOf(f, now);
@@ -199,7 +221,7 @@ export async function funnel(db: Db, f: DashboardFilters, now = new Date()) {
     .groupBy(deals.id, cs.sort, cs.isLost)
     .as('per_deal');
 
-  const inWindow = (col: typeof deals.wonAt) =>
+  const inWindow = (col: typeof deals.wonAt): SQL<unknown> =>
     w.since ? sql`${col} >= ${iso(w.since)}` : sql`true`;
   const [stages, counts, reach] = await Promise.all([
     db
@@ -229,13 +251,15 @@ export async function funnel(db: Db, f: DashboardFilters, now = new Date()) {
   ]);
 
   const byStage = new Map(counts.map((c) => [c.stageId, c]));
-  const reached = (sort: number) =>
+  const reached = (sort: number): number =>
     reach.filter((r) => n(r.reach) >= sort).reduce((s, r) => s + n(r.count), 0);
   const path = stages.filter((s) => !s.isLost);
+
   return stages.map((s) => {
     const idx = path.findIndex((p) => p.id === s.id);
     const next = idx >= 0 ? path[idx + 1] : undefined;
     const here = idx >= 0 ? reached(s.sort) : 0;
+
     return {
       id: s.id,
       key: s.key,
@@ -245,13 +269,19 @@ export async function funnel(db: Db, f: DashboardFilters, now = new Date()) {
       count: n(byStage.get(s.id)?.count),
       value: n(byStage.get(s.id)?.value),
       reached: here,
-      /** deals que chegaram à próxima etapa ÷ deals que chegaram a esta (null: sem próxima ou 0) */
+      /**
+       * Deals que chegaram à próxima etapa ÷ deals que chegaram a esta (null:
+       * sem próxima ou 0)
+       */
       toNext: next ? { name: next.name, rate: rate(reached(next.sort), here) } : null,
     };
   });
 }
 
-/** Leads por status, nicho (top 10), região (top 10) e faixa de score; filtrados por período de entrada. */
+/**
+ * Leads por status, nicho (top 10), região (top 10) e faixa de score; filtrados
+ * por período de entrada.
+ */
 export async function distributions(db: Db, f: DashboardFilters, now = new Date()) {
   const w = windowOf(f, now);
   const where = and(includedInPeriod(w), ...scope(f));
@@ -285,6 +315,7 @@ export async function distributions(db: Db, f: DashboardFilters, now = new Date(
       .where(where),
   ]);
   const byStatus = new Map(status.map((s) => [s.status, n(s.count)]));
+
   return {
     status: contactStatuses
       .map((s) => ({ status: s, count: byStatus.get(s) ?? 0 }))
@@ -300,7 +331,10 @@ export async function distributions(db: Db, f: DashboardFilters, now = new Date(
   };
 }
 
-/** Uso da API de Places hoje × orçamento, 14 dias de histórico e a fila (sem filtros: é da rotina, não do lead). */
+/**
+ * Uso da API de Places hoje × orçamento, 14 dias de histórico e a fila (sem
+ * filtros: é da rotina, não do lead).
+ */
 export async function prospecting(db: Db, now = new Date()) {
   const today = spYmd(now);
   const from = addDays(today, -13);
@@ -337,9 +371,11 @@ export async function prospecting(db: Db, now = new Date()) {
   const byDay = new Map(days.map((d) => [d.day, d]));
   const series = Array.from({ length: 14 }, (_, k) => {
     const day = addDays(from, k);
+
     return { day, requests: n(byDay.get(day)?.requests), saved: n(byDay.get(day)?.saved) };
   });
   const todayRow = series[13]!;
+
   return {
     budget,
     requestsToday: todayRow.requests,
@@ -351,7 +387,10 @@ export async function prospecting(db: Db, now = new Date()) {
   };
 }
 
-/** Top 5 para abordar: `new`/`to_contact`, sem "Não contatar"; `priority` 1 é a primeira, depois score. */
+/**
+ * Top 5 para abordar: `new`/`to_contact`, sem "Não contatar"; `priority` 1 é a
+ * primeira, depois score.
+ */
 export async function bestNext(db: Db, f: DashboardFilters) {
   return db
     .select({
@@ -379,27 +418,29 @@ export async function bestNext(db: Db, f: DashboardFilters) {
 
 export type ActivityItem =
   | {
-      kind: 'interaction';
       at: Date;
+      direction: string;
+      kind: 'interaction';
       leadId: string;
       leadName: string;
-      type: string;
-      direction: string;
       summary: string;
+      type: string;
     }
   | {
-      kind: 'move';
       at: Date;
+      from: null | string;
+      kind: 'move';
       leadId: string;
       leadName: string;
-      from: string | null;
-      to: string;
       source: string;
+      to: string;
     }
-  | { kind: 'mcp_lead'; at: Date; leadId: string; leadName: string };
+  | { at: Date; kind: 'mcp_lead'; leadId: string; leadName: string };
 
-/** Últimas 15 entre interações, movimentações de deal e leads criados por MCP. */
-export async function recentActivity(db: Db, f: DashboardFilters) {
+/**
+ * Últimas 15 entre interações, movimentações de deal e leads criados por MCP.
+ */
+export async function recentActivity(db: Db, f: DashboardFilters): Promise<ActivityItem[]> {
   const sc = scope(f);
   const from = alias(dealStages, 'from_stage');
   const [ia, mv, mcp] = await Promise.all([
@@ -446,19 +487,24 @@ export async function recentActivity(db: Db, f: DashboardFilters) {
     ...mv.map((r) => ({ kind: 'move' as const, ...r })),
     ...mcp.map((r) => ({ kind: 'mcp_lead' as const, ...r })),
   ];
+
   return items.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 15);
 }
 
-export type Alert = {
-  kind: 'google_reauth' | 'sync_errors' | 'queue_errors' | 'over_budget';
-  message: string;
+export interface Alert {
   href: string;
-};
+  kind: 'google_reauth' | 'over_budget' | 'queue_errors' | 'sync_errors';
+  message: string;
+}
 
-/** Alertas da SPEC 6.1. O banner do shell já cobre o Google; a tela mostra os demais. */
-export async function alerts(db: Db, p: Prospecting) {
+/**
+ * Alertas da SPEC 6.1. O banner do shell já cobre o Google; a tela mostra os
+ * demais.
+ */
+export async function alerts(db: Db, p: Prospecting): Promise<Alert[]> {
   const g = await syncOverview(db);
   const out: Alert[] = [];
+
   if (g.status === 'needs_reauth')
     out.push({
       kind: 'google_reauth',
@@ -471,22 +517,28 @@ export async function alerts(db: Db, p: Prospecting) {
       message: `${g.errors} ${g.errors === 1 ? 'lembrete não sincronizou' : 'lembretes não sincronizaram'} com o Google Calendar.`,
       href: '/configuracoes#google',
     });
+
   if (p.queue.error > 0)
     out.push({
       kind: 'queue_errors',
       message: `${p.queue.error} ${p.queue.error === 1 ? 'item da fila de prospecção está' : 'itens da fila de prospecção estão'} com erro.`,
       href: '/fila',
     });
+
   if (p.overBudget)
     out.push({
       kind: 'over_budget',
       message: `O uso da API de Places hoje (${p.requestsToday}) passou do orçamento diário (${p.budget}).`,
       href: '/fila',
     });
+
   return out;
 }
 
-/** Tudo da tela inicial (e do `crm_dashboard_summary` do MCP) em poucas queries paralelas. */
+/**
+ * Tudo da tela inicial (e do `crm_dashboard_summary` do MCP) em poucas queries
+ * paralelas.
+ */
 export async function getDashboard(db: Db, f: DashboardFilters, now = new Date()) {
   const [k, fu, fn, di, pr, bn, ac] = await Promise.all([
     kpis(db, f, now),
@@ -497,6 +549,7 @@ export async function getDashboard(db: Db, f: DashboardFilters, now = new Date()
     bestNext(db, f),
     recentActivity(db, f),
   ]);
+
   return {
     filters: f,
     kpis: k,

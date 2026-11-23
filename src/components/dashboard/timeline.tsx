@@ -1,17 +1,27 @@
-import type { LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type LucideIcon } from 'lucide-react';
+import { type ReactNode } from 'react';
+
 import { formatWhen } from '@/lib/format';
 
-export type TimelineEntry = {
-  id: string;
-  Icon: LucideIcon;
-  title: ReactNode;
-  detail?: ReactNode;
+export interface TimelineEntry {
   at: Date;
-};
+  detail?: ReactNode;
+  Icon: LucideIcon;
+  id: string;
+  title: ReactNode;
+}
 
-/** Linha do tempo vertical: ícone, texto e horário; a lista é ordenada por quem chama. */
-export function Timeline({ items, label }: { items: TimelineEntry[]; label: string }) {
+/**
+ * Linha do tempo vertical: ícone, texto e horário; a lista é ordenada por quem
+ * chama.
+ */
+export function Timeline({
+  items,
+  label,
+}: {
+  items: TimelineEntry[];
+  label: string;
+}): React.JSX.Element {
   return (
     <ol aria-label={label} className="flex flex-col">
       {items.map(({ id, Icon, title, detail, at }, i) => (
@@ -24,7 +34,7 @@ export function Timeline({ items, label }: { items: TimelineEntry[]; label: stri
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5 pb-4">
             <p className="text-body break-words">{title}</p>
-            {detail && <p className="text-label break-words text-text-muted">{detail}</p>}
+            {detail ? <p className="text-label break-words text-text-muted">{detail}</p> : null}
             <time dateTime={at.toISOString()} className="text-label text-text-subtle">
               {formatWhen(at)}
             </time>

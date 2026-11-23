@@ -5,11 +5,14 @@ import {
   parseAsString,
   parseAsStringLiteral,
 } from 'nuqs/server';
+
 import { contactStatuses, websiteStatuses } from './labels';
 
 export const SORTS = ['score', 'name', 'updated', 'included', 'contact', 'priority'] as const;
 
-/** Colunas da tabela (id → rótulo). `name` é sempre visível. */
+/**
+ * Colunas da tabela (id → rótulo). `name` é sempre visível.
+ */
 export const TABLE_COLUMNS = {
   score: 'Score',
   name: 'Nome',
@@ -26,7 +29,10 @@ export const TABLE_COLUMNS = {
 export type TableColumn = keyof typeof TABLE_COLUMNS;
 export const tableColumnIds = Object.keys(TABLE_COLUMNS) as TableColumn[];
 
-/** Estado da lista na URL (SPEC 6.2). Usado pelo cliente (nuqs) e pelo servidor (createLoader). */
+/**
+ * Estado da lista na URL (SPEC 6.2). Usado pelo cliente (nuqs) e pelo servidor
+ * (createLoader).
+ */
 export const leadSearchParams = {
   q: parseAsString.withDefault(''),
   status: parseAsArrayOf(parseAsStringLiteral(contactStatuses)).withDefault([]),
@@ -48,26 +54,28 @@ export const leadSearchParams = {
   lead: parseAsString,
 };
 
-export type LeadFilters = {
-  q: string;
-  status: (typeof contactStatuses)[number][];
-  niche: number | null;
-  region: number | null;
-  smin: number | null;
-  smax: number | null;
-  site: (typeof websiteStatuses)[number][];
-  wa: 'yes' | 'no' | null;
-  dnc: 'hide' | 'show' | 'only';
-  deal: 'open' | 'none' | null;
-  overdue: boolean;
-  from: string | null;
-  to: string | null;
-  source: string | null;
-  sort: (typeof SORTS)[number];
+export interface LeadFilters {
+  deal: 'none' | 'open' | null;
   dir: 'asc' | 'desc';
-};
+  dnc: 'hide' | 'only' | 'show';
+  from: null | string;
+  niche: null | number;
+  overdue: boolean;
+  q: string;
+  region: null | number;
+  site: Array<(typeof websiteStatuses)[number]>;
+  smax: null | number;
+  smin: null | number;
+  sort: (typeof SORTS)[number];
+  source: null | string;
+  status: Array<(typeof contactStatuses)[number]>;
+  to: null | string;
+  wa: 'no' | 'yes' | null;
+}
 
-/** Chaves que formam o filtro (o resto é só apresentação). */
+/**
+ * Chaves que formam o filtro (o resto é só apresentação).
+ */
 export const FILTER_KEYS = [
   'q',
   'status',

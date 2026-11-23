@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function Loading() {
+export default function Loading(): React.JSX.Element {
   return (
     <section
       className="flex max-w-3xl flex-col gap-4"

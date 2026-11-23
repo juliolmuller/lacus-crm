@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+
 import { createdAt, textC, tstz, updatedAt } from './_helpers';
 import { actorSource, contactStatus, dealStatus } from './enums';
 import { leads } from './leads';

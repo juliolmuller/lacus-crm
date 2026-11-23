@@ -1,40 +1,43 @@
 import { and, eq, inArray, isNotNull, like } from 'drizzle-orm';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
-import { planFollowups, type FollowupEvent, type RuleRow } from '@/lib/followups/engine';
+
+import { type Db, schema } from '@/lib/db';
+import { type FollowupEvent, planFollowups, type RuleRow } from '@/lib/followups/engine';
 import { cadence, cancelOn } from '@/lib/validation/followups';
 import { parseSetting, settingDefaults } from '@/lib/validation/settings';
 
 const { followupRules, interactions, leads, reminders, settings } = schema;
 
-type Source = 'ui' | 'mcp' | 'rule' | 'import';
+type Source = 'import' | 'mcp' | 'rule' | 'ui';
 
 export type RuleEvent =
   | {
-      type: 'deal_created';
-      dealId: string;
-      leadId: string;
-      stageId: number;
-      historyId?: number;
-      source?: Source;
-    }
-  | {
-      type: 'deal_stage_entered';
-      dealId: string;
-      leadId: string;
-      stageId: number;
-      fromStageId: number | null;
-      historyId?: number;
-      source?: Source;
-    }
-  | {
-      type: 'interaction_logged';
+      dealId: null | string;
       interactionId: string;
       leadId: string;
-      dealId: string | null;
-      /** data da reunião (AAAA-MM-DD) e "retomar em N dias úteis", informados na interação */
+      /**
+       * Data da reunião (AAAA-MM-DD) e "retomar em N dias úteis", informados na
+       * interação.
+       */
       meetingOn?: string;
       resumeInDays?: number;
+      type: 'interaction_logged';
+    }
+  | {
+      dealId: string;
+      fromStageId: null | number;
+      historyId?: number;
+      leadId: string;
+      source?: Source;
+      stageId: number;
+      type: 'deal_stage_entered';
+    }
+  | {
+      dealId: string;
+      historyId?: number;
+      leadId: string;
+      source?: Source;
+      stageId: number;
+      type: 'deal_created';
     };
 
 export async function loadRules(db: Db): Promise<RuleRow[]> {
@@ -43,39 +46,50 @@ export async function loadRules(db: Db): Promise<RuleRow[]> {
     .from(followupRules)
     .where(eq(followupRules.active, true))
     .orderBy(followupRules.sort, followupRules.id);
+
   return rows.flatMap((r) => {
     const c = cadence.safeParse(r.cadence);
     const o = cancelOn.safeParse(r.cancelOn);
+
     return c.success && o.success ? [{ ...r, cadence: c.data, cancelOn: o.data }] : [];
   });
 }
 
-export async function businessCalendar(db: Db) {
+export async function businessCalendar(
+  db: Db,
+): Promise<{ extraHolidays: Array<{ date: string; name: string }> }> {
   const [row] = await db.select().from(settings).where(eq(settings.key, 'business_calendar'));
+
   return parseSetting('business_calendar', row?.value ?? settingDefaults.business_calendar);
 }
 
 /**
- * Motor de follow-ups (SPEC 11): na mesma transação do evento, cancela lembretes (cancel_on e
- * cadência substituída) e cria os novos, com `dedupe_key` (reaplicar não duplica). Devolve os ids
- * criados. Eventos da importação e leads "Não contatar" não geram nada. `replay` (job) só cria.
+ * Motor de follow-ups (SPEC 11): na mesma transação do evento, cancela
+ * lembretes (cancel_on e cadência substituída) e cria os novos, com
+ * `dedupe_key` (reaplicar não duplica). Devolve os ids criados. Eventos da
+ * importação e leads "Não contatar" não geram nada. `replay` (job) só cria.
  */
 export async function applyRules(
   tx: Db,
   event: RuleEvent,
-  opts: { replay?: boolean; now?: Date; skipRuleIds?: number[] } = {},
+  opts: { now?: Date; replay?: boolean; skipRuleIds?: number[] } = {},
 ): Promise<string[]> {
   const [lead] = await tx.select().from(leads).where(eq(leads.id, event.leadId));
+
   if (!lead || lead.doNotContact) return [];
+
   const now = opts.now ?? new Date();
 
   let fe: FollowupEvent;
+
   if (event.type === 'interaction_logged') {
     const [i] = await tx
       .select()
       .from(interactions)
       .where(eq(interactions.id, event.interactionId));
+
     if (!i || i.createdBy === 'import') return [];
+
     fe = {
       kind: 'interaction_logged',
       anchor: i.id,
@@ -91,6 +105,7 @@ export async function applyRules(
     };
   } else {
     if (event.source === 'import') return [];
+
     fe = {
       kind: event.type,
       anchor: String(event.historyId ?? event.dealId),
@@ -126,7 +141,9 @@ export async function applyRules(
       .update(reminders)
       .set({ status: 'canceled', syncStatus: 'pending' })
       .where(inArray(reminders.id, plan.cancel));
+
   if (!plan.create.length) return [];
+
   const created = await tx
     .insert(reminders)
     .values(
@@ -142,5 +159,6 @@ export async function applyRules(
     )
     .onConflictDoNothing({ target: reminders.dedupeKey })
     .returning({ id: reminders.id });
+
   return created.map((c) => c.id);
 }

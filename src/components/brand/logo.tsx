@@ -7,10 +7,11 @@ const CELLS = GRID.flatMap((y) => GRID.map((x) => [x, y] as const)).filter(
   ([x, y]) => !(x === 160 && y === 160),
 );
 
-function Mark({ size, decorative }: { size: number; decorative: boolean }) {
+function Mark({ size, decorative }: { decorative: boolean; size: number }): React.JSX.Element {
   const a11y = decorative
     ? ({ 'aria-hidden': true } as const)
-    : ({ role: 'img', 'aria-label': 'Lacus CRM' } as const);
+    : ({ 'role': 'img', 'aria-label': 'Lacus CRM' } as const);
+
   return (
     <svg viewBox="0 0 300 300" width={size} height={size} className="shrink-0" {...a11y}>
       <rect
@@ -39,18 +40,22 @@ function Mark({ size, decorative }: { size: number; decorative: boolean }) {
   );
 }
 
-/** `mark`: só o símbolo. `lockup`: símbolo + "Lacus CRM". Área de respeito = 10% do tamanho. */
+/**
+ * `mark`: só o símbolo. `lockup`: símbolo + "Lacus CRM". Área de respeito = 10%
+ * do tamanho.
+ */
 export function Logo({
   variant = 'mark',
   size = 24,
   className,
 }: {
-  variant?: 'mark' | 'lockup';
-  size?: number;
   className?: string;
-}) {
+  size?: number;
+  variant?: 'lockup' | 'mark';
+}): React.JSX.Element {
   const s = Math.max(MIN_SIZE, size);
   const style = { padding: s * 0.1 };
+
   if (variant === 'mark') {
     return (
       <span className={cn('inline-flex', className)} style={style}>
@@ -58,6 +63,7 @@ export function Logo({
       </span>
     );
   }
+
   return (
     <span
       className={cn('inline-flex items-center text-text', className)}

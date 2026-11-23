@@ -1,47 +1,49 @@
 'use client';
 
 import {
+  type Announcements,
+  type CollisionDetection,
   DndContext,
+  type DragEndEvent,
+  type DragOverEvent,
   DragOverlay,
+  type DragStartEvent,
+  type KeyboardCoordinateGetter,
   KeyboardSensor,
   MouseSensor,
-  TouchSensor,
   pointerWithin,
   rectIntersection,
+  TouchSensor,
+  type UniqueIdentifier,
   useDroppable,
   useSensor,
   useSensors,
-  type Announcements,
-  type CollisionDetection,
-  type DragEndEvent,
-  type DragOverEvent,
-  type DragStartEvent,
-  type KeyboardCoordinateGetter,
-  type UniqueIdentifier,
 } from '@dnd-kit/core';
 import {
-  SortableContext,
   arrayMove,
+  SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { Handshake } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+
 import { moveDealAction } from '@/app/(app)/funil/actions';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatMoney } from '@/lib/format';
-import type { BoardCard, BoardStage } from '@/lib/services/deals';
+import { type BoardCard, type BoardStage } from '@/lib/services/deals';
 import { cn } from '@/lib/utils';
+
 import { CloseDialogs, type Closing } from './close-dialogs';
 import { CardBody, DealCard } from './deal-card';
-import { Handshake } from 'lucide-react';
 
-type Stage = Pick<BoardStage, 'id' | 'name' | 'color' | 'isWon' | 'isLost' | 'count' | 'total'>;
+type Stage = Pick<BoardStage, 'color' | 'count' | 'id' | 'isLost' | 'isWon' | 'name' | 'total'>;
 type Cols = Record<string, string[]>;
 
-const colId = (stageId: number) => `col-${stageId}`;
-const stageOf = (id: string) => Number(id.slice(4));
+const colId = (stageId: number): string => `col-${stageId}`;
+const stageOf = (id: string): number => Number(id.slice(4));
 // classes estáticas: o Tailwind só gera o que aparece literalmente
 const dot: Record<string, string> = {
   'stage-1': 'bg-stage-1',
@@ -59,8 +61,17 @@ const group = (stages: Stage[], cards: BoardCard[]): Cols =>
     stages.map((s) => [colId(s.id), cards.filter((c) => c.stageId === s.id).map((c) => c.id)]),
   );
 
-/** Tira o cartão de onde está e o põe em `to`, depois de `prevId` (ou antes de `nextId`, ou no fim). */
-function place(cols: Cols, id: string, to: string, prevId: string | null, nextId: string | null) {
+/**
+ * Tira o cartão de onde está e o põe em `to`, depois de `prevId` (ou antes de
+ * `nextId`, ou no fim).
+ */
+function place(
+  cols: Cols,
+  id: string,
+  to: string,
+  prevId: null | string,
+  nextId: null | string,
+): Cols {
   const next: Cols = Object.fromEntries(
     Object.entries(cols).map(([k, v]) => [k, v.filter((x) => x !== id)]),
   );
@@ -71,12 +82,15 @@ function place(cols: Cols, id: string, to: string, prevId: string | null, nextId
       : nextId && list.includes(nextId)
         ? list.indexOf(nextId)
         : list.length;
+
   next[to] = [...list.slice(0, at), id, ...list.slice(at)];
+
   return next;
 }
 
 const collision: CollisionDetection = (args) => {
   const p = pointerWithin(args);
+
   return p.length ? p : rectIntersection(args);
 };
 
@@ -89,16 +103,17 @@ function Column({
   onOpen,
   onMoveTo,
 }: {
-  stage: Stage;
-  ids: string[];
   cards: Map<string, BoardCard>;
-  stages: { id: number; name: string }[];
   dragging: boolean;
-  onOpen: (id: string) => void;
+  ids: string[];
   onMoveTo: (id: string, stageId: number) => void;
-}) {
+  onOpen: (id: string) => void;
+  stage: Stage;
+  stages: Array<{ id: number; name: string }>;
+}): React.JSX.Element {
   const { setNodeRef, isOver } = useDroppable({ id: colId(stage.id) });
   const closed = stage.isWon || stage.isLost;
+
   return (
     <section
       id={colId(stage.id)}
@@ -155,42 +170,59 @@ function Column({
   );
 }
 
-export function FunnelBoard({ stages, cards }: { stages: Stage[]; cards: BoardCard[] }) {
+export function FunnelBoard({
+  stages,
+  cards,
+}: {
+  cards: BoardCard[];
+  stages: Stage[];
+}): React.JSX.Element {
   const router = useRouter();
   const byId = new Map(cards.map((c) => [c.id, c]));
   const stageById = new Map(stages.map((s) => [colId(s.id), s]));
   const [cols, setCols] = useState<Cols>(() => group(stages, cards));
   const [source, setSource] = useState(cards);
   const [saving, setSaving] = useState(0); // movimentos ainda indo para o servidor
+
   if (cards !== source) {
     // dados novos do servidor (depois de router.refresh): a verdade volta a ser o banco. Com um
     // movimento em andamento eles são anteriores a ele e o desfariam na tela; o persist() termina
     // com um refresh que traz o estado certo.
     setSource(cards);
+
     if (!saving) setCols(group(stages, cards));
   }
-  const [active, setActive] = useState<string | null>(null);
+
+  const [active, setActive] = useState<null | string>(null);
   const [closing, setClosing] = useState<Closing | null>(null);
   const [current, setCurrent] = useState(0);
-  const snapshot = useRef<Cols>(cols);
-  const lastDrag = useRef(0);
-  const scroller = useRef<HTMLDivElement>(null);
+  const snapshotRef = useRef<Cols>(cols);
+  const lastDragRef = useRef(0);
+  const scrollerRef = useRef<HTMLDivElement>(null);
 
   const colsRef = useRef(cols);
+
   useEffect(() => {
     colsRef.current = cols;
   });
-  /** ← → vão direto à coluna vizinha (o padrão do dnd-kit escolhe a própria coluna primeiro); ↑ ↓ reordenam. */
+
+  /**
+   * ← → vão direto à coluna vizinha (o padrão do dnd-kit escolhe a própria
+   * coluna primeiro); ↑ ↓ reordenam.
+   */
   const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
     if (event.code !== 'ArrowLeft' && event.code !== 'ArrowRight')
       return sortableKeyboardCoordinates(event, args);
+
     event.preventDefault();
+
     const keys = stages.map((s) => colId(s.id));
     const from = Object.keys(colsRef.current).find((k) =>
       colsRef.current[k]!.includes(String(args.active)),
     );
     const to = keys[keys.indexOf(from ?? '') + (event.code === 'ArrowLeft' ? -1 : 1)];
     const rect = to ? args.context.droppableRects.get(to) : undefined;
+
     return rect ? { x: rect.left + 8, y: rect.top + 8 } : undefined;
   };
 
@@ -203,13 +235,16 @@ export function FunnelBoard({ stages, cards }: { stages: Stage[]; cards: BoardCa
     }),
   );
 
-  const containerOf = (c: Cols, id: UniqueIdentifier) =>
+  const containerOf = (c: Cols, id: UniqueIdentifier): string | undefined =>
     String(id) in c ? String(id) : Object.keys(c).find((k) => c[k]!.includes(String(id)));
-  const nameOf = (id: UniqueIdentifier) => byId.get(String(id))?.leadName ?? 'cartão';
-  const where = (id: UniqueIdentifier) => {
+  const nameOf = (id: UniqueIdentifier): string => byId.get(String(id))?.leadName ?? 'cartão';
+  const where = (id: UniqueIdentifier): string => {
     const k = containerOf(cols, id);
+
     if (!k) return 'fora das colunas';
+
     const idx = String(id) in cols ? cols[k]!.length + 1 : cols[k]!.indexOf(String(id)) + 1;
+
     return `coluna ${stageById.get(k)?.name}, posição ${idx} de ${cols[k]!.length}`;
   };
   const announcements: Announcements = {
@@ -224,32 +259,43 @@ export function FunnelBoard({ stages, cards }: { stages: Stage[]; cards: BoardCa
       `Movimento cancelado. O cartão ${nameOf(a.id)} voltou ao lugar.`,
   };
 
-  const open = (id: string) => {
-    if (Date.now() - lastDrag.current > 250) router.push(`/funil?deal=${id}`);
+  const open = (id: string): void => {
+    if (Date.now() - lastDragRef.current > 250) router.push(`/funil?deal=${id}`);
   };
 
-  /** Salva a posição do cartão em `cols`; erro (ou rede caída) devolve o quadro ao estado anterior. */
+  /**
+   * Salva a posição do cartão em `cols`; erro (ou rede caída) devolve o quadro
+   * ao estado anterior.
+   */
   async function persist(
     id: string,
     next: Cols,
     rollback: Cols,
-    undo?: { to: string; prevId: string | null; nextId: string | null },
-  ) {
+    undo?: { nextId: null | string; prevId: null | string; to: string },
+  ): Promise<undefined> {
     const to = containerOf(next, id)!;
     const list = next[to]!;
     const i = list.indexOf(id);
+
     setSaving((n) => n + 1);
+
     const r = await moveDealAction({
       dealId: id,
       stageId: stageOf(to),
       prevId: list[i - 1] ?? null,
       nextId: list[i + 1] ?? null,
     }).catch(() => ({ ok: false as const, error: 'Sem conexão. A negociação voltou ao lugar.' }));
+
     setSaving((n) => n - 1);
+
     if (!r.ok) {
       setCols(rollback);
-      return void toast.error(r.error);
+
+      toast.error(r.error);
+
+      return;
     }
+
     if (undo)
       toast(`${nameOf(id)}: movida para ${stageById.get(to)?.name}`, {
         duration: 8000,
@@ -257,26 +303,34 @@ export function FunnelBoard({ stages, cards }: { stages: Stage[]; cards: BoardCa
           label: 'Desfazer',
           onClick: () => {
             const back = place(next, id, undo.to, undo.prevId, undo.nextId);
+
             setCols(back);
-            void persist(id, back, next);
+            persist(id, back, next);
           },
         },
       });
+
     router.refresh();
   }
 
-  /** Menu "Mover para…": vai para o fim da etapa escolhida. */
-  const moveTo = (id: string, stageId: number) => {
+  /**
+   * Menu "Mover para…": vai para o fim da etapa escolhida.
+   */
+  const moveTo = (id: string, stageId: number): void => {
     const to = colId(stageId);
     const target = stageById.get(to);
+
     if (!target) return;
+
     if (target.isWon || target.isLost) return setClosing(closeFor(id, target));
+
     const from = containerOf(cols, id)!;
     const o = cols[from]!.indexOf(id);
     const list = cols[to]!;
     const next = place(cols, id, to, list.at(-1) ?? null, null);
+
     setCols(next);
-    void persist(id, next, cols, {
+    persist(id, next, cols, {
       to: from,
       prevId: cols[from]![o - 1] ?? null,
       nextId: cols[from]![o + 1] ?? null,
@@ -290,23 +344,28 @@ export function FunnelBoard({ stages, cards }: { stages: Stage[]; cards: BoardCa
     value: byId.get(id)?.value ?? null,
   });
 
-  const onDragStart = (e: DragStartEvent) => {
-    snapshot.current = cols;
+  const onDragStart = (e: DragStartEvent): void => {
+    snapshotRef.current = cols;
     setActive(String(e.active.id));
   };
 
-  const onDragOver = ({ active: a, over }: DragOverEvent) => {
+  const onDragOver = ({ active: a, over }: DragOverEvent): void => {
     if (!over) return;
+
     const from = containerOf(cols, a.id);
     const to = containerOf(cols, over.id);
+
     if (!from || !to || from === to || stageById.get(to)?.isWon || stageById.get(to)?.isLost)
       return;
+
     const below =
       a.rect.current.translated && a.rect.current.translated.top > over.rect.top + over.rect.height;
+
     setCols((prev) => {
       const items = prev[to]!;
       const overIndex = items.indexOf(String(over.id));
       const at = overIndex >= 0 ? overIndex + (below ? 1 : 0) : items.length;
+
       return {
         ...prev,
         [from]: prev[from]!.filter((x) => x !== String(a.id)),
@@ -315,31 +374,45 @@ export function FunnelBoard({ stages, cards }: { stages: Stage[]; cards: BoardCa
     });
   };
 
-  const onDragEnd = ({ active: a, over }: DragEndEvent) => {
-    lastDrag.current = Date.now();
+  const onDragEnd = ({ active: a, over }: DragEndEvent): void => {
+    lastDragRef.current = Date.now();
     setActive(null);
+
     const id = String(a.id);
-    const start = snapshot.current;
+    const start = snapshotRef.current;
+
     if (!over) return setCols(start);
+
     const to = containerOf(cols, over.id);
     const target = to ? stageById.get(to) : undefined;
+
     if (target?.isWon || target?.isLost) {
       setCols(start); // o cartão só muda de lugar depois do diálogo
+
       return setClosing(closeFor(id, target));
     }
+
     const at = containerOf(cols, id);
+
     if (!at) return setCols(start);
+
     let next = cols;
+
     if (at === to && String(over.id) !== id && !(String(over.id) in cols)) {
       const list = cols[at]!;
+
       next = { ...cols, [at]: arrayMove(list, list.indexOf(id), list.indexOf(String(over.id))) };
     }
+
     setCols(next);
+
     const from = containerOf(start, id)!;
     const was = start[from]!.indexOf(id);
     const moved = from !== at;
+
     if (!moved && next[at]!.indexOf(id) === was) return; // soltou onde estava
-    void persist(
+
+    persist(
       id,
       next,
       start,
@@ -349,11 +422,12 @@ export function FunnelBoard({ stages, cards }: { stages: Stage[]; cards: BoardCa
     );
   };
 
-  const onScroll = () => {
-    const el = scroller.current;
+  const onScroll = (): void => {
+    const el = scrollerRef.current;
+
     if (el) setCurrent(Math.round(el.scrollLeft / (el.scrollWidth / stages.length)));
   };
-  const goTo = (i: number) =>
+  const goTo = (i: number): undefined | void =>
     document
       .getElementById(colId(stages[i]!.id))
       ?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
@@ -404,13 +478,13 @@ export function FunnelBoard({ stages, cards }: { stages: Stage[]; cards: BoardCa
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
         onDragCancel={() => {
-          lastDrag.current = Date.now();
+          lastDragRef.current = Date.now();
           setActive(null);
-          setCols(snapshot.current);
+          setCols(snapshotRef.current);
         }}
       >
         <div
-          ref={scroller}
+          ref={scrollerRef}
           onScroll={onScroll}
           className={cn(
             'flex items-start gap-3 overflow-x-auto pb-3',

@@ -1,26 +1,35 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+
 import { IosSteps } from '@/components/pwa/install-app';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 
 const KEY = 'ios-install-hint';
 
-/** Mostra uma vez, no Safari do iOS, como instalar (SPEC 8). `navigator.standalone` falso = ainda no navegador. */
-export function IosInstallHint() {
+/**
+ * Mostra uma vez, no Safari do iOS, como instalar (SPEC 8).
+ * `navigator.standalone` falso = ainda no navegador.
+ */
+export function IosInstallHint(): React.JSX.Element {
   const [open, setOpen] = useState(false);
+
   useEffect(() => {
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const standalone = (navigator as Navigator & { standalone?: boolean }).standalone;
+    const standalone = (navigator as { standalone?: boolean } & Navigator).standalone;
+
     try {
       if (ios && standalone === false && !localStorage.getItem(KEY)) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- detecção só no cliente
+        // eslint-disable-next-line @eslint-react/set-state-in-effect -- detecção só no cliente
         setOpen(true);
         localStorage.setItem(KEY, '1');
       }
-    } catch {}
+    } catch {
+      // localStorage indisponível (navegação privada ou bloqueado): segue com o padrão
+    }
   }, []);
+
   return (
     <Dialog
       open={open}

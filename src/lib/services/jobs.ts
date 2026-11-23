@@ -1,8 +1,9 @@
 import { and, eq, gte, lt, notExists, sql } from 'drizzle-orm';
-import type { Db } from '@/lib/db';
-import { schema } from '@/lib/db';
+
+import { type Db, schema } from '@/lib/db';
 import { addBusinessDays, spDateTime, spYmd } from '@/lib/followups/business-days';
-import { syncReminders, type SyncContext } from './calendar-sync';
+
+import { type SyncContext, syncReminders } from './calendar-sync';
 import { applyRules, businessCalendar } from './rules';
 
 const { jobRuns, reminders, deals, dealStageHistory, interactions, prospectingQueue, leads } =
@@ -12,8 +13,10 @@ const STALLED_DAYS = 10;
 const REPLAY_HOURS = 48;
 const LEASE_MINUTES = 30;
 
-/** Reaplica regras de eventos recentes (só cria; `dedupe_key` evita duplicatas). */
-async function reapplyRules(db: Db, now: Date) {
+/**
+ * Reaplica regras de eventos recentes (só cria; `dedupe_key` evita duplicatas).
+ */
+async function reapplyRules(db: Db, now: Date): Promise<number> {
   const since = new Date(now.getTime() - REPLAY_HOURS * 3_600_000);
   let n = 0;
   const inters = await db.select().from(interactions).where(gte(interactions.createdAt, since));
@@ -38,7 +41,7 @@ async function reapplyRules(db: Db, now: Date) {
         applyRules(
           tx,
           {
-            type: h.fromStageId == null ? 'deal_created' : 'deal_stage_entered',
+            type: h.fromStageId === null ? 'deal_created' : 'deal_stage_entered',
             dealId: h.dealId,
             leadId,
             stageId: h.toStageId,
@@ -50,11 +53,15 @@ async function reapplyRules(db: Db, now: Date) {
         ),
       )
     ).length;
+
   return n;
 }
 
-/** "Negociação parada": aberta há mais de 10 dias úteis na mesma etapa e sem lembrete aberto. */
-async function createStalled(db: Db, now: Date) {
+/**
+ * "Negociação parada": aberta há mais de 10 dias úteis na mesma etapa e sem
+ * lembrete aberto.
+ */
+async function createStalled(db: Db, now: Date): Promise<number> {
   const cal = await businessCalendar(db);
   const today = spYmd(now);
   // folga de calendário (10 dias úteis < 10 dias corridos); o corte exato é feito em dias úteis abaixo
@@ -78,6 +85,7 @@ async function createStalled(db: Db, now: Date) {
   let n = 0;
   for (const { d } of candidates) {
     if (addBusinessDays(spYmd(d.stageEnteredAt), STALLED_DAYS, cal) >= today) continue;
+
     const created = await db
       .insert(reminders)
       .values({
@@ -93,11 +101,14 @@ async function createStalled(db: Db, now: Date) {
       .returning({ id: reminders.id });
     n += created.length;
   }
+
   return n;
 }
 
-/** Leases da fila vencidos (30 min) voltam a ficar livres. */
-async function releaseLeases(db: Db, now: Date) {
+/**
+ * Leases da fila vencidos (30 min) voltam a ficar livres.
+ */
+async function releaseLeases(db: Db, now: Date): Promise<number> {
   const freed = await db
     .update(prospectingQueue)
     .set({ claimedAt: null })
@@ -108,17 +119,19 @@ async function releaseLeases(db: Db, now: Date) {
       ),
     )
     .returning({ p: prospectingQueue.position });
+
   return freed.length;
 }
 
 /**
- * Job `followups` (SPEC 11). Idempotente por `executionId` (`ce-id` dos Schedules ou `X-Run-Id`):
- * a segunda chamada com o mesmo id não faz nada. Cada etapa falha isoladamente.
+ * Job `followups` (SPEC 11). Idempotente por `executionId` (`ce-id` dos
+ * Schedules ou `X-Run-Id`): a segunda chamada com o mesmo id não faz nada. Cada
+ * etapa falha isoladamente.
  */
 export async function runFollowupsJob(
   db: Db,
   ctx: SyncContext,
-  opts: { executionId?: string | null; now?: Date } = {},
+  opts: { executionId?: null | string; now?: Date } = {},
 ) {
   const now = opts.now ?? new Date();
   const [run] = await db
@@ -126,17 +139,19 @@ export async function runFollowupsJob(
     .values({ job: 'followups', executionId: opts.executionId ?? null })
     .onConflictDoNothing({ target: jobRuns.executionId })
     .returning();
+
   if (!run) return { duplicate: true as const };
 
   const stats: Record<string, unknown> = {};
   const errors: string[] = [];
-  const step = async (name: string, fn: () => Promise<unknown>) => {
+  const step = async (name: string, fn: () => Promise<unknown>): Promise<void> => {
     try {
       stats[name] = await fn();
     } catch (e) {
       errors.push(`${name}: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
+
   await step('reapplied', () => reapplyRules(db, now));
   await step('stalled', () => createStalled(db, now));
   await step('sync', () => syncReminders(db, ctx, { mode: 'job', now }));
@@ -150,5 +165,6 @@ export async function runFollowupsJob(
       error: errors.join('; ') || null,
     })
     .where(eq(jobRuns.id, run.id));
+
   return { duplicate: false as const, status: errors.length ? 'error' : 'ok', stats, errors };
 }

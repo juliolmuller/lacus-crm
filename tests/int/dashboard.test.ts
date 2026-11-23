@@ -1,7 +1,9 @@
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import type { Db } from '@/lib/db';
-import { getDashboard, kpis, funnel, type DashboardFilters } from '@/lib/services/dashboard';
+
+import { type Db } from '@/lib/db';
+import { type DashboardFilters, funnel, getDashboard, kpis } from '@/lib/services/dashboard';
+
 import { inTx, schema } from './db';
 
 const {
@@ -20,7 +22,7 @@ const {
 
 // Quinta-feira 19/11/2026, 12:00 em São Paulo.
 const NOW = new Date('2026-11-19T15:00:00Z');
-const at = (s: string) => new Date(s);
+const at = (s: string): Date => new Date(s);
 const all: DashboardFilters = { period: 'all' };
 
 const D2 = [
@@ -33,7 +35,10 @@ const D2 = [
   ['lost', 'Perdido', 7, 0],
 ] as const;
 
-/** Mundo fixo (SQL à mão): os números esperados abaixo foram contados na mão, linha por linha. */
+/**
+ * Mundo fixo (SQL à mão): os números esperados abaixo foram contados na mão,
+ * linha por linha.
+ */
 async function world(tx: Db) {
   const [A, B] = await tx
     .insert(niches)
@@ -109,8 +114,8 @@ async function world(tx: Db) {
 
   const ix = (
     lead: { id: string },
-    type: 'whatsapp' | 'call' | 'note',
-    direction: 'outbound' | 'inbound' | 'internal',
+    type: 'call' | 'note' | 'whatsapp',
+    direction: 'inbound' | 'internal' | 'outbound',
     when: string,
   ) => ({
     leadId: lead.id,
@@ -119,6 +124,7 @@ async function world(tx: Db) {
     summary: `${type} ${direction}`,
     occurredAt: at(when),
   });
+
   await tx.insert(interactions).values([
     ix(L1!, 'whatsapp', 'outbound', '2026-11-10T13:00:00Z'),
     ix(L1!, 'whatsapp', 'inbound', '2026-11-11T13:00:00Z'),
@@ -175,13 +181,18 @@ async function world(tx: Db) {
     .returning();
 
   // Histórico: D2 pulou "A abordar"; D6 pulou até Ganho; D5 foi perdido depois de Abordado.
-  const path = (d: { id: string }, keys: string[], day: string) =>
+  const path = (
+    d: { id: string },
+    keys: string[],
+    day: string,
+  ): Array<{ dealId: string; fromStageId: null | number; movedAt: Date; toStageId: number }> =>
     keys.map((k, i) => ({
       dealId: d.id,
       fromStageId: i ? st[keys[i - 1]!]! : null,
       toStageId: st[k]!,
       movedAt: at(`${day}T${String(10 + i).padStart(2, '0')}:00:00Z`),
     }));
+
   await tx
     .insert(dealStageHistory)
     .values([
@@ -193,12 +204,18 @@ async function world(tx: Db) {
       ...path(D6!, ['to_diagnose', 'to_contact', 'won'], '2026-09-06'),
     ]);
 
-  const rem = (lead: { id: string }, title: string, due: string, o: object = {}) => ({
+  const rem = (
+    lead: { id: string },
+    title: string,
+    due: string,
+    o: object = {},
+  ): { dueAt: Date; leadId: string; title: string } => ({
     leadId: lead.id,
     title,
     dueAt: at(due),
     ...o,
   });
+
   await tx
     .insert(reminders)
     .values([
@@ -218,19 +235,21 @@ async function world(tx: Db) {
     { day: '2026-11-17', at: '09:00', requests: 10, leadsSaved: 2 },
     { day: '2026-11-05', at: '09:00', requests: 99, leadsSaved: 9 }, // fora dos 14 dias
   ]);
+
   const q = (
     position: number,
     sortOrder: number,
     region: { id: number },
     niche: { id: number },
     o: object,
-  ) => ({
+  ): { nicheId: number; position: number; regionId: number; sortOrder: number } => ({
     position,
     sortOrder,
     regionId: region.id,
     nicheId: niche.id,
     ...o,
   });
+
   await tx.insert(prospectingQueue).values([
     q(1, 5, R1!, A!, { status: 'done' }),
     q(2, 4, R1!, B!, { status: 'error' }),
@@ -238,6 +257,7 @@ async function world(tx: Db) {
     q(4, 1, R2!, B!, { skippedAt: at('2026-11-18T12:00:00Z') }), // pulado: não é o próximo
     q(5, 3, R3!, A!, {}),
   ]);
+
   return { A: A!, B: B!, R1: R1!, R2: R2!, st };
 }
 
@@ -245,7 +265,9 @@ describe('dashboard: números batem com o SQL à mão', () => {
   it('KPIs por período: novos, abordados, resposta, ganho, valor em aberto, score', async () => {
     await inTx(async (tx) => {
       await world(tx);
+
       const k30 = await kpis(tx, { period: 30 }, NOW);
+
       expect(k30.newLeads).toBe(5); // L1, L2, L3, L6, L7 (L4 e L5 são mais antigos)
       expect(k30.contacted).toBe(3); // L1, L2, L3
       expect(k30.responseRate).toEqual({ rate: 2 / 3, replied: 2, contacted: 3 });
@@ -256,15 +278,18 @@ describe('dashboard: números batem com o SQL à mão', () => {
       expect(k30.avgScore).toBeCloseTo(155 / 3);
 
       const k7 = await kpis(tx, { period: 7 }, NOW);
+
       expect(k7.newLeads).toBe(4);
       expect(k7.responseRate).toEqual({ rate: 1 / 2, replied: 1, contacted: 2 });
       expect(k7.winRate).toEqual({ rate: null, won: 0, lost: 0 });
 
       const k90 = await kpis(tx, { period: 90 }, NOW);
+
       expect(k90.newLeads).toBe(7);
       expect(k90.winRate).toEqual({ rate: 2 / 3, won: 2, lost: 1 });
 
       const kAll = await kpis(tx, all, NOW);
+
       expect(kAll.responseRate).toEqual({ rate: 3 / 4, replied: 3, contacted: 4 });
     });
   });
@@ -274,10 +299,13 @@ describe('dashboard: números batem com o SQL à mão', () => {
       const { A, B, R2 } = await world(tx);
       // só L5 (inbound sem outbound): ninguém foi abordado
       const none = await kpis(tx, { period: 'all', niche: A.id, region: R2.id }, NOW);
+
       expect(none.contacted).toBe(0);
       expect(none.responseRate).toEqual({ rate: null, replied: 0, contacted: 0 });
+
       // nicho B, 7 dias: L3 foi abordado e não respondeu
       const zero = await kpis(tx, { period: 7, niche: B.id }, NOW);
+
       expect(zero.responseRate).toEqual({ rate: 0, replied: 0, contacted: 1 });
     });
   });
@@ -285,6 +313,7 @@ describe('dashboard: números batem com o SQL à mão', () => {
   it('banco vazio: tudo zerado, taxas e score nulos, sem erro', async () => {
     await inTx(async (tx) => {
       const d = await getDashboard(tx, { period: 30 }, NOW);
+
       expect(d.kpis).toEqual({
         newLeads: 0,
         contacted: 0,
@@ -308,11 +337,14 @@ describe('dashboard: números batem com o SQL à mão', () => {
     await inTx(async (tx) => {
       const { B } = await world(tx);
       const d = await getDashboard(tx, all, NOW);
+
       expect(d.followups.counts).toEqual({ overdue: 2, today: 1, next7: 2 });
       expect(d.followups.overdue.map((r) => r.title)).toEqual(['R1 atrasado', 'R2 atrasado']);
       expect(d.followups.today.map((r) => r.title)).toEqual(['R3 hoje']);
       expect(d.followups.next7.map((r) => r.title)).toEqual(['R4 próximo', 'R5 próximo']);
+
       const b = await getDashboard(tx, { period: 'all', niche: B.id }, NOW);
+
       expect(b.followups.counts).toEqual({ overdue: 0, today: 0, next7: 2 });
     });
   });
@@ -320,8 +352,10 @@ describe('dashboard: números batem com o SQL à mão', () => {
   it('funil: barras por etapa e conversão sobre o histórico (com etapas puladas)', async () => {
     await inTx(async (tx) => {
       await world(tx);
+
       const f = await funnel(tx, all, NOW);
       const by = Object.fromEntries(f.map((s) => [s.key, s]));
+
       expect(f.map((s) => s.key)).toEqual(D2.map(([k]) => k));
       expect([by.talking!.count, by.talking!.value]).toEqual([1, 1000]);
       expect([by.negotiating!.count, by.negotiating!.value]).toEqual([1, 2000]);
@@ -343,6 +377,7 @@ describe('dashboard: números batem com o SQL à mão', () => {
       // 30 dias: coorte = deals criados desde 21/10 (D1 a D4); ganho/perdido só do período
       const f30 = await funnel(tx, { period: 30 }, NOW);
       const b30 = Object.fromEntries(f30.map((s) => [s.key, s]));
+
       expect(f30.filter((s) => !s.isLost).map((s) => s.reached)).toEqual([4, 4, 4, 3, 2, 1]);
       expect(f30.filter((s) => s.toNext).map((s) => s.toNext!.rate)).toEqual([
         1,
@@ -360,7 +395,9 @@ describe('dashboard: números batem com o SQL à mão', () => {
     await inTx(async (tx) => {
       await world(tx);
       await tx.delete(deals);
+
       const f = await funnel(tx, all, NOW);
+
       expect(f.filter((s) => s.toNext).map((s) => s.toNext!.rate)).toEqual([
         null,
         null,
@@ -374,7 +411,9 @@ describe('dashboard: números batem com o SQL à mão', () => {
   it('distribuições: status, nicho, região e faixa de score (limiares 70/40)', async () => {
     await inTx(async (tx) => {
       await world(tx);
+
       const d = (await getDashboard(tx, all, NOW)).distributions;
+
       expect(d.status).toEqual([
         { status: 'new', count: 3 },
         { status: 'to_contact', count: 1 },
@@ -393,6 +432,7 @@ describe('dashboard: números batem com o SQL à mão', () => {
       expect(d.score).toMatchObject({ high: 3, mid: 2, low: 2 });
 
       const d30 = (await getDashboard(tx, { period: 30 }, NOW)).distributions;
+
       expect(d30.status.map((s) => [s.status, s.count])).toEqual([
         ['new', 3],
         ['contacted', 1],
@@ -415,6 +455,7 @@ describe('dashboard: números batem com o SQL à mão', () => {
         .insert(niches)
         .values(Array.from({ length: 12 }, (_, i) => ({ name: `N${String(i).padStart(2, '0')}` })))
         .returning();
+
       await tx.insert(leads).values(
         ns.flatMap((x, i) =>
           Array.from({ length: i + 1 }, (_, j) => ({
@@ -424,7 +465,9 @@ describe('dashboard: números batem com o SQL à mão', () => {
           })),
         ),
       );
+
       const d = (await getDashboard(tx, all, NOW)).distributions;
+
       expect(d.niche).toHaveLength(10);
       expect(d.niche[0]).toEqual({ label: 'N11', count: 12 });
       expect(d.niche[9]).toEqual({ label: 'N02', count: 3 });
@@ -434,7 +477,9 @@ describe('dashboard: números batem com o SQL à mão', () => {
   it('prospecção: uso de hoje × orçamento (estourado), sparkline de 14 dias e fila', async () => {
     await inTx(async (tx) => {
       await world(tx);
+
       const p = (await getDashboard(tx, all, NOW)).prospecting;
+
       expect(p.budget).toBe(30); // padrão
       expect([p.requestsToday, p.savedToday, p.overBudget]).toEqual([35, 8, true]);
       expect(p.series).toHaveLength(14);
@@ -451,7 +496,9 @@ describe('dashboard: números batem com o SQL à mão', () => {
     await inTx(async (tx) => {
       await world(tx);
       await tx.insert(apiUsageLog).values({ day: '2026-11-19', at: '11:00', requests: -5 });
+
       const p = (await getDashboard(tx, all, NOW)).prospecting;
+
       expect([p.requestsToday, p.overBudget]).toEqual([30, false]);
     });
   });
@@ -459,7 +506,9 @@ describe('dashboard: números batem com o SQL à mão', () => {
   it('melhores próximos: new/to_contact, sem "Não contatar", priority 1 primeiro e depois score', async () => {
     await inTx(async (tx) => {
       await world(tx);
+
       const best = (await getDashboard(tx, all, NOW)).bestNext;
+
       // L4 (prioridade 1), L3 (prioridade 2), L7 (sem prioridade); L6 é "Não contatar"
       expect(best.map((b) => b.name)).toEqual(['Lead 4', 'Lead 3', 'Lead 7']);
     });
@@ -472,6 +521,7 @@ describe('dashboard: números batem com o SQL à mão', () => {
         .insert(regions)
         .values({ state: 'PR', city: 'X', label: 'PR - X' })
         .returning();
+
       await tx.insert(leads).values(
         [10, 90, 50, 70, 30, 80, 60].map((score) => ({
           name: `S${score}`,
@@ -480,7 +530,9 @@ describe('dashboard: números batem com o SQL à mão', () => {
           score,
         })),
       );
+
       const best = (await getDashboard(tx, all, NOW)).bestNext;
+
       expect(best.map((b) => b.score)).toEqual([90, 80, 70, 60, 50]);
     });
   });
@@ -489,13 +541,16 @@ describe('dashboard: números batem com o SQL à mão', () => {
     await inTx(async (tx) => {
       const { B } = await world(tx);
       const a = (await getDashboard(tx, all, NOW)).activity;
+
       expect(a).toHaveLength(15);
       expect(a.map((x) => x.at.getTime())).toEqual(
         [...a.map((x) => x.at.getTime())].sort((x, y) => y - x),
       );
       expect(a[0]).toMatchObject({ kind: 'mcp_lead', leadName: 'Lead 7' });
-      expect(new Set(a.map((x) => x.kind))).toEqual(new Set(['mcp_lead', 'interaction', 'move']));
+      expect(new Set(a.map((x) => x.kind))).toEqual(new Set(['interaction', 'mcp_lead', 'move']));
+
       const b = (await getDashboard(tx, { period: 'all', niche: B.id }, NOW)).activity;
+
       expect(b.every((x) => ['Lead 3', 'Lead 4', 'Lead 7'].includes(x.leadName))).toBe(true);
     });
   });
@@ -503,13 +558,16 @@ describe('dashboard: números batem com o SQL à mão', () => {
   it('alertas: fila com erro, orçamento estourado, Google e lembretes sem sincronizar', async () => {
     await inTx(async (tx) => {
       await world(tx);
+
       const base = (await getDashboard(tx, all, NOW)).alerts.map((a) => a.kind);
+
       expect(base).toEqual(['queue_errors', 'over_budget']);
 
       const [g] = await tx
         .insert(googleConnections)
         .values({ googleEmail: 'a@b.c', refreshTokenEnc: 'x', status: 'active' })
         .returning();
+
       await tx.execute(sql`update reminders set sync_status = 'error' where title = 'R1 atrasado'`);
       expect((await getDashboard(tx, all, NOW)).alerts.map((a) => a.kind)).toEqual([
         'sync_errors',
@@ -593,7 +651,8 @@ describe('dashboard: desempenho', () => {
         await tx.execute(
           sql`select (select count(*) from leads) leads, (select count(*) from deals) deals, (select count(*) from interactions) interactions, (select count(*) from reminders) reminders`,
         )
-      ).rows as Record<string, string>[];
+      ).rows as Array<Record<string, string>>;
+
       expect(Number(c!.leads)).toBeGreaterThanOrEqual(5000);
       expect(Number(c!.deals)).toBeGreaterThan(1500);
       expect(Number(c!.interactions)).toBeGreaterThan(14000);
@@ -606,11 +665,15 @@ describe('dashboard: desempenho', () => {
       ];
       for (const f of filters) {
         await getDashboard(tx, f, NOW); // aquece (plano, cache)
+
         const t0 = performance.now();
         const d = await getDashboard(tx, f, NOW);
         const ms = performance.now() - t0;
+
         console.info(`dashboard (${f.period}): ${ms.toFixed(0)} ms`);
+
         if (!f.niche) expect(d.kpis.newLeads).toBeGreaterThan(0);
+
         expect(ms).toBeLessThan(1500);
       }
     });

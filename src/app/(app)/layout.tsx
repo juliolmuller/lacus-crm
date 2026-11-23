@@ -1,16 +1,22 @@
 import Link from 'next/link';
+
 import { Copyright } from '@/components/brand/copyright';
 import { Logo } from '@/components/brand/logo';
 import { BottomNav } from '@/components/layout/bottom-nav';
+import { CommandPalette } from '@/components/layout/command-palette';
 import { GoogleBanner } from '@/components/layout/google-banner';
+import { Sidebar } from '@/components/layout/sidebar';
 import { IosInstallHint } from '@/components/pwa/ios-install-hint';
 import { SnapshotWarmer } from '@/components/pwa/snapshot-warmer';
-import { CommandPalette } from '@/components/layout/command-palette';
-import { Sidebar } from '@/components/layout/sidebar';
 import { requireOwner } from '@/lib/auth/dal';
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}): Promise<React.JSX.Element> {
   await requireOwner();
+
   return (
     <div className="flex min-h-dvh">
       <Sidebar footer={<Copyright />} />

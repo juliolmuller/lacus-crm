@@ -26,8 +26,11 @@ const schema = z
   })
   .superRefine((env, ctx) => {
     if (process.env.NODE_ENV !== 'production') return;
-    const need = (path: keyof typeof env, ok: unknown) =>
-      ok || ctx.addIssue({ code: 'custom', path: [path], message: 'obrigatória em produção' });
+
+    const need = (path: keyof typeof env, ok: unknown): void => {
+      if (!ok) ctx.addIssue({ code: 'custom', path: [path], message: 'obrigatória em produção' });
+    };
+
     need('VERCEL_CLIENT_ID', env.VERCEL_CLIENT_ID);
     need('VERCEL_CLIENT_SECRET', env.VERCEL_CLIENT_SECRET);
     need('OWNER_VERCEL_USER_ID', env.OWNER_VERCEL_USER_ID || env.OWNER_EMAIL);
@@ -37,13 +40,18 @@ export type Env = z.infer<typeof schema>;
 
 let cached: Env | undefined;
 
-/** Valida process.env na primeira chamada e explica o que falta. */
+/**
+ * Valida process.env na primeira chamada e explica o que falta.
+ */
 export function getEnv(): Env {
   if (cached) return cached;
+
   const result = schema.safeParse(process.env);
+
   if (!result.success) {
     const lines = result.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`);
     throw new Error(`Variáveis de ambiente inválidas (veja .env.example):\n${lines.join('\n')}`);
   }
+
   return (cached = result.data);
 }

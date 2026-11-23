@@ -5,23 +5,24 @@ import Link from 'next/link';
 import Papa from 'papaparse';
 import { useState } from 'react';
 import { toast } from 'sonner';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SelectField } from '@/components/ui/field';
-import { HEADERS, autoMapHeaders } from '@/lib/leads/csv';
-import type { ImportReport } from '@/lib/services/import';
-import type { CatalogReport } from '@/lib/services/import-catalog';
+import { autoMapHeaders, HEADERS } from '@/lib/leads/csv';
+import { type ImportReport } from '@/lib/services/import';
+import { type CatalogReport } from '@/lib/services/import-catalog';
 
 const KINDS = {
-  leads: 'Leads (39 colunas da planilha)',
-  nichos: 'Nichos',
-  cidades: 'Cidades / regiões',
-  fila: 'Fila de prospecção',
+  'leads': 'Leads (39 colunas da planilha)',
+  'nichos': 'Nichos',
+  'cidades': 'Cidades / regiões',
+  'fila': 'Fila de prospecção',
   'uso-api': 'Uso da API',
   'top-leads': 'Top leads',
 } as const;
 type Kind = keyof typeof KINDS;
-type Report = Partial<ImportReport> & Partial<CatalogReport>;
+type Report = Partial<CatalogReport> & Partial<ImportReport>;
 
 const ACTION = {
   create: 'Criar',
@@ -31,51 +32,69 @@ const ACTION = {
   error: 'Erro',
 } as const;
 
-function download(name: string, rows: string[][]) {
-  const csv = '﻿' + Papa.unparse(rows, { delimiter: ';', quotes: true });
+function download(name: string, rows: string[][]): void {
+  const csv = `\uFEFF${Papa.unparse(rows, { delimiter: ';', quotes: true })}`;
   const a = document.createElement('a');
+
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   a.download = name;
   a.click();
   URL.revokeObjectURL(a.href);
 }
 
-/** Importação em 4 passos: arquivo → mapeamento → dry-run → confirmação. */
-export function ImportWizard({ defaultInsertOnly }: { defaultInsertOnly: boolean }) {
+/**
+ * Importação em 4 passos: arquivo → mapeamento → dry-run → confirmação.
+ */
+export function ImportWizard({
+  defaultInsertOnly,
+}: {
+  defaultInsertOnly: boolean;
+}): React.JSX.Element {
   const [kind, setKind] = useState<Kind>('leads');
   const [file, setFile] = useState<File>();
-  const [mapping, setMapping] = useState<Record<string, string | null>>({});
+  const [mapping, setMapping] = useState<Record<string, null | string>>({});
   const [insertOnly, setInsertOnly] = useState(defaultInsertOnly);
   const [report, setReport] = useState<Report>();
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  async function pick(f: File | undefined) {
+  async function pick(f: File | undefined): Promise<void> {
     setReport(undefined);
     setDone(false);
+
     if (!f) return setFile(undefined);
+
     const head = await new Promise<string[]>((res) =>
       Papa.parse<string[]>(f, { preview: 1, complete: (r) => res(r.data[0] ?? []) }),
     );
+
     setMapping(autoMapHeaders(head.map((h) => h.replace(/^\uFEFF/, ''))));
     setFile(f); // só depois do mapeamento: o botão de simular depende dele
   }
 
-  async function run(dryRun: boolean) {
+  async function run(dryRun: boolean): Promise<void> {
     if (!file) return;
+
     setBusy(true);
+
     const fd = new FormData();
+
     fd.set('file', file);
     fd.set('kind', kind);
     fd.set('dryRun', dryRun ? '1' : '0');
     fd.set('insertOnly', insertOnly ? '1' : '0');
+
     if (kind === 'leads') fd.set('mapping', JSON.stringify(mapping));
+
     try {
       const res = await fetch('/api/leads/import', { method: 'POST', body: fd });
       const body = await res.json();
+
       if (!res.ok) throw new Error(body.error ?? 'Falha na importação');
+
       setReport(body);
       setDone(!dryRun);
+
       if (!dryRun) toast.success('Importação concluída');
     } catch (e) {
       toast.error((e as Error).message);
@@ -133,8 +152,8 @@ export function ImportWizard({ defaultInsertOnly }: { defaultInsertOnly: boolean
             <h2 className="text-section">2. Mapeamento</h2>
             <p className="text-body text-text-muted">
               Os cabeçalhos da planilha são reconhecidos sozinhos. Ajuste o que não bateu.
-              {missing.length > 0 &&
-                ` Sem coluna no arquivo: ${missing.length} campos (ficam como estão).`}
+              {missing.length > 0
+                && ` Sem coluna no arquivo: ${missing.length} campos (ficam como estão).`}
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {Object.keys(mapping).map((h) => (
