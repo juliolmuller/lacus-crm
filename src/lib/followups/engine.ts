@@ -95,8 +95,10 @@ export function planFollowups(args: {
   existingKeys: Set<string>;
   calendar?: BusinessCalendar;
   replay?: boolean;
+  /** regras que não reancoram neste evento (a interação é a execução de um passo delas) */
+  skipRuleIds?: number[];
 }): Plan {
-  const { event, rules, open, existingKeys, calendar, replay } = args;
+  const { event, rules, open, existingKeys, calendar, replay, skipRuleIds = [] } = args;
   const byId = new Map(rules.map((r) => [r.id, r]));
   const cancel = new Set<string>();
 
@@ -115,7 +117,7 @@ export function planFollowups(args: {
   }
 
   const create: PlannedReminder[] = [];
-  for (const rule of rules.filter((r) => ruleMatches(r, event))) {
+  for (const rule of rules.filter((r) => !skipRuleIds.includes(r.id) && ruleMatches(r, event))) {
     const floor = event.now ?? event.at;
     const today = spYmd(event.at);
     const base = event.kind === 'interaction_logged' ? (event.meetingOn ?? today) : today;

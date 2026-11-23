@@ -63,7 +63,7 @@ export async function businessCalendar(db: Db) {
 export async function applyRules(
   tx: Db,
   event: RuleEvent,
-  opts: { replay?: boolean; now?: Date } = {},
+  opts: { replay?: boolean; now?: Date; skipRuleIds?: number[] } = {},
 ): Promise<string[]> {
   const [lead] = await tx.select().from(leads).where(eq(leads.id, event.leadId));
   if (!lead || lead.doNotContact) return [];
@@ -118,6 +118,7 @@ export async function applyRules(
     existingKeys: new Set(keys.flatMap((x) => (x.k ? [x.k] : []))),
     calendar: await businessCalendar(tx),
     replay: opts.replay,
+    skipRuleIds: opts.skipRuleIds,
   });
 
   if (plan.cancel.length)

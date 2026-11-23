@@ -143,11 +143,16 @@ export async function completeReminder(
         syncError: null,
       })
       .where(eq(reminders.id, id));
+    const step = stepOf(r.dedupeKey);
+    // a interação é a execução deste passo: não reinicia a cadência a que ele pertence
     const logged = opts.interaction
-      ? await logInteraction(tx, { ...opts.interaction, leadId: r.leadId, dealId: r.dealId })
+      ? await logInteraction(
+          tx,
+          { ...opts.interaction, leadId: r.leadId, dealId: r.dealId },
+          { skipRuleIds: step ? [step.ruleId] : [] },
+        )
       : null;
     let suggestion: { leadId: string; status: 'no_response' } | null = null;
-    const step = stepOf(r.dedupeKey);
     if (step) {
       const [rule] = await tx.select().from(followupRules).where(eq(followupRules.id, step.ruleId));
       const steps = cadence.safeParse(rule?.cadence);

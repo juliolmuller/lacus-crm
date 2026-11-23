@@ -41,7 +41,11 @@ const channelLabel: Partial<Record<InteractionInput['type'], string>> = {
  * - resultado opt_out: fluxo "Não contatar" (SPEC 4.4).
  * `note` e `system` (internas) não mexem em nada.
  */
-export async function logInteraction(db: Db, input: InteractionInput) {
+export async function logInteraction(
+  db: Db,
+  input: InteractionInput,
+  opts: { skipRuleIds?: number[] } = {},
+) {
   return db.transaction(async (tx) => {
     const [lead] = await tx.select().from(leads).where(eq(leads.id, input.leadId));
     if (!lead) throw new LeadError('NOT_FOUND', 'Lead não encontrado');
@@ -96,14 +100,18 @@ export async function logInteraction(db: Db, input: InteractionInput) {
     if (input.outcome === 'opt_out' && !lead.doNotContact)
       await setDoNotContact(tx, lead.id, { reason: input.summary, optOut: true });
 
-    const reminderIds = await applyRules(tx, {
-      type: 'interaction_logged',
-      interactionId: row!.id,
-      leadId: lead.id,
-      dealId,
-      meetingOn: input.meetingOn,
-      resumeInDays: input.resumeInDays,
-    });
+    const reminderIds = await applyRules(
+      tx,
+      {
+        type: 'interaction_logged',
+        interactionId: row!.id,
+        leadId: lead.id,
+        dealId,
+        meetingOn: input.meetingOn,
+        resumeInDays: input.resumeInDays,
+      },
+      { skipRuleIds: opts.skipRuleIds },
+    );
     return { interaction: row!, reminderIds };
   });
 }

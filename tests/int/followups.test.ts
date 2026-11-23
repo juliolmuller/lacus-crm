@@ -270,6 +270,31 @@ describe('motor de regras + lembretes', () => {
       expect(l.rows).toHaveLength(2);
     }));
 
+  it('concluir um passo registrando interação não reinicia a cadência', () =>
+    inTx(async (tx) => {
+      const { lead, rems } = await world(tx);
+      await logInteraction(tx, {
+        leadId: lead.id,
+        type: 'whatsapp',
+        direction: 'outbound',
+        summary: 'Oi',
+        occurredAt: MON,
+      });
+      const [f1] = await rems();
+      const out = await completeReminder(tx, f1!.id, {
+        interaction: {
+          type: 'whatsapp',
+          direction: 'outbound',
+          summary: 'Follow-up 1 enviado',
+          occurredAt: MON,
+        },
+      });
+      expect(out.reminderIds).toEqual([]);
+      const all = await rems();
+      expect(all).toHaveLength(3);
+      expect(all.map((r) => r.status).sort()).toEqual(['done', 'open', 'open']);
+    }));
+
   it('lembrete manual de lead "Não contatar" vira erro de domínio', () =>
     inTx(async (tx) => {
       const { lead } = await world(tx);
