@@ -20,7 +20,7 @@ Guia vivo em `/design-system` (atrás do login). Fonte dos tokens: `src/app/glob
 
 ## Componentes (fase 1)
 
-`Button` (primary, secondary, ghost, destructive, link; sm 32 / md 36 / lg 44 px; `loading` mantém o texto e marca `aria-busy`), `Field` (rótulo visível, ajuda e erro via `aria-describedby`), `Badge`, `StatusBadge`, `ScoreBadge`, `SyncBadge`, `Toaster` (sonner; 5 s, 8 s com ação), `Logo`, `Copyright`, shell (`Sidebar`, `BottomNav`, `ThemeSelector`). Os demais itens da seção 7.3 entram junto com os componentes das fases seguintes.
+`Button` (primary, secondary, ghost, destructive, link; sm 32 / md 36 / lg 44 px; `loading` mantém o texto e marca `aria-busy`), `Field` (rótulo visível, ajuda e erro via `aria-describedby`), `Badge`, `StatusBadge`, `ScoreBadge`, `SyncBadge`, `Toaster` (sonner; 5 s, 8 s com ação), `Logo`, `Copyright`, shell (`Sidebar`, `BottomNav`), `ThemeSelector` (Sistema/Escuro/Claro, em Configurações > Aparência e em Mais no celular; "Sistema" acompanha a troca do sistema operacional sem recarregar). Os demais itens da seção 7.3 entram junto com os componentes das fases seguintes.
 
 ## Marca
 

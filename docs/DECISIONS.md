@@ -232,3 +232,11 @@ Owner request: bring the structure of [`juliolmuller/portfolio#124`](https://git
    - a failed push or PR: **Re-run failed jobs** on the run (within 7 days). Only `publish` runs again, from the artifact. If the branch changed since or the artifact expired, it fails and `phase: implement` is the way forward.
 8. **Language**: questions, plans, status comments, PR titles and bodies and the commit subjects written by the implementer are in English, as in the portfolio. For the commit subject the implementer prompt says this overrides the Brazilian Portuguese rule in `AGENTS.md`; code, UI strings and the other docs keep their own language. `claude-review.yml` is unchanged and still writes its review comments in Portuguese.
 9. **Consequences**: `publish` gains `actions: read` (the only permission change) and runs no `bun install`, so Husky's hooks are not installed there and the `pre-push` typecheck does not run (the gates already ran it in `implement`). A push that edits `.github/workflows` needs the Claude App to have the Workflows permission; the PR check reports a rejected push. A single workflow file was kept: two workflows triggered by labels would add a second trigger and the race the gate's idempotency already fixed. The `issues` and `issue_comment` events use the workflow on the default branch, so none of this applies until it reaches `main`. Not exercised in a real run: only the scripts' syntax and the `plan-meta`, `questions-meta` and `publish.sh` logic were checked with simulated data.
+
+## Seletor de tema fora da barra lateral (25/11/2026)
+
+Contexto: no rodapé da barra lateral o seletor de tema transbordava sobre o conteúdo. Além disso, é uma preferência que não precisa estar sempre visível, e era o único ouvinte de `prefers-color-scheme` montado em todas as páginas do desktop.
+
+Decisão: remover o `ThemeSelector` da barra lateral, mantendo-o em Configurações > Aparência e em Mais. O ouvinte do sistema operacional passa para o `THEME_SCRIPT` do `<head>`, que relê `localStorage` a cada mudança e só aplica o tema quando a escolha é "Sistema".
+
+Consequência: "Sistema" acompanha o sistema operacional em todas as páginas, no desktop e no celular, com ou sem o seletor montado. O ouvinte próprio do `ThemeSelector` fica redundante, mas permanece, então o componente não muda.
