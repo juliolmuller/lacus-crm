@@ -591,10 +591,15 @@ jobs:
 
           # A transient API error from here on would throw the implementation away, which is the failure the hand-off
           # exists to prevent, so the reads are retried. They still fail closed after the third attempt.
+          # Each attempt's output is captured apart and printed only when it succeeds: `gh api` writes an
+          # error body to stdout, and a failed attempt's body must not end up in front of a later good one.
           retry() {
-            local i
+            local i out
             for i in 1 2 3; do
-              "$@" && return 0
+              if out=$("$@"); then
+                printf '%s\n' "$out"
+                return 0
+              fi
               [ "$i" = 3 ] || sleep 10
             done
             return 1
