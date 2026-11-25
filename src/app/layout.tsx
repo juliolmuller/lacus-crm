@@ -23,8 +23,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: '#0B0D10', viewportFit: 'cover' };
 
-// Aplica o tema e a densidade salvos antes da hidratação (evita flash). "system" segue prefers-color-scheme.
-const THEME_SCRIPT = `try{var t=localStorage.getItem('theme')||'system';document.documentElement.dataset.theme=t==='system'?(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;var d=localStorage.getItem('density');document.documentElement.dataset.density=d==='compact'||d==='comfortable'?d:(matchMedia('(min-width: 1024px)').matches?'compact':'comfortable')}catch(e){}`;
+// Aplica o tema e a densidade salvos antes da hidratação (evita flash). "system" segue prefers-color-scheme, inclusive quando o sistema troca de tema depois.
+const THEME_SCRIPT = `try{var t=localStorage.getItem('theme')||'system';document.documentElement.dataset.theme=t==='system'?(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;var d=localStorage.getItem('density');document.documentElement.dataset.density=d==='compact'||d==='comfortable'?d:(matchMedia('(min-width: 1024px)').matches?'compact':'comfortable');matchMedia('(prefers-color-scheme: light)').addEventListener('change',function(e){try{if((localStorage.getItem('theme')||'system')==='system')document.documentElement.dataset.theme=e.matches?'light':'dark'}catch(x){}})}catch(e){}`;
 
 export default async function RootLayout({
   children,

@@ -95,3 +95,58 @@ test('densidade padrão: confortável no celular, compacto no desktop', async ({
     isMobile ? 'comfortable' : 'compact',
   );
 });
+
+test('tema: trocado em Configurações e mantido após recarregar', async ({ page }) => {
+  await page.goto('/api/e2e/login?next=/configuracoes');
+
+  const html = page.locator('html');
+
+  await expect(async () => {
+    await page.getByRole('radio', { name: 'Claro' }).click();
+    await expect(html).toHaveAttribute('data-theme', 'light', { timeout: 1500 });
+  }).toPass(); // o clique só vale depois da hidratação
+  await page.reload();
+  await expect(html).toHaveAttribute('data-theme', 'light');
+  await expect(page.getByRole('radio', { name: 'Claro' })).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('radio', { name: 'Escuro' }).click();
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+});
+
+test('tema: Sistema acompanha o sistema operacional fora de Configurações', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.addInitScript(() => localStorage.setItem('theme', 'system'));
+  await page.goto('/api/e2e/login?next=/');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+  const html = page.locator('html');
+
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(html).toHaveAttribute('data-theme', 'light');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+});
+
+test('tema: escolha explícita ignora o sistema operacional', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.addInitScript(() => localStorage.setItem('theme', 'dark'));
+  await page.goto('/api/e2e/login?next=/');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+});
+
+test('barra lateral: sem seletor de tema', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'a barra lateral é do desktop');
+
+  await page.goto('/api/e2e/login?next=/');
+
+  const sidebar = page.locator('aside');
+  const selector = sidebar.getByRole('radiogroup', { name: 'Tema' });
+
+  await expect(sidebar.getByRole('button', { name: 'Sair' })).toBeVisible();
+  await expect(selector).toHaveCount(0);
+  await sidebar.getByRole('button', { name: 'Recolher menu' }).click();
+  await expect(sidebar.getByRole('button', { name: 'Expandir menu' })).toBeVisible();
+  await expect(selector).toHaveCount(0);
+});

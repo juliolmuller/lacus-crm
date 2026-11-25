@@ -10,7 +10,6 @@ import { cn } from '@/lib/utils';
 
 import { LogoutButton } from './logout-button';
 import { desktopNav, isActive } from './nav';
-import { ThemeSelector } from './theme-selector';
 
 /**
  * Sidebar recolhível (≥ 1024px). `footer` recebe o copyright, renderizado no
@@ -89,7 +88,6 @@ export function Sidebar({ footer }: { footer: ReactNode }): React.JSX.Element {
         ))}
       </nav>
       <div className="flex flex-col gap-2 border-t border-border p-2">
-        {!collapsed && <ThemeSelector />}
         <LogoutButton iconOnly={collapsed} />
         <button
           type="button"
