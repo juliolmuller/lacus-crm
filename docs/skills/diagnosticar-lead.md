@@ -1,6 +1,6 @@
 ---
-name: "diagnosticar-lead"
-description: "Pesquisar um lead do Lacus CRM (Instagram, Facebook, site, Google Maps), gerar diagnóstico e plano de abordagem, salvar no CRM e entregar o canal e a mensagem 1 prontos para enviar."
+name: 'diagnosticar-lead'
+description: 'Pesquisar um lead do Lacus CRM (Instagram, Facebook, site, Google Maps), gerar diagnóstico e plano de abordagem, salvar no CRM e entregar o canal e a mensagem 1 prontos para enviar.'
 ---
 
 # Diagnosticar lead do Lacus CRM (LACUS Solutions)
@@ -10,6 +10,7 @@ Use quando o Júlio pedir um lead ("pega o próximo lead", "diagnostica o lead M
 Requer o conector **Lacus CRM** (o principal, com `crm_search_leads`, `crm_get_lead`, `crm_save_diagnosis`). Se ele não estiver ligado, avisar e parar.
 
 Princípios (vêm do que já foi feito nos 6 primeiros leads):
+
 - **Evidência antes de argumento.** Cada afirmação sobre o lead tem de vir de algo que você viu, com data. O que não foi visto vai para "Não verificado".
 - **O argumento do CRM é hipótese, não fato.** A rotina automática escreveu o argumento sem abrir redes nem ler avaliações. Já houve erro: a Dra. Karen tinha agendamento online que a rotina ignorava; o Instagram da Dra. Kaliane estava fora do ar.
 - **Tom de aviso útil, nunca de crítica.** O lead pode ter pago pelo que existe hoje. Mostrar fatos que ele confere em 1 minuto e deixar ele concluir.
@@ -30,6 +31,7 @@ Princípios (vêm do que já foi feito nos 6 primeiros leads):
 Carregar a skill `chrome-browser` antes do primeiro passo no navegador. Trabalhar em abas novas. WebFetch e o shell costumam ser bloqueados por Maps, Instagram e Facebook; o navegador do Júlio (com login) é o caminho. Anotar a data da coleta. Se algo bloquear, dizer o que não foi possível ver; não preencher de memória.
 
 ### 2.1 Google Maps (fazer primeiro, é a fonte de verdade dos contatos)
+
 - Abrir pelo `mapsUrl` do lead. Registrar: nome exato, categoria, endereço, telefone, horário, site cadastrado (e se usa http/https, www), nº de avaliações e nota **do dia**, fotos, posts do dono, perguntas e respostas.
 - Nome do perfil com palavras-chave acrescentadas (ex.: "Dentista Bairro Nome") é risco de suspensão nas diretrizes do Google: anotar.
 - **Ler todas as avaliações possíveis** (ordenar por "Mais recentes", depois por "Mais baixas"; rolar a lista e extrair com `get_page_text`). Informar quantas foram lidas de quantas existem.
@@ -46,6 +48,7 @@ Carregar a skill `chrome-browser` antes do primeiro passo no navegador. Trabalha
 - Elogios mais citados (contar por palavra-chave) e nomes de profissionais citados: ajudam a achar o **decisor** e a escolher o gancho.
 
 ### 2.2 Instagram (se houver; senão, procurar)
+
 - Ver o @ no CRM (`instagram`, `otherSocials`), na ficha do Maps, no site e na bio do consultorio.me/Linktree. Se não houver, buscar pelo nome do negócio e do profissional e listar **todos** os perfis candidatos (como no caso Kowalski: um profissional ativo, um abandonado, um pessoal privado). Não afirmar que um perfil é do lead sem sinal concreto (telefone, endereço, CRO, foto).
 - Se o link cadastrado der "página indisponível", testar também em aba anônima e pelo link exato do Maps.
 - Perguntas a responder:
@@ -57,10 +60,13 @@ Carregar a skill `chrome-browser` antes do primeiro passo no navegador. Trabalha
 - Anúncios: conferir na Biblioteca de Anúncios da Meta se há anúncios ativos (sinal de investimento).
 
 ### 2.3 Facebook (se houver)
+
 Mesma abordagem do Instagram: página profissional ou pessoal, contatos x Maps, tom, frequência (data do último post), avaliações da página, mensagens/WhatsApp, se a página está abandonada.
 
 ### 2.4 Site (se houver; inclui Linktree, Webnode, Wix, consultorio.me)
+
 Avaliar e registrar com a evidência (URL, trecho, print quando útil):
+
 - **Qualidade geral e plataforma:** é site próprio ou perfil em plataforma de terceiros? Domínio próprio, HTTPS, www, redirecionamentos; nome do negócio aparece em quantas versões diferentes.
 - **Conteúdo:** o que tem de real (serviços, quem é o profissional com registro profissional, endereço, horário, como agendar) e o que falta; texto desatualizado (notícias de anos atrás, "© 2025", anos de atuação errados); páginas vazias; sobras de modelo copiado de outro negócio (textos, ícones carregados de outros domínios, placeholders).
 - **Bugs visuais e técnicos:** abrir no celular (ou redimensionar a janela) e no computador; layout quebrado, imagens sem carregar, links vazios ou quebrados (`#`, URLs com erro de digitação), metatags malformadas (viewport, og, twitter), favicon, tempo de carregamento percebido. PageSpeed Insights (mobile): rodar `pagespeed.web.dev` no navegador e anotar a nota; se a cota falhar, dizer.
@@ -72,14 +78,18 @@ Avaliar e registrar com a evidência (URL, trecho, print quando útil):
 - Quem fez o site (rodapé, código-fonte) e se parece haver contrato com agência.
 
 ### 2.5 Concorrência local (rápido)
+
 Os 3 primeiros do pacote local para a busca principal: têm site próprio? É melhor que o do lead? (Alimenta o critério "concorrência local com site forte" do score.)
 
 ### 2.6 Conformidade por nicho
+
 Duas coisas diferentes:
+
 - **Mensagem de abordagem ao lead:** pode citar a nota e as avaliações do Google do lead como observação sobre o perfil dele ("vi sua nota 5,0 com 155 avaliações"). Isso não é publicidade do profissional e não é vedado.
 - **Conteúdo publicitário do lead (site, redes, o que a LACUS propuser montar):** aqui valem as regras do conselho. Não propor frase como "nota 5 estrelas", depoimentos, "o melhor", preço ou antes e depois proibidos.
 
 Por nicho:
+
 - Odontologia: carregar a skill `regras-cfo` e usar `claude/checklist-cro-publicidade-odontologica.md` ao propor conteúdo de site. Identificar se é pessoa física ou clínica (PJ) e o responsável técnico.
 - Advocacia: carregar a skill `regras-oab` e usar `claude/checklist-oab-site-advogado.md`.
 - Psicologia, medicina, estética, veterinária: lembrar que há regras do conselho e dizer que a conferência está pendente, em vez de afirmar que está ok.
@@ -117,6 +127,7 @@ Depois do diagnóstico, na mesma nota, acrescentar `## Estratégia de abordagem`
 9. **Mensagem 1** (texto final, já humanizado).
 
 ### Regras da mensagem 1
+
 - WhatsApp, tom de profissional para profissional, "você" ou "Dr./Dra. + nome", sem cara de agência nem de mensagem em massa.
 - Apresentação curta ("Sou o Júlio, faço sites para <nicho> aqui em <cidade>"), um elogio **específico e verdadeiro** (algo visto no Maps ou no Instagram; pode ser a nota e o número de avaliações), **um** achado concreto que o lead confere em 1 minuto, e uma pergunta de baixo compromisso ("Posso te mandar?"). Sem preço, sem promessa, sem link.
 - Linha de opt-out no fim ("Se preferir não receber mensagens, é só me avisar.").
@@ -126,6 +137,7 @@ Depois do diagnóstico, na mesma nota, acrescentar `## Estratégia de abordagem`
 ## 5. Salvar no CRM e fechar
 
 Mostrar ao Júlio o resumo do que será gravado e **só então** chamar `crm_save_diagnosis` (uma chamada), com:
+
 - `id`: o do lead.
 - `diagnosis`: o texto dos passos 3 e 4 (vira nota interna "Diagnóstico do lead" na linha do tempo).
 - `patch`: só o que foi **verificado nesta sessão**, em snake_case: `website_url`, `website_status` (`none`, `social_only`, `bad`, `good` ou `unknown`), `instagram`, `instagram_active`, `other_socials`, `email`, `decision_maker_contact`, `has_whatsapp`, `has_active_ads`, `owner_replies_reviews`, `complaints`, `strong_local_competition`; mais `pitch` (o argumento mais forte, em 1–3 frases), `next_action` (ex.: "Enviar mensagem 1 no WhatsApp, ter a qui 9–11h") e `session_url` se o Júlio colar o link desta sessão. Não mexer em `contact_status`: a negociação vai para "A abordar" e o status acompanha. Não gravar o que não foi visto.
@@ -135,6 +147,7 @@ Mostrar ao Júlio o resumo do que será gravado e **só então** chamar `crm_sav
 Se o Júlio ainda não colou o link desta sessão, pedir no fim ("cola o link desta sessão que eu salvo no lead") e gravar com `crm_update_lead` (`patch: { session_url }`).
 
 A resposta final, nesta ordem e curta:
+
 1. **Veredito em uma ou duas frases:** o lead segue forte, mudou ou deve ser descartado, e o que foi diferente do argumento da rotina.
 2. **Canal:** qual e para qual número/endereço, e melhor horário.
 3. **Mensagem 1 pronta para enviar**, em bloco de citação ou de código para copiar.
