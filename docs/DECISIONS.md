@@ -251,3 +251,14 @@ Contexto: a [issue #8](https://github.com/juliolmuller/lacus-crm/issues/8) leva 
 4. **Planilha de nichos** (`.data/nichos.csv`): mantém cabeçalhos e valores em pt-BR, por ser dado de origem. `parseNichesCsv` converte para os valores do enum.
 
 Consequência: `niches_list` e o `niche` de `queue_claim_next` (e a REST equivalente) passam a devolver `high/medium/low`; rotinas do claude.ai que comparem esses campos com os valores antigos precisam ser atualizadas. O cache offline do service worker não guarda ticket nem abertura, então não há valor antigo para tratar ali. Como a migration renomeia valores em uso e o código antigo não entende os novos (nem o novo, os antigos), aplique-a no Neon (`bun run db:migrate`) logo antes de promover o deploy; o rollback é `bun run db:rollback 1`.
+
+## Erros do MCP e configurações inválidas (26/11/2026)
+
+Contexto: a [issue #11](https://github.com/juliolmuller/lacus-crm/issues/11) relatou `validation_error: Entrada inválida` em toda chamada de `crm_update_lead` e `crm_save_diagnosis`, sem caminho de campo. O SDK do MCP valida os argumentos antes do nosso handler; a mensagem vinha de um `ZodError` lançado dentro da operação: `getScoreSettings` fazia `parse` do `score_thresholds` guardado no banco, que provavelmente ainda tinha `ticketPoints` como `alto/medio/baixo` (migration `0005` não aplicada no Neon, que é manual). Só as ferramentas que recalculam o score quebravam, e o erro era tratado como entrada do cliente.
+
+1. **Configuração guardada inválida é `SettingError`, não `ZodError`.** `readSetting(chave, valor)` (leituras do banco) lança `SettingError`; `toApiError` o mapeia para `internal_error` com a chave na mensagem e registra só os caminhos das issues, nunca os valores. `parseSetting` continua para validar entrada (seed e `saveSetting`).
+2. **Erros de ferramenta do MCP levam os detalhes.** Em `validation_error`, o texto é `validation_error: Entrada inválida` seguido das issues em JSON (`[{path, code, message}]`, `path` com pontos, raiz `''`) e o mesmo vai em `structuredContent.error`. Outros códigos não levam `details`. A REST passa a devolver `details` nessa forma compacta (antes eram as issues cruas do Zod).
+3. **`patch` vazio em `crm_update_lead` é no-op**: devolve o lead atual, sem gravar e sem linha de auditoria (`not_found` se o id não existe). Em `crm_save_diagnosis`, `patch` vazio é normal (só o texto do diagnóstico).
+4. **Sem coerção de `patch` vindo como texto JSON.** `z.preprocess` apagaria os campos do JSON Schema publicado; os testes pelo transporte real mostram que `patch` tipado funciona e que o texto é recusado.
+
+Consequência: quem usa o MCP vê o campo recusado; configuração desatualizada aparece como `internal_error` citando a chave e indicando rodar as migrations. Migrations devem ser aplicadas antes (ou logo depois) do deploy que depende delas (`docs/DEPLOY.md`).

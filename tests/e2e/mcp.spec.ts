@@ -1,5 +1,5 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
-import { expect, test } from '@playwright/test';
+import { type APIRequestContext, expect, test } from '@playwright/test';
 import { createHash, randomBytes } from 'node:crypto';
 import { Pool } from 'pg';
 
@@ -8,8 +8,9 @@ import { pointToE2eDatabase } from './env';
 pointToE2eDatabase();
 
 /**
- * HTTP real contra o app: autenticação, escopos e conectores do MCP. Só leitura
- * e tokens próprios.
+ * HTTP real contra o app: autenticação, escopos e conectores do MCP. Cria
+ * tokens próprios e, nos testes de escrita, altera leads fixture do `<db>_e2e`
+ * (recriado a cada execução; cada projeto usa um lead diferente).
  */
 // sem afterAll/end(): o mesmo worker roda o arquivo nos dois projetos; o pool ocioso fecha sozinho
 const db = new Pool({
@@ -204,4 +205,98 @@ test('bearer que não é PAT segue para o OAuth: JWT inválido dá 401', async (
 
   expect(r.status()).toBe(401);
   expect(r.headers()['www-authenticate']).toContain('resource_metadata=');
+});
+
+interface ToolReply {
+  result: {
+    content: Array<{ text: string }>;
+    isError?: boolean;
+    structuredContent?: Record<string, unknown>;
+  };
+}
+
+test.describe('escrita via MCP: crm_update_lead e crm_save_diagnosis', () => {
+  const callTool = async (
+    request: APIRequestContext,
+    token: string,
+    name: string,
+    args: object,
+  ): Promise<ToolReply> => {
+    const r = await request.post('/api/mcp', { headers: H(token), data: rpc(name, args) });
+
+    const body = await r.text();
+    // a resposta vem como SSE (`event: message\ndata: {...}`) ou JSON puro
+    const data = body.split('\n').find((l) => l.startsWith('data:'));
+
+    return JSON.parse(data ? data.slice(5) : body);
+  };
+  // um lead por projeto: os dois projetos rodam este arquivo em paralelo
+  const leadId = async (projectName: string): Promise<string> => {
+    const { rows } = await db.query<{ id: string }>(
+      'select id from leads order by name_normalized, id limit 4',
+    );
+
+    return rows[projectName.includes('pwa') ? 1 : 0]!.id;
+  };
+
+  test('um campo grava, patch vazio é no-op e diagnóstico grava campos e nota', async ({
+    request,
+  }, info) => {
+    const token = await pat(['read', 'write']);
+    const id = await leadId(info.project.name);
+    const channel = `WhatsApp ${Date.now()}`;
+    const upd = await callTool(request, token, 'crm_update_lead', { id, patch: { channel } });
+
+    expect(upd.result.isError).toBeFalsy();
+    expect(upd.result.structuredContent?.channel).toBe(channel);
+
+    const { rows } = await db.query<{ channel: string }>('select channel from leads where id=$1', [
+      id,
+    ]);
+
+    expect(rows[0]?.channel).toBe(channel);
+
+    const empty = await callTool(request, token, 'crm_update_lead', { id, patch: {} });
+
+    expect(empty.result.isError).toBeFalsy();
+    expect(empty.result.structuredContent?.id).toBe(id);
+    expect(empty.result.structuredContent?.channel).toBe(channel);
+
+    const diag = await callTool(request, token, 'crm_save_diagnosis', {
+      id,
+      patch: { website_status: 'good', session_url: 'https://claude.ai/x' },
+      diagnosis: `Diagnóstico e2e ${channel}`,
+    });
+
+    expect(diag.result.isError).toBeFalsy();
+    expect(diag.result.structuredContent?.interactionId).not.toBeNull();
+  });
+
+  test('patch inválido é erro e o caminho do campo aparece', async ({ request }, info) => {
+    const token = await pat(['read', 'write']);
+    const id = await leadId(info.project.name);
+
+    for (const [patch, path] of [
+      [{ nope: 1 }, 'patch'],
+      [{ priority: 'x' }, 'patch.priority'],
+    ] as const) {
+      const r = await callTool(request, token, 'crm_update_lead', { id, patch });
+
+      // o SDK pode recusar antes do nosso handler; nos dois casos o caminho aparece
+      expect(r.result.isError).toBe(true);
+      expect(JSON.stringify(r)).toContain(path);
+    }
+  });
+
+  test('patch enviado como string JSON é recusado', async ({ request }, info) => {
+    const token = await pat(['read', 'write']);
+    const id = await leadId(info.project.name);
+    const r = await callTool(request, token, 'crm_update_lead', {
+      id,
+      patch: '{"channel":"WhatsApp"}',
+    });
+
+    expect(r.result.isError).toBe(true);
+    info.annotations.push({ type: 'patch-string', description: JSON.stringify(r.result.content) });
+  });
 });

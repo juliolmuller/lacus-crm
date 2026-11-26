@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { cadence } from '@/lib/validation/followups';
 import {
   parseSetting,
+  readSetting,
   settingDefaults,
+  SettingError,
   type SettingKey,
   settingSchemas,
 } from '@/lib/validation/settings';
@@ -21,6 +23,18 @@ describe('settings', () => {
     expect(() =>
       parseSetting('business_calendar', { extraHolidays: [{ date: '25/12/2026', name: 'x' }] }),
     ).toThrow();
+  });
+
+  it('readSetting lança SettingError para valor guardado no formato antigo', () => {
+    const old = {
+      ...settingDefaults.score_thresholds,
+      ticketPoints: { alto: 15, medio: 7.5, baixo: 0 },
+    };
+
+    expect(() => readSetting('score_thresholds', old)).toThrow(SettingError);
+    expect(readSetting('score_thresholds', settingDefaults.score_thresholds)).toEqual(
+      settingDefaults.score_thresholds,
+    );
   });
 
   it('valida a cadência de follow-up', () => {

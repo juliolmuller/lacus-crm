@@ -66,9 +66,20 @@ Para versionar a configuração num projeto, use um `.mcp.json` (o token fica no
 
 Os campos `ticket` e `openness` do nicho (em `niches_list` e no `niche` de `queue_claim_next`, além do equivalente na REST) valem `high`, `medium` ou `low`. Antes da migration `0005` eram `alto|medio|baixo` e `alta|media|baixa`; rotinas e scripts que comparam esses valores precisam usar os novos.
 
+### Erros das ferramentas
+
+Uma ferramenta que falha responde com `isError` e o texto `código: mensagem`. Em `validation_error` o texto traz também as issues, e `structuredContent.error` repete `{code, message, details}`:
+
+```text
+validation_error: Entrada inválida
+[{"path":"patch.priority","code":"invalid_value","message":"Invalid option: ..."}]
+```
+
+`internal_error` com "Configuração "…" inválida no banco" indica migration pendente: rode `bun run db:migrate` contra o Neon (`docs/DEPLOY.md`, passo 4). `crm_update_lead` com `patch` vazio não grava nada e devolve o lead atual.
+
 ### REST (`/api/v1`)
 
-Referência gerada dos schemas: `GET https://lacuscrm.juliolmuller.com/api/v1/openapi.json`. Erros: `{"error": {"code", "message", "details?"}}`.
+Referência gerada dos schemas: `GET https://lacuscrm.juliolmuller.com/api/v1/openapi.json`. Erros: `{"error": {"code", "message", "details?"}}`, com `details` no formato acima (`[{path, code, message}]`) em `validation_error`.
 
 ```bash
 H="Authorization: Bearer $LACUS_CRM_TOKEN"; B=https://lacuscrm.juliolmuller.com/api/v1

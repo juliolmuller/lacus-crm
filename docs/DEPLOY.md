@@ -27,6 +27,8 @@ Tecnicamente tudo cabe no Hobby: funções com `maxDuration = 60` (limite do Hob
    DATABASE_URL='<string do Neon>' bun run db:seed
    ```
 
+   Aplique as migrations **antes** (ou logo depois) do deploy que depende delas: em 26/11/2026, o código com `ticketPoints` em inglês foi ao ar antes da `0005` no Neon e `crm_update_lead` e `crm_save_diagnosis` falharam (issue #11; agora o erro é `internal_error` citando a configuração).
+
    Rollback, se precisar: `bun run db:rollback 1` (usa `drizzle/down/*.down.sql`) ou restaure o branch de backup.
 
 5. Dados reais: `bun run db:import --insert-only` com os CSVs de `.data/` apontando para o Neon (o modo "somente novos" é o padrão seguro em produção). Confira `.data/import-report.json`.

@@ -414,6 +414,8 @@ No tema claro, use fundo `#E3F5EB`/`#FBF0D5`/`#FBE4E2` e texto `#1E7F4F`/`#8A5D0
 
 - `src/app/api/mcp/route.ts` (Streamable HTTP, stateless), validando PAT **ou** token OAuth (PLAN D1), `runtime = "nodejs"` e `maxDuration` adequado ao Hobby (verificar). `src/app/api/mcp/prospecting/route.ts` expõe só as ferramentas de prospecção.
 - Toda ferramenta devolve `structuredContent` e um texto curto. Listas limitadas a 50 itens, com cursor.
+- Erros de ferramenta voltam com `isError` e o texto `código: mensagem`; em `validation_error` o texto traz também as issues em JSON (`[{path, code, message}]`) e `structuredContent.error` repete `{code, message, details}`.
+- `crm_update_lead` com `patch` vazio é um no-op: devolve o lead atual, sem gravar nem auditar.
 
 | Ferramenta                                                              | Escopo               | Entrada (resumo)                                                                                                      | Saída (resumo)                                                                                                                                                                 |
 | ----------------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -448,7 +450,7 @@ Repetir a mesma chamada produz o mesmo estado (teste obrigatório).
 
 `GET /leads` · `GET /leads/:id` · `PATCH /leads/:id` · `POST /leads/upsert` · `POST /leads/:id/interactions` · `POST /queue/claim` · `POST /queue/:position/complete` · `GET /api-usage/today` · `POST /api-usage` · `GET /reminders?range=` · `POST /jobs/followups`.
 
-Erros no formato `{error: {code, message, details?}}`. Publique `GET /api/v1/openapi.json`, gerado a partir dos schemas Zod.
+Erros no formato `{error: {code, message, details?}}`; em `validation_error`, `details` é `[{path, code, message}]` (`path` com pontos, ex.: `patch.channel`). Publique `GET /api/v1/openapi.json`, gerado a partir dos schemas Zod.
 
 ### 9.4 Conexão e rotina agendada (documentar em `docs/OPERATIONS.md` e `docs/ROTINA.md`)
 

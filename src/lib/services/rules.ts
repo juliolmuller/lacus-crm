@@ -3,7 +3,7 @@ import { and, eq, inArray, isNotNull, like } from 'drizzle-orm';
 import { type Db, schema } from '@/lib/db';
 import { type FollowupEvent, planFollowups, type RuleRow } from '@/lib/followups/engine';
 import { cadence, cancelOn } from '@/lib/validation/followups';
-import { parseSetting, settingDefaults } from '@/lib/validation/settings';
+import { readSetting, settingDefaults } from '@/lib/validation/settings';
 
 const { followupRules, interactions, leads, reminders, settings } = schema;
 
@@ -60,7 +60,7 @@ export async function businessCalendar(
 ): Promise<{ extraHolidays: Array<{ date: string; name: string }> }> {
   const [row] = await db.select().from(settings).where(eq(settings.key, 'business_calendar'));
 
-  return parseSetting('business_calendar', row?.value ?? settingDefaults.business_calendar);
+  return readSetting('business_calendar', row?.value ?? settingDefaults.business_calendar);
 }
 
 /**
