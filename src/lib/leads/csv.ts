@@ -32,60 +32,150 @@ type Kind =
   | 'text'
   | 'ticket';
 export interface Column {
+  /**
+   * English CSV header written on export (also accepted on import).
+   */
   header: string;
   key: string;
   kind: Kind;
+  /**
+   * Legacy pt-BR header: the UI label and the internal row key.
+   */
+  label: string;
 }
 
 export const COLUMNS: readonly Column[] = [
-  { header: 'ID', key: 'id', kind: 'id' },
-  { header: 'Nome do negócio', key: 'name', kind: 'text' },
-  { header: 'Nicho', key: 'niche', kind: 'niche' },
-  { header: 'Cidade / bairro', key: 'place', kind: 'place' },
-  { header: 'Telefone', key: 'phone', kind: 'text' },
-  { header: 'WhatsApp', key: 'hasWhatsapp', kind: 'bool' },
-  { header: 'E-mail', key: 'email', kind: 'text' },
-  { header: 'Contato direto com o decisor', key: 'decisionMakerContact', kind: 'text' },
-  { header: 'Site atual', key: 'websiteUrl', kind: 'text' },
-  { header: 'Situação do site', key: 'websiteStatus', kind: 'site' },
-  { header: 'Instagram', key: 'instagram', kind: 'text' },
-  { header: 'Outras redes sociais', key: 'otherSocials', kind: 'text' },
-  { header: 'Link no Google Maps', key: 'mapsUrl', kind: 'text' },
-  { header: 'Nota no Maps', key: 'mapsRating', kind: 'rating' },
-  { header: 'Nº de avaliações no Maps', key: 'mapsReviews', kind: 'int' },
-  { header: 'Dono responde avaliações', key: 'ownerRepliesReviews', kind: 'boolNull' },
-  { header: 'Reclamações (Maps ou Reclame Aqui)', key: 'complaints', kind: 'long' },
-  { header: 'Data de abertura (CNPJ)', key: 'cnpjOpenedAt', kind: 'date' },
-  { header: 'Anos de mercado', key: 'yearsInBusiness', kind: 'int' },
-  { header: 'Porte (MEI, ME, EPP)', key: 'companySize', kind: 'text' },
-  { header: 'Anúncios ativos (Meta ou Google)', key: 'hasActiveAds', kind: 'bool' },
-  { header: 'Instagram atualizado', key: 'instagramActive', kind: 'bool' },
-  { header: 'Concorrência local com site forte', key: 'strongLocalCompetition', kind: 'bool' },
-  { header: 'Ticket do nicho', key: 'ticket', kind: 'ticket' },
-  { header: 'Score (0 a 100)', key: 'score', kind: 'score' },
-  { header: 'Status do contato', key: 'contactStatus', kind: 'status' },
-  { header: 'Data do contato', key: 'lastContactAt', kind: 'datetime' },
-  { header: 'Canal', key: 'channel', kind: 'text' },
-  { header: 'Resposta ou objeção', key: 'responseOrObjection', kind: 'long' },
-  { header: 'Próxima ação', key: 'nextAction', kind: 'text' },
-  { header: 'Valor da proposta (R$)', key: 'proposalValue', kind: 'money' },
-  { header: 'Observações', key: 'notes', kind: 'long' },
-  { header: 'Data de inclusão', key: 'includedAt', kind: 'date' },
-  { header: 'Place ID (Google Maps)', key: 'placeId', kind: 'text' },
-  { header: 'Endereço (Maps)', key: 'address', kind: 'text' },
-  { header: 'Categoria no Maps', key: 'mapsCategory', kind: 'text' },
-  { header: 'Sinais de interesse digital', key: 'digitalSignals', kind: 'long' },
-  { header: 'Resumo do negócio', key: 'businessSummary', kind: 'long' },
-  { header: 'Argumento de abordagem', key: 'pitch', kind: 'long' },
+  { header: 'ID', label: 'ID', key: 'id', kind: 'id' },
+  { header: 'Business name', label: 'Nome do negócio', key: 'name', kind: 'text' },
+  { header: 'Niche', label: 'Nicho', key: 'niche', kind: 'niche' },
+  { header: 'City / neighborhood', label: 'Cidade / bairro', key: 'place', kind: 'place' },
+  { header: 'Phone', label: 'Telefone', key: 'phone', kind: 'text' },
+  { header: 'WhatsApp', label: 'WhatsApp', key: 'hasWhatsapp', kind: 'bool' },
+  { header: 'Email', label: 'E-mail', key: 'email', kind: 'text' },
+  {
+    header: 'Decision-maker direct contact',
+    label: 'Contato direto com o decisor',
+    key: 'decisionMakerContact',
+    kind: 'text',
+  },
+  { header: 'Current website', label: 'Site atual', key: 'websiteUrl', kind: 'text' },
+  { header: 'Website status', label: 'Situação do site', key: 'websiteStatus', kind: 'site' },
+  { header: 'Instagram', label: 'Instagram', key: 'instagram', kind: 'text' },
+  {
+    header: 'Other social networks',
+    label: 'Outras redes sociais',
+    key: 'otherSocials',
+    kind: 'text',
+  },
+  { header: 'Google Maps link', label: 'Link no Google Maps', key: 'mapsUrl', kind: 'text' },
+  { header: 'Maps rating', label: 'Nota no Maps', key: 'mapsRating', kind: 'rating' },
+  {
+    header: 'Maps review count',
+    label: 'Nº de avaliações no Maps',
+    key: 'mapsReviews',
+    kind: 'int',
+  },
+  {
+    header: 'Owner replies to reviews',
+    label: 'Dono responde avaliações',
+    key: 'ownerRepliesReviews',
+    kind: 'boolNull',
+  },
+  {
+    header: 'Complaints (Maps or Reclame Aqui)',
+    label: 'Reclamações (Maps ou Reclame Aqui)',
+    key: 'complaints',
+    kind: 'long',
+  },
+  {
+    header: 'Opening date (CNPJ)',
+    label: 'Data de abertura (CNPJ)',
+    key: 'cnpjOpenedAt',
+    kind: 'date',
+  },
+  { header: 'Years in business', label: 'Anos de mercado', key: 'yearsInBusiness', kind: 'int' },
+  {
+    header: 'Company size (MEI, ME, EPP)',
+    label: 'Porte (MEI, ME, EPP)',
+    key: 'companySize',
+    kind: 'text',
+  },
+  {
+    header: 'Active ads (Meta or Google)',
+    label: 'Anúncios ativos (Meta ou Google)',
+    key: 'hasActiveAds',
+    kind: 'bool',
+  },
+  {
+    header: 'Instagram up to date',
+    label: 'Instagram atualizado',
+    key: 'instagramActive',
+    kind: 'bool',
+  },
+  {
+    header: 'Strong local competition with website',
+    label: 'Concorrência local com site forte',
+    key: 'strongLocalCompetition',
+    kind: 'bool',
+  },
+  { header: 'Niche ticket', label: 'Ticket do nicho', key: 'ticket', kind: 'ticket' },
+  { header: 'Score (0 to 100)', label: 'Score (0 a 100)', key: 'score', kind: 'score' },
+  { header: 'Contact status', label: 'Status do contato', key: 'contactStatus', kind: 'status' },
+  { header: 'Contact date', label: 'Data do contato', key: 'lastContactAt', kind: 'datetime' },
+  { header: 'Channel', label: 'Canal', key: 'channel', kind: 'text' },
+  {
+    header: 'Response or objection',
+    label: 'Resposta ou objeção',
+    key: 'responseOrObjection',
+    kind: 'long',
+  },
+  { header: 'Next action', label: 'Próxima ação', key: 'nextAction', kind: 'text' },
+  {
+    header: 'Proposal value (R$)',
+    label: 'Valor da proposta (R$)',
+    key: 'proposalValue',
+    kind: 'money',
+  },
+  { header: 'Notes', label: 'Observações', key: 'notes', kind: 'long' },
+  { header: 'Date added', label: 'Data de inclusão', key: 'includedAt', kind: 'date' },
+  {
+    header: 'Place ID (Google Maps)',
+    label: 'Place ID (Google Maps)',
+    key: 'placeId',
+    kind: 'text',
+  },
+  { header: 'Address (Maps)', label: 'Endereço (Maps)', key: 'address', kind: 'text' },
+  { header: 'Maps category', label: 'Categoria no Maps', key: 'mapsCategory', kind: 'text' },
+  {
+    header: 'Digital interest signals',
+    label: 'Sinais de interesse digital',
+    key: 'digitalSignals',
+    kind: 'long',
+  },
+  { header: 'Business summary', label: 'Resumo do negócio', key: 'businessSummary', kind: 'long' },
+  { header: 'Approach pitch', label: 'Argumento de abordagem', key: 'pitch', kind: 'long' },
 ] as const;
+/**
+ * Canonical pt-BR labels: UI field names and the internal row keys.
+ */
+export const LABELS = COLUMNS.map((c) => c.label);
+/**
+ * English headers, written on export.
+ */
 export const HEADERS = COLUMNS.map((c) => c.header);
 
 /**
- * Mapeia cada cabeçalho do arquivo ao campo canônico (igualdade sem
- * acento/caixa); o resto fica null.
+ * Maps each file header to the canonical label (accent- and case-insensitive
+ * match against the English header or the legacy pt-BR label); the rest map to
+ * null.
  */
 export function autoMapHeaders(csvHeaders: string[]): Record<string, null | string> {
-  const byNorm = new Map(HEADERS.map((h) => [normalizeName(h), h]));
+  const byNorm = new Map<string, string>();
+
+  for (const c of COLUMNS) {
+    byNorm.set(normalizeName(c.label), c.label);
+    byNorm.set(normalizeName(c.header), c.label);
+  }
 
   return Object.fromEntries(csvHeaders.map((h) => [h, byNorm.get(normalizeName(h)) ?? null]));
 }
@@ -189,9 +279,9 @@ export interface ParsedRow {
 export function parseLeadRow(row: Record<string, string>): ParsedRow {
   const out: ParsedRow = { values: {}, errors: [] };
   for (const col of COLUMNS) {
-    if (!(col.header in row)) continue;
+    if (!(col.label in row)) continue;
 
-    const raw = (row[col.header] ?? '').trim();
+    const raw = (row[col.label] ?? '').trim();
 
     try {
       const v = out.values;
@@ -286,7 +376,7 @@ export function parseLeadRow(row: Record<string, string>): ParsedRow {
         }
       }
     } catch (e) {
-      out.errors.push(`${col.header}: ${(e as Error).message}`);
+      out.errors.push(`${col.label}: ${(e as Error).message}`);
     }
   }
   const original = out.values.__originalStatus as string | undefined;
@@ -368,7 +458,7 @@ export function leadToRow(
         s = x === null || x === undefined ? '' : String(x);
     }
 
-    row[col.header] = s;
+    row[col.label] = s;
   }
 
   return row;

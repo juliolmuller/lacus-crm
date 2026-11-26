@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SelectField } from '@/components/ui/field';
-import { autoMapHeaders, HEADERS } from '@/lib/leads/csv';
+import { autoMapHeaders, LABELS } from '@/lib/leads/csv';
 import { type ImportReport } from '@/lib/services/import';
 import { type CatalogReport } from '@/lib/services/import-catalog';
 
@@ -105,7 +105,7 @@ export function ImportWizard({
 
   const rows = report?.rows ?? [];
   const mapped = Object.values(mapping).filter(Boolean) as string[];
-  const missing = HEADERS.filter((h) => !mapped.includes(h));
+  const missing = LABELS.filter((h) => !mapped.includes(h));
 
   return (
     <section className="flex max-w-4xl flex-col gap-6">
@@ -164,7 +164,7 @@ export function ImportWizard({
                   onChange={(e) => setMapping((m) => ({ ...m, [h]: e.target.value || null }))}
                 >
                   <option value="">Ignorar</option>
-                  {HEADERS.map((c) => (
+                  {LABELS.map((c) => (
                     <option key={c}>{c}</option>
                   ))}
                 </SelectField>

@@ -50,25 +50,23 @@ export function LeadDataForm({ row, niches, regions, origin }: Props): React.JSX
     >
       <div className="grid gap-4 sm:grid-cols-2">
         {COLUMNS.map((c) => {
-          const v = row[c.header] ?? '';
-          const common = { name: c.header, label: c.header, defaultValue: v };
+          const v = row[c.label] ?? '';
+          const common = { name: c.label, label: c.label, defaultValue: v };
 
           if (readOnly.has(c.kind))
-            return (
-              <Field key={c.header} label={c.header} defaultValue={v} readOnly tabIndex={-1} />
-            );
+            return <Field key={c.label} label={c.label} defaultValue={v} readOnly tabIndex={-1} />;
 
           switch (c.kind) {
             case 'bool':
               return (
-                <SelectField key={c.header} {...common}>
+                <SelectField key={c.label} {...common}>
                   <option value="">Não</option>
                   <option>Sim</option>
                 </SelectField>
               );
             case 'boolNull':
               return (
-                <SelectField key={c.header} {...common}>
+                <SelectField key={c.label} {...common}>
                   <option value="">Não informado</option>
                   <option>Sim</option>
                   <option>Não</option>
@@ -76,27 +74,27 @@ export function LeadDataForm({ row, niches, regions, origin }: Props): React.JSX
               );
             case 'date':
             case 'datetime':
-              return <Field key={c.header} {...common} placeholder="dd/mm/aaaa" />;
+              return <Field key={c.label} {...common} placeholder="dd/mm/aaaa" />;
             case 'int':
-              return <Field key={c.header} {...common} inputMode="numeric" />;
+              return <Field key={c.label} {...common} inputMode="numeric" />;
             case 'long':
-              return <TextareaField key={c.header} {...common} className="sm:col-span-2" />;
+              return <TextareaField key={c.label} {...common} className="sm:col-span-2" />;
             case 'money':
             case 'rating':
-              return <Field key={c.header} {...common} inputMode="decimal" />;
+              return <Field key={c.label} {...common} inputMode="decimal" />;
             case 'niche':
               return (
-                <SelectField key={c.header} {...common}>
+                <SelectField key={c.label} {...common}>
                   {niches.map((n) => (
                     <option key={n}>{n}</option>
                   ))}
                 </SelectField>
               );
             case 'place':
-              return <Field key={c.header} {...common} list={listId} help="Bairro, Cidade/UF" />;
+              return <Field key={c.label} {...common} list={listId} help="Bairro, Cidade/UF" />;
             case 'site':
               return (
-                <SelectField key={c.header} {...common}>
+                <SelectField key={c.label} {...common}>
                   {websiteStatuses.map((s) => (
                     <option key={s} value={s === 'unknown' ? '' : siteLabel[s]}>
                       {siteLabel[s]}
@@ -106,14 +104,14 @@ export function LeadDataForm({ row, niches, regions, origin }: Props): React.JSX
               );
             case 'status':
               return (
-                <SelectField key={c.header} {...common}>
+                <SelectField key={c.label} {...common}>
                   {contactStatuses.map((s) => (
                     <option key={s}>{statusLabel[s]}</option>
                   ))}
                 </SelectField>
               );
             default:
-              return <Field key={c.header} {...common} />;
+              return <Field key={c.label} {...common} />;
           }
         })}
       </div>

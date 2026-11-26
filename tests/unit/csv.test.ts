@@ -5,17 +5,48 @@ import {
   autoMapHeaders,
   COLUMNS,
   HEADERS,
+  LABELS,
   leadToRow,
   parseContactDate,
   parseDate,
   parseLeadRow,
   parseNumber,
 } from '@/lib/leads/csv';
+import { normalizeName } from '@/lib/normalize';
 
 describe('mapeamento de cabeçalhos', () => {
   it('são 39 cabeçalhos únicos, da coluna A à AM', () => {
     expect(HEADERS).toHaveLength(39);
     expect(new Set(HEADERS).size).toBe(39);
+  });
+  it('English headers are unique after normalization and never collide with a legacy label', () => {
+    const norm = (v: string): string => normalizeName(v);
+    const english = HEADERS.map(norm);
+    const labels = new Set(LABELS.map(norm));
+
+    expect(new Set(english).size).toBe(39);
+    // Same text in both sets is fine only when the column maps to itself (e.g. "WhatsApp").
+    for (const c of COLUMNS)
+      if (labels.has(norm(c.header))) expect(norm(c.header)).toBe(norm(c.label));
+  });
+  it('maps English and legacy headers to the same canonical label', () => {
+    const m = autoMapHeaders([
+      'Business name',
+      'nome do negocio',
+      'Niche ticket',
+      'TICKET DO NICHO',
+    ]);
+
+    expect(m).toEqual({
+      'Business name': 'Nome do negócio',
+      'nome do negocio': 'Nome do negócio',
+      'Niche ticket': 'Ticket do nicho',
+      'TICKET DO NICHO': 'Ticket do nicho',
+    });
+  });
+  it('parses the English and pt-BR ticket values', () => {
+    expect(parseLeadRow({ 'Ticket do nicho': 'Médio' }).ticket).toBe('medium');
+    expect(parseLeadRow({ 'Ticket do nicho': 'high' }).ticket).toBe('high');
   });
   it('reconhece sem acento/caixa e deixa o resto sem mapear', () => {
     const m = autoMapHeaders(['nome do negocio', 'WHATSAPP', 'Coluna extra']);
@@ -134,7 +165,7 @@ describe('leadToRow ↔ parseLeadRow', () => {
       'Xaxim, Curitiba/PR',
     );
 
-    expect(Object.keys(row)).toEqual(HEADERS);
+    expect(Object.keys(row)).toEqual(LABELS);
 
     const back = parseLeadRow(row);
 
