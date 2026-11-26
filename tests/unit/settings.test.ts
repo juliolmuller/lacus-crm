@@ -4,6 +4,7 @@ import { cadence } from '@/lib/validation/followups';
 import {
   parseSetting,
   settingDefaults,
+  SettingError,
   type SettingKey,
   settingSchemas,
 } from '@/lib/validation/settings';
@@ -21,6 +22,25 @@ describe('settings', () => {
     expect(() =>
       parseSetting('business_calendar', { extraHolidays: [{ date: '25/12/2026', name: 'x' }] }),
     ).toThrow();
+  });
+
+  it('lança SettingError com a chave e os caminhos das issues', () => {
+    const legacy = {
+      ...settingDefaults.score_thresholds,
+      ticketPoints: { alto: 15, medio: 7.5, baixo: 0 },
+    };
+
+    let err: unknown;
+
+    try {
+      parseSetting('score_thresholds', legacy);
+    } catch (e) {
+      err = e;
+    }
+
+    expect(err).toBeInstanceOf(SettingError);
+    expect((err as SettingError).key).toBe('score_thresholds');
+    expect((err as SettingError).issues[0]?.path[0]).toBe('ticketPoints');
   });
 
   it('valida a cadência de follow-up', () => {
