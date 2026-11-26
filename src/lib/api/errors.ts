@@ -64,14 +64,12 @@ export function toApiError(e: unknown): ApiError {
   if (e instanceof ApiError) return e;
 
   if (e instanceof SettingError) {
-    // só os caminhos, nunca os valores
-    console.error(
-      'invalid setting',
-      e.key,
-      zodDetails(e.issues).map((i) => i.path),
-    );
+    console.error('setting error', e.key, e.issues);
 
-    return new ApiError('internal_error', e.message);
+    return new ApiError(
+      'internal_error',
+      `${e.message}. Confira se as migrations foram aplicadas.`,
+    );
   }
 
   if (e instanceof ZodError)

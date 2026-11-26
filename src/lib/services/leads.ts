@@ -5,7 +5,7 @@ import { suppressionKeys } from '@/lib/hash';
 import { spDate } from '@/lib/leads/csv';
 import { normalizeName, normalizePhone, type ParsedPlace } from '@/lib/normalize';
 import { computeScore, type ScoreNiche, type ScoreSettings } from '@/lib/score';
-import { readSetting, settingDefaults } from '@/lib/validation/settings';
+import { parseSetting, settingDefaults } from '@/lib/validation/settings';
 
 const { leads, niches, regions, settings, suppressionList, deals, dealStages, dealStageHistory } =
   schema;
@@ -67,7 +67,7 @@ export async function getScoreSettings(db: Db): Promise<ScoreSettings> {
     .from(settings)
     .where(inArray(settings.key, ['score_weights', 'score_thresholds']));
   const get = <K extends 'score_thresholds' | 'score_weights'>(key: K) =>
-    readSetting(key, rows.find((r) => r.key === key)?.value ?? settingDefaults[key]);
+    parseSetting(key, rows.find((r) => r.key === key)?.value ?? settingDefaults[key]);
 
   return { weights: get('score_weights'), thresholds: get('score_thresholds') };
 }

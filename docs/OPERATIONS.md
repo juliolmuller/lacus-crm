@@ -75,7 +75,11 @@ validation_error: Entrada inválida
 [{"path":"patch.priority","code":"invalid_value","message":"Invalid option: ..."}]
 ```
 
-`internal_error` com "Configuração "…" inválida no banco" indica migration pendente: rode `bun run db:migrate` contra o Neon (`docs/DEPLOY.md`, passo 4). `crm_update_lead` com `patch` vazio não grava nada e devolve o lead atual.
+`crm_update_lead` com `patch` vazio não grava nada e devolve o lead atual.
+
+### Erro `internal_error: Configuração inválida no banco: <chave>`
+
+Um valor de `settings` guardado no banco não passa no schema atual da chave: quase sempre é uma migration pendente (por exemplo a `0005`, que renomeou `ticketPoints` de `alto/medio/baixo` para `high/medium/low`). Rode `bun run db:migrate` contra o Neon (passo a passo em `docs/DEPLOY.md`). Para conferir, `select value from settings where key = '<chave>';`.
 
 ### REST (`/api/v1`)
 

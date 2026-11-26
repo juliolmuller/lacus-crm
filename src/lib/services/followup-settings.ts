@@ -5,7 +5,7 @@ import { type Db, schema } from '@/lib/db';
 import { interactionTypes, outcomeLabel } from '@/lib/leads/labels';
 import { cadence, cancelOn } from '@/lib/validation/followups';
 import {
-  readSetting,
+  parseSetting,
   settingDefaults,
   type SettingKey,
   settingSchemas,
@@ -16,7 +16,7 @@ const { settings, followupRules, messageTemplates } = schema;
 export async function getSetting<K extends SettingKey>(db: Db, key: K) {
   const [row] = await db.select().from(settings).where(eq(settings.key, key));
 
-  return readSetting(key, row?.value ?? settingDefaults[key]);
+  return parseSetting(key, row?.value ?? settingDefaults[key]);
 }
 
 /**

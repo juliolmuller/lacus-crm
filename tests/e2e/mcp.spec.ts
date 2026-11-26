@@ -148,6 +148,40 @@ test('SDK oficial lista as ferramentas: completo e só prospecção', async () =
   expect(readOnly).not.toContain('crm_update_lead');
 });
 
+test('crm_dashboard_summary pelo SDK oficial: {}, 7, 30, 90, "all" e "30"', async () => {
+  const client = new Client({ name: 'e2e', version: '1.0.0' });
+
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL('http://localhost:3100/api/mcp'), {
+      requestInit: { headers: { authorization: `Bearer ${await pat(['read'])}` } },
+    }),
+  );
+
+  const { tools } = await client.listTools();
+  const tool = tools.find((t) => t.name === 'crm_dashboard_summary');
+  const props = tool?.inputSchema.properties as Record<string, { default?: unknown }> | undefined;
+
+  expect(props?.period?.default).toBe(30);
+
+  const calls = [
+    {},
+    { period: 7 },
+    { period: 30 },
+    { period: 90 },
+    { period: 'all' },
+    { period: '30' },
+  ];
+
+  for (const args of calls) {
+    const r = await client.callTool({ name: 'crm_dashboard_summary', arguments: args });
+
+    expect(r.isError, JSON.stringify(args)).toBeFalsy();
+    expect(r.structuredContent).toHaveProperty('kpis');
+  }
+
+  await client.close();
+});
+
 test('metadados OAuth: recurso protegido e servidor de autorização (CIMD, sem DCR)', async ({
   request,
 }) => {

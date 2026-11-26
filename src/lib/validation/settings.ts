@@ -61,24 +61,22 @@ export const settingDefaults: { [K in SettingKey]: z.infer<(typeof settingSchema
 };
 
 /**
- * Valor guardado no banco que não passa no schema da chave (ex.: migration
- * pendente). É falha do servidor/dados, não entrada do cliente.
+ * Valor guardado no banco que não passa no schema da chave (migration pendente
+ * ou dado corrompido); é erro do servidor, não da entrada.
  */
 export class SettingError extends Error {
   public constructor(
     public key: SettingKey,
-    public issues: z.core.$ZodIssue[],
+    public issues: z.ZodError['issues'],
   ) {
-    super(
-      `Configuração "${key}" inválida no banco; rode as migrations pendentes (bun run db:migrate)`,
-    );
+    super(`Configuração inválida no banco: ${key}`);
   }
 }
 
 /**
- * Lê o valor de uma chave vindo do banco; lança SettingError (nunca ZodError).
+ * Valida o valor de uma chave de `settings`; lança SettingError se inválido.
  */
-export const readSetting = <K extends SettingKey>(
+export const parseSetting = <K extends SettingKey>(
   key: K,
   value: unknown,
 ): z.infer<(typeof settingSchemas)[K]> => {
@@ -88,12 +86,3 @@ export const readSetting = <K extends SettingKey>(
 
   return r.data as z.infer<(typeof settingSchemas)[K]>;
 };
-
-/**
- * Valida o valor de uma chave de `settings`; lança ZodError se inválido.
- */
-export const parseSetting = <K extends SettingKey>(
-  key: K,
-  value: unknown,
-): z.infer<(typeof settingSchemas)[K]> =>
-  settingSchemas[key].parse(value) as z.infer<(typeof settingSchemas)[K]>;

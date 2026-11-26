@@ -11,7 +11,7 @@ import {
   isInvalidGrant,
 } from '@/lib/google/calendar-api';
 import { buildEvent } from '@/lib/google/event';
-import { readSetting, settingDefaults } from '@/lib/validation/settings';
+import { parseSetting, settingDefaults } from '@/lib/validation/settings';
 
 const { reminders, leads, googleConnections, settings } = schema;
 
@@ -76,7 +76,7 @@ function tokenSource(db: Db, ctx: SyncContext, conn: typeof googleConnections.$i
 async function popupMinutes(db: Db): Promise<number[]> {
   const [row] = await db.select().from(settings).where(eq(settings.key, 'calendar_defaults'));
 
-  return readSetting('calendar_defaults', row?.value ?? settingDefaults.calendar_defaults)
+  return parseSetting('calendar_defaults', row?.value ?? settingDefaults.calendar_defaults)
     .popupReminderMinutes;
 }
 

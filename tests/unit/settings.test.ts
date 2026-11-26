@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { cadence } from '@/lib/validation/followups';
 import {
   parseSetting,
-  readSetting,
   settingDefaults,
   SettingError,
   type SettingKey,
@@ -25,16 +24,23 @@ describe('settings', () => {
     ).toThrow();
   });
 
-  it('readSetting lança SettingError para valor guardado no formato antigo', () => {
-    const old = {
+  it('lança SettingError com a chave e os caminhos das issues', () => {
+    const legacy = {
       ...settingDefaults.score_thresholds,
       ticketPoints: { alto: 15, medio: 7.5, baixo: 0 },
     };
 
-    expect(() => readSetting('score_thresholds', old)).toThrow(SettingError);
-    expect(readSetting('score_thresholds', settingDefaults.score_thresholds)).toEqual(
-      settingDefaults.score_thresholds,
-    );
+    let err: unknown;
+
+    try {
+      parseSetting('score_thresholds', legacy);
+    } catch (e) {
+      err = e;
+    }
+
+    expect(err).toBeInstanceOf(SettingError);
+    expect((err as SettingError).key).toBe('score_thresholds');
+    expect((err as SettingError).issues[0]?.path[0]).toBe('ticketPoints');
   });
 
   it('valida a cadência de follow-up', () => {
