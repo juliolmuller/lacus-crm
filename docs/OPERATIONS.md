@@ -37,7 +37,7 @@ Depois de um deploy, o app instalado mostra o aviso "Nova versão disponível"; 
 
 ## MCP e API REST
 
-Endereço de produção: `https://lacuscrm.juliolmuller.com`. Toda chamada usa um token pessoal (PAT, `lcrm_...`) criado em **Configurações > Tokens de API e conectores**. O texto completo aparece uma única vez; no banco fica só o hash (SHA-256). Escopos: `read`, `write` (inclui `read`) e `prospecting` (fila e uso da API). Limite de 120 requisições por minuto por token.
+Endereço de produção: `https://lacuscrm.juliolmuller.com`. Toda chamada usa um token pessoal (PAT, `lcrm_...`) criado em **Configurações > Tokens de API e conectores**. O texto completo aparece uma única vez; no banco fica só o hash (SHA-256). Escopos: `read`, `write` (inclui `read`) e `prospecting` (fila e uso da API). Limite de 120 requisições por minuto por token. `crm_log_interaction` (e `POST /leads/:id/interactions`) recebe `summary` como título curto (recomendado até ~120 caracteres) e `body` opcional, com o detalhe, até 5000 caracteres; acima disso devolve `validation_error`. `crm_get_lead` devolve o `body` das interações.
 
 ### Claude Code
 
@@ -83,6 +83,8 @@ curl -H "$H" -X PATCH "$B/leads/<uuid>" -H 'content-type: application/json' \
 curl -H "$H" "$B/reminders?range=today"
 curl -H "$H" -X POST "$B/leads/<uuid>/interactions" -H 'content-type: application/json' \
   -d '{"type":"whatsapp","direction":"outbound","summary":"Enviei a mensagem 1"}'
+curl -H "$H" -X POST "$B/leads/<uuid>/interactions" -H 'content-type: application/json' \
+  -d '{"type":"note","direction":"internal","summary":"Diagnóstico com Claude","body":"Sessão: https://claude.ai/…"}'
 curl -H "$H" -X POST "$B/queue/claim" -H 'content-type: application/json' -d '{"runId":"2026-11-20T09-pos12"}'
 curl -H "$H" "$B/api-usage/today"
 curl -H "$H" -X POST https://lacuscrm.juliolmuller.com/api/jobs/followups -H 'X-Run-Id: manual-1'   # token com write
