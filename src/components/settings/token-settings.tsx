@@ -261,7 +261,7 @@ export function TokenSettings({
         />
         <p className="text-label text-text-muted">
           Referência da API: <code>{BASE}/api/v1/openapi.json</code>. Guia completo em{' '}
-          <code>docs/OPERACAO.md</code>.
+          <code>docs/OPERATIONS.md</code>.
         </p>
       </div>
 

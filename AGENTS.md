@@ -20,7 +20,7 @@ Single-user prospecting CRM for Lacus Solutions (pt-BR only): Next.js 16 App Rou
 | Product intent, scope, data model            | [docs/SPEC.md](docs/SPEC.md) and [docs/PLAN.md](docs/PLAN.md)                         |
 | UI, tokens, components                       | [DESIGN.md](DESIGN.md) and `/design-system` in the running app                        |
 | Env vars, Vercel, DNS, Schedule, production  | [docs/DEPLOY.md](docs/DEPLOY.md)                                                      |
-| PWA, MCP, REST, tokens                       | [docs/OPERACAO.md](docs/OPERACAO.md)                                                  |
+| PWA, MCP, REST, tokens                       | [docs/OPERATIONS.md](docs/OPERATIONS.md)                                              |
 | Google Calendar                              | [docs/GOOGLE.md](docs/GOOGLE.md)                                                      |
 | The claude.ai prospecting routine, the queue | [docs/ROTINA.md](docs/ROTINA.md)                                                      |
 

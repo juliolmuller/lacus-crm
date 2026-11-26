@@ -98,7 +98,7 @@ Qualquer desvio desta tabela precisa de justificativa escrita em `docs/DECISIONS
 
 Implemente exatamente estes nomes e tipos. Os campos marcados com ➕ são acréscimos permitidos pelo contrato.
 
-**`niches`**: `id serial pk`, `name text unique not null`, `ticket niche_ticket` (enum `alto|medio|baixo`), `openness niche_openness` (enum `alta|media|baixa`), `why_buys text`, `first_offer text`, `priority int`. ➕ `created_at`, `updated_at`.
+**`niches`**: `id serial pk`, `name text unique not null`, `ticket niche_ticket` (enum `high|medium|low`), `openness niche_openness` (enum `high|medium|low`), `why_buys text`, `first_offer text`, `priority int`. ➕ `created_at`, `updated_at`.
 
 **`regions`**: `id serial pk`, `state char(2) not null`, `city text not null`, `neighborhood text null`, `label text unique not null` (formato `"PR - Curitiba - Xaxim"`; sem bairro: `"PR - <Cidade>"`), `source_sheet_id text null`.
 
@@ -191,18 +191,18 @@ Na importação, qualquer valor desconhecido vira `new`, e o valor original vai 
 - **Regras de follow-up e modelos de mensagem**: os padrões da seção 11 (adaptados a D2).
 - **`settings`**:
   - `score_weights`: `{"website":30,"reputation":20,"marketing":15,"ticket":15,"directContact":10,"competition":10}`
-  - `score_thresholds`: `{"green":70,"yellow":40,"minRating":4.0,"minReviews":20,"ticketPoints":{"alto":15,"medio":7.5,"baixo":0}}`
+  - `score_thresholds`: `{"green":70,"yellow":40,"minRating":4.0,"minReviews":20,"ticketPoints":{"high":15,"medium":7.5,"low":0}}`
 
 ### 4.6 Score (função pura `computeScore(lead, niche, settings)`)
 
-| Critério                                                                             | Pontos (peso editável) |
-| ------------------------------------------------------------------------------------ | ---------------------- |
-| `website_status ∈ {none, social_only, bad}`                                          | `website` (30)         |
-| `maps_rating ≥ minRating` **e** `maps_reviews ≥ minReviews`                          | `reputation` (20)      |
-| `has_active_ads` **ou** `instagram_active`                                           | `marketing` (15)       |
-| `niche.ticket`: alto 15 · medio 7,5 · baixo 0 (escala proporcional ao peso `ticket`) | `ticket`               |
-| `has_whatsapp` **ou** `decision_maker_contact` não vazio                             | `directContact` (10)   |
-| `strong_local_competition`                                                           | `competition` (10)     |
+| Critério                                                                            | Pontos (peso editável) |
+| ----------------------------------------------------------------------------------- | ---------------------- |
+| `website_status ∈ {none, social_only, bad}`                                         | `website` (30)         |
+| `maps_rating ≥ minRating` **e** `maps_reviews ≥ minReviews`                         | `reputation` (20)      |
+| `has_active_ads` **ou** `instagram_active`                                          | `marketing` (15)       |
+| `niche.ticket`: high 15 · medium 7,5 · low 0 (escala proporcional ao peso `ticket`) | `ticket`               |
+| `has_whatsapp` **ou** `decision_maker_contact` não vazio                            | `directContact` (10)   |
+| `strong_local_competition`                                                          | `competition` (10)     |
 
 - O resultado é `Math.round(soma)`, limitado a 0..100. O detalhamento por critério vai em `score_breakdown`.
 - Faixas: **≥ 70 verde**, **40–69 amarelo**, **< 40 vermelho**.
@@ -281,7 +281,7 @@ Filtro de período (7/30/90 dias/tudo) e filtros por nicho e região. Agregaçõ
 - **Drawer de detalhe** (no mobile, rota cheia em `/leads/[id]`), com abas: **Resumo** (dados, score com breakdown, pitch, resumo do negócio), **Interações** (linha do tempo e criação rápida), **Negociação**, **Lembretes**, **Dados** (todos os 39 campos editáveis, mais a origem dos dados).
 - **Ações rápidas** (barra fixa no drawer): Abrir no Maps; WhatsApp (`https://wa.me/<e164 sem +>?text=<modelo renderizado>`); Instagram; Ligar (`tel:`); Copiar pitch; Copiar mensagem; Abrir sessão do Claude (`session_url`) e Editar link da sessão; Criar negociação; Criar lembrete; **Marcar "Não contatar"** (dialog com motivo). Depois de abrir o WhatsApp, o app pergunta "Registrar como abordado?". Se sim, cria a interação `outbound`/`whatsapp`, muda o status e aplica as regras.
 - **Criar lead**: formulário com validação. Antes de salvar, checa duplicata por `place_id`, `phone_e164` e `name_normalized` + região, e oferece "Abrir existente".
-- **Importação CSV** (`/leads/importar`): 1. Upload. 2. Mapeamento automático pelos cabeçalhos em pt-BR da planilha (os 39, da coluna A à AM), editável. 3. **Dry-run** com contagem de criar/atualizar/ignorar/erro, prévia de 20 linhas e relatório baixável. 4. Confirmação.
+- **Importação CSV** (`/leads/importar`): 1. Upload. 2. Mapeamento automático pelos 39 cabeçalhos (da coluna A à AM), em inglês ou nos de pt-BR da planilha original, editável. 3. **Dry-run** com contagem de criar/atualizar/ignorar/erro, prévia de 20 linhas e relatório baixável. 4. Confirmação.
   - **Conversões**: "Sim"/vazio → bool; "Não tem" → `none`, "Só rede social" → `social_only`, "Ruim" → `bad`; nota com vírgula → numeric; `dd/mm/aaaa` → date; "Cidade / bairro" → `regions` pelo label (ex.: "Xaxim, Curitiba/PR" → `PR - Curitiba - Xaxim`), criando a região se não existir; "Ticket do nicho" serve só para conferir com `niches.ticket` (divergência entra no relatório).
   - O score é **recalculado**, e o relatório lista as divergências em relação ao score da planilha.
   - Upsert por `id`, depois por `place_id`.
@@ -289,7 +289,7 @@ Filtro de período (7/30/90 dias/tudo) e filtros por nicho e região. Agregaçõ
   - **Histórico**: para cada lead com "Data do contato" preenchida, crie uma interação `outbound` (`created_by='import'`, às 12:00 `America/Sao_Paulo`, canal e resumo vindos de Canal e Resposta ou objeção). Crie deal para leads em `negotiating`, `client` ou `lost`, ou com valor de proposta (e para Top leads, ver PLAN D4). Não crie lembretes a partir de "Próxima ação".
   - **Top leads sobrepõe**: `priority`, `session_url` e, quando divergir, o status (o do Top leads vence). `do_not_contact` só é aplicado depois de uma lista de casos ser confirmada pelo Júlio.
   - Importadores equivalentes para Nichos, Cidades/Regiões, Fila, Uso da API e Top leads.
-- **Exportação CSV**: os mesmos 39 cabeçalhos da planilha, UTF-8 com BOM, separador `;` ou `,`, respeitando os filtros atuais.
+- **Exportação CSV**: os 39 cabeçalhos em inglês (a importação ainda aceita os de pt-BR), UTF-8 com BOM, separador `;` ou `,`, respeitando os filtros atuais.
 
 ### 6.3 Funil (`/funil`)
 
@@ -450,7 +450,7 @@ Repetir a mesma chamada produz o mesmo estado (teste obrigatório).
 
 Erros no formato `{error: {code, message, details?}}`. Publique `GET /api/v1/openapi.json`, gerado a partir dos schemas Zod.
 
-### 9.4 Conexão e rotina agendada (documentar em `docs/OPERACAO.md` e `docs/ROTINA.md`)
+### 9.4 Conexão e rotina agendada (documentar em `docs/OPERATIONS.md` e `docs/ROTINA.md`)
 
 ```bash
 # Claude Code (interativo) – token com escopos read+write
@@ -514,7 +514,7 @@ src/components/{ui,brand,leads,deals,reminders,dashboard,layout}/
 src/lib/{db/{schema/*.ts,index.ts},auth/{auth.ts,dal.ts},services/*,score/,rules/,business-days/,
      google/,crypto/,csv/,mcp/tools/*,validation/*,format/}
 drizzle/{NNNN_*.sql,down/,meta/}   scripts/{seed.ts,import/*.ts,rollback.ts,generate-icons.ts}
-tests/{unit,e2e}   docs/{DECISIONS.md,OPERACAO.md,GOOGLE.md,ROTINA.md}   DESIGN.md  README.md
+tests/{unit,e2e}   docs/{DECISIONS.md,OPERATIONS.md,GOOGLE.md,ROTINA.md}   DESIGN.md  README.md
 ```
 
 ```dotenv

@@ -240,3 +240,14 @@ Contexto: no rodapé da barra lateral o seletor de tema transbordava sobre o con
 Decisão: remover o `ThemeSelector` da barra lateral, mantendo-o em Configurações > Aparência e em Mais. O ouvinte do sistema operacional passa para o `THEME_SCRIPT` do `<head>`, que relê `localStorage` a cada mudança e só aplica o tema quando a escolha é "Sistema".
 
 Consequência: "Sistema" acompanha o sistema operacional em todas as páginas, no desktop e no celular, com ou sem o seletor montado. O ouvinte próprio do `ThemeSelector` fica redundante, mas permanece, então o componente não muda.
+
+## Enums e cabeçalhos do CSV em inglês (26/11/2026)
+
+Contexto: a [issue #8](https://github.com/juliolmuller/lacus-crm/issues/8) leva o código e a documentação para o inglês e mantém a interface em pt-BR. Este é o primeiro recorte: os dados que cruzam fronteiras (banco, MCP, REST e CSV). Rotas, comentários e os demais docs ficam para os próximos PRs.
+
+1. **Enums de nicho**: `niche_ticket` e `niche_openness` passam de `alto|medio|baixo` e `alta|media|baixa` para `high|medium|low`. A migration `0005_english_enum_values` usa `ALTER TYPE … RENAME VALUE` (o tipo não é recriado) e também renomeia as chaves de `settings.score_thresholds.ticketPoints`. O rollback faz o caminho inverso, dados incluídos. Os rótulos da interface continuam "Alto", "Médio" e "Baixo".
+2. **CSV de leads**: a exportação escreve os 39 cabeçalhos em inglês. A importação aceita os cabeçalhos em inglês e os antigos em pt-BR, sem distinguir acento nem caixa, e o campo "Ticket do nicho" aceita `Alto/Médio/Baixo` e `high/medium/low`. As células seguem em pt-BR (Sim/Não, datas `dd/mm/aaaa`, rótulos de status), porque são dados e não cabeçalhos.
+3. **Chave interna da linha**: `Column.label` (o cabeçalho pt-BR) continua sendo o rótulo do formulário e a chave dos objetos de linha; `Column.header` (inglês) só existe no arquivo. Trocar a chave interna obrigaria a mexer em textos da interface, que pertencem à issue #9.
+4. **Planilha de nichos** (`.data/nichos.csv`): mantém cabeçalhos e valores em pt-BR, por ser dado de origem. `parseNichesCsv` converte para os valores do enum.
+
+Consequência: `niches_list` e o `niche` de `queue_claim_next` (e a REST equivalente) passam a devolver `high/medium/low`; rotinas do claude.ai que comparem esses campos com os valores antigos precisam ser atualizadas. O cache offline do service worker não guarda ticket nem abertura, então não há valor antigo para tratar ali. Como a migration renomeia valores em uso e o código antigo não entende os novos (nem o novo, os antigos), aplique-a no Neon (`bun run db:migrate`) logo antes de promover o deploy; o rollback é `bun run db:rollback 1`.
