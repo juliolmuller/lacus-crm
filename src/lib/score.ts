@@ -19,7 +19,7 @@ export interface ScoreLead {
   strongLocalCompetition: boolean | null;
   websiteStatus: 'bad' | 'good' | 'none' | 'social_only' | 'unknown' | null;
 }
-export type ScoreNiche = { ticket: 'alto' | 'baixo' | 'medio' | null } | null;
+export type ScoreNiche = { ticket: 'high' | 'low' | 'medium' | null } | null;
 
 export type ScoreBreakdown = Record<keyof ScoreWeights, number>;
 
@@ -33,7 +33,7 @@ export function computeScore(
 ): { breakdown: ScoreBreakdown; score: number } {
   const { weights: w, thresholds: t } = s;
   const rating = lead.mapsRating === null ? null : Number(lead.mapsRating);
-  const maxTicket = Math.max(t.ticketPoints.alto, t.ticketPoints.medio, t.ticketPoints.baixo);
+  const maxTicket = Math.max(t.ticketPoints.high, t.ticketPoints.medium, t.ticketPoints.low);
   const ticketRaw = niche?.ticket ? t.ticketPoints[niche.ticket] : 0;
   const breakdown: ScoreBreakdown = {
     website: ['none', 'social_only', 'bad'].includes(lead.websiteStatus ?? '') ? w.website : 0,

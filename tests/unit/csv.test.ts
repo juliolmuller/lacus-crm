@@ -5,17 +5,60 @@ import {
   autoMapHeaders,
   COLUMNS,
   HEADERS,
+  LABELS,
   leadToRow,
   parseContactDate,
   parseDate,
   parseLeadRow,
   parseNumber,
 } from '@/lib/leads/csv';
+import { normalizeName } from '@/lib/normalize';
 
 describe('mapeamento de cabeçalhos', () => {
   it('são 39 cabeçalhos únicos, da coluna A à AM', () => {
     expect(HEADERS).toHaveLength(39);
     expect(new Set(HEADERS).size).toBe(39);
+  });
+  it('English headers are unique after normalization and never collide with a legacy label', () => {
+    const norm = (v: string): string => normalizeName(v);
+    const english = HEADERS.map(norm);
+    const labels = new Set(LABELS.map(norm));
+
+    expect(new Set(english).size).toBe(39);
+    // Same text in both sets is fine only when the column maps to itself (e.g. "WhatsApp").
+    for (const c of COLUMNS)
+      if (labels.has(norm(c.header))) expect(norm(c.header)).toBe(norm(c.label));
+  });
+  it('maps English and legacy headers to the same canonical label', () => {
+    const m = autoMapHeaders([
+      'Business name',
+      'nome do negocio',
+      'Niche ticket',
+      'TICKET DO NICHO',
+    ]);
+
+    expect(m).toEqual({
+      'Business name': 'Nome do negócio',
+      'nome do negocio': 'Nome do negócio',
+      'Niche ticket': 'Ticket do nicho',
+      'TICKET DO NICHO': 'Ticket do nicho',
+    });
+  });
+  it('parses the English and pt-BR ticket values', () => {
+    const ticket = (v: string): ReturnType<typeof parseLeadRow>['ticket'] =>
+      parseLeadRow({ 'Ticket do nicho': v }).ticket;
+
+    expect(ticket('Médio')).toBe('medium');
+    expect(ticket('ALTO')).toBe('high');
+    expect(ticket('baixo')).toBe('low');
+    expect(ticket('high')).toBe('high');
+    expect(ticket(' Medium ')).toBe('medium');
+    expect(ticket('low')).toBe('low');
+  });
+  it('treats an empty or unknown ticket as null, never as an Object.prototype member', () => {
+    expect(parseLeadRow({ 'Ticket do nicho': '' }).ticket).toBeNull();
+    expect(parseLeadRow({ 'Ticket do nicho': 'altíssimo' }).ticket).toBeNull();
+    expect(parseLeadRow({ 'Ticket do nicho': 'constructor' }).ticket).toBeNull();
   });
   it('reconhece sem acento/caixa e deixa o resto sem mapear', () => {
     const m = autoMapHeaders(['nome do negocio', 'WHATSAPP', 'Coluna extra']);
@@ -81,7 +124,7 @@ describe('parseLeadRow', () => {
       proposalValue: '1200.50',
       includedAt: '2026-11-12',
     });
-    expect(r.ticket).toBe('medio');
+    expect(r.ticket).toBe('medium');
     expect('email' in r.values).toBe(false);
   });
   it('status desconhecido vira new e o original vai para as observações', () => {
@@ -130,11 +173,11 @@ describe('leadToRow ↔ parseLeadRow', () => {
     } as { score: number } & Record<string, unknown>;
     const row = leadToRow(
       lead,
-      { name: 'Clínicas odontológicas', ticket: 'alto' },
+      { name: 'Clínicas odontológicas', ticket: 'high' },
       'Xaxim, Curitiba/PR',
     );
 
-    expect(Object.keys(row)).toEqual(HEADERS);
+    expect(Object.keys(row)).toEqual(LABELS);
 
     const back = parseLeadRow(row);
 
@@ -150,7 +193,7 @@ describe('leadToRow ↔ parseLeadRow', () => {
     }
     expect(back.nicheName).toBe('Clínicas odontológicas');
     expect(back.place).toBe('Xaxim, Curitiba/PR');
-    expect(back.ticket).toBe('alto');
+    expect(back.ticket).toBe('high');
     expect(back.sheetScore).toBe(85);
   });
 });

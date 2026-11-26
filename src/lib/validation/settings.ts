@@ -16,7 +16,7 @@ export const scoreThresholds = z.object({
   yellow: z.number().int().min(0).max(100),
   minRating: z.number().min(0).max(5),
   minReviews: z.number().int().min(0),
-  ticketPoints: z.object({ alto: points, medio: points, baixo: points }),
+  ticketPoints: z.object({ high: points, medium: points, low: points }),
 });
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'use AAAA-MM-DD');
@@ -52,7 +52,7 @@ export const settingDefaults: { [K in SettingKey]: z.infer<(typeof settingSchema
     yellow: 40,
     minRating: 4.0,
     minReviews: 20,
-    ticketPoints: { alto: 15, medio: 7.5, baixo: 0 },
+    ticketPoints: { high: 15, medium: 7.5, low: 0 },
   },
   places_daily_budget: 30,
   calendar_defaults: { popupReminderMinutes: [10, 0] },

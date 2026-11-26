@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import Papa from 'papaparse';
 import { describe, expect, it } from 'vitest';
 
-import { applyMapping, autoMapHeaders } from '@/lib/leads/csv';
+import { applyMapping, autoMapHeaders, HEADERS } from '@/lib/leads/csv';
 import { parseFilters } from '@/lib/leads/filters-server';
 import { exportLeadsCsv } from '@/lib/services/export';
 import { importLeads } from '@/lib/services/import';
@@ -38,8 +38,8 @@ const opts = { insertOnly: false, dryRun: false };
 type Tx = Parameters<Parameters<typeof inTx>[0]>[0];
 async function seed(tx: Tx): Promise<void> {
   await tx.insert(niches).values([
-    { name: 'Clínicas de teste', ticket: 'alto' },
-    { name: 'Estúdios de teste', ticket: 'baixo' },
+    { name: 'Clínicas de teste', ticket: 'high' },
+    { name: 'Estúdios de teste', ticket: 'low' },
   ]);
   await tx
     .insert(dealStages)
@@ -66,6 +66,41 @@ describe('importLeads', () => {
     });
   });
 
+  it('accepts the legacy pt-BR headers and gives the same result as the English ones', async () => {
+    await inTx(async (tx) => {
+      await seed(tx);
+
+      const legacy = await importLeads(tx, canonical(read('leads-sample-legacy-headers.csv')), {
+        ...opts,
+        dryRun: true,
+      });
+      const english = await importLeads(tx, canonical(read('leads-sample.csv')), {
+        ...opts,
+        dryRun: true,
+      });
+
+      expect(legacy).toEqual(english);
+      expect([english.created, english.errors]).toEqual([4, 1]);
+    });
+  });
+
+  it('exports English headers and the export can be imported back', async () => {
+    await inTx(async (tx) => {
+      await seed(tx);
+      await importLeads(tx, canonical(read('leads-sample.csv')), opts);
+
+      const csv = (await exportLeadsCsv(tx, parseFilters({}), ',')).replace(/^\ufeff/, '');
+      const rows = table(csv);
+
+      expect(Object.keys(rows[0]!)).toEqual(HEADERS);
+
+      const back = await importLeads(tx, canonical(csv), opts);
+
+      expect([back.created, back.updated, back.errors]).toEqual([0, 0, 0]);
+      expect(back.unchanged).toBe(4);
+    });
+  });
+
   it('cria, relata divergências e gera histórico e negociações', async () => {
     await inTx(async (tx) => {
       await seed(tx);
@@ -86,8 +121,8 @@ describe('importLeads', () => {
         'PR - Curitiba - Hauer',
       ]);
       expect(r.ticketMismatches.map((m) => [m.name, m.sheet, m.niche])).toEqual([
-        ['Escritório Exemplo Dois', 'medio', 'alto'],
-        ['Loja Exemplo Quatro', 'alto', 'baixo'],
+        ['Escritório Exemplo Dois', 'medium', 'high'],
+        ['Loja Exemplo Quatro', 'high', 'low'],
       ]);
 
       // status desconhecido → new + nota
@@ -244,7 +279,7 @@ describe('importadores de catálogo', () => {
     await inTx(async (tx) => {
       await seed(tx);
 
-      const rows = table(read('fila-sample.csv'));
+      const rows = table(read('queue-sample.csv'));
 
       expect(await importQueue(tx, rows, { dryRun: false })).toMatchObject({
         created: 3,
@@ -276,7 +311,7 @@ describe('importadores de catálogo', () => {
 
   it('uso da API: ignora o bloco do topo, "-" vira null e reimportar não duplica', async () => {
     await inTx(async (tx) => {
-      const matrix = Papa.parse<string[]>(read('uso-da-api-sample.csv'), {
+      const matrix = Papa.parse<string[]>(read('api-usage-sample.csv'), {
         skipEmptyLines: false,
       }).data;
 

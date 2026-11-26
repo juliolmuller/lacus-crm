@@ -25,7 +25,7 @@ export const siteLabel = {
 export type WebsiteStatus = keyof typeof siteLabel;
 export const websiteStatuses = Object.keys(siteLabel) as WebsiteStatus[];
 
-export const ticketLabel = { alto: 'Alto', medio: 'Médio', baixo: 'Baixo' } as const;
+export const ticketLabel = { high: 'Alto', medium: 'Médio', low: 'Baixo' } as const;
 
 export const interactionTypes = [
   'whatsapp',

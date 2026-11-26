@@ -28,7 +28,7 @@ const D2 = [
 ] as const;
 
 async function world(tx: Db, n = 1) {
-  const [niche] = await tx.insert(niches).values({ name: 'N', ticket: 'alto' }).returning();
+  const [niche] = await tx.insert(niches).values({ name: 'N', ticket: 'high' }).returning();
   const [region] = await tx
     .insert(regions)
     .values({ state: 'PR', city: 'Curitiba', label: 'PR - Curitiba' })

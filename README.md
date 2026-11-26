@@ -71,7 +71,7 @@ Commits seguem Conventional Commits (commitlint + husky). Atalho no app: `Ctrl+K
 ## Documentação
 
 - `docs/DEPLOY.md`: checklist de produção, variáveis por ambiente, DNS, callbacks, Google, Schedule e smoke pós-deploy.
-- `docs/OPERACAO.md`: PWA, MCP e REST (exemplos `claude mcp add` e `curl`).
+- `docs/OPERATIONS.md`: PWA, MCP e REST (exemplos `claude mcp add` e `curl`).
 - `docs/ROTINA.md`: conectores do claude.ai e o prompt da rotina agendada.
 - `docs/GOOGLE.md`: configuração do Google Calendar.
 - `docs/DECISIONS.md`: decisões e desvios de cada fase.

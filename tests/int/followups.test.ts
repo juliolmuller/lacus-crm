@@ -54,7 +54,7 @@ const step = (
 });
 
 async function world(tx: Db) {
-  const [niche] = await tx.insert(niches).values({ name: 'N', ticket: 'alto' }).returning();
+  const [niche] = await tx.insert(niches).values({ name: 'N', ticket: 'high' }).returning();
   const [region] = await tx
     .insert(regions)
     .values({ state: 'PR', city: 'Curitiba', label: 'PR - Curitiba' })

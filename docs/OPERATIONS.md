@@ -64,6 +64,8 @@ Para versionar a configuração num projeto, use um `.mcp.json` (o token fica no
 
 `/api/mcp` expõe as 20 ferramentas da SPEC 9.1 mais `crm_save_diagnosis` (as que o escopo do token não cobre ficam fora da lista). `crm_save_diagnosis` grava os campos do diagnóstico, registra o texto como nota interna e move a negociação aberta de "A diagnosticar" para "A abordar" numa transação só; `crm_update_lead` aceita os mesmos campos, e `crm_search_leads` filtra por `hasPriority`/`hasSessionUrl` e ordena por `priority`. A skill de diagnóstico que usa essas ferramentas está em `docs/skills/diagnosticar-lead.md`. `/api/mcp/prospecting` expõe só `queue_claim_next`, `queue_complete`, `api_usage_today`, `api_usage_log`, `crm_upsert_leads`, `niches_list` e `regions_list`. Sem token ou com token revogado/expirado a resposta é 401 (com `WWW-Authenticate` apontando o resource metadata); com escopo insuficiente, 403.
 
+Os campos `ticket` e `openness` do nicho (em `niches_list` e no `niche` de `queue_claim_next`, além do equivalente na REST) valem `high`, `medium` ou `low`. Antes da migration `0005` eram `alto|medio|baixo` e `alta|media|baixa`; rotinas e scripts que comparam esses valores precisam usar os novos.
+
 ### REST (`/api/v1`)
 
 Referência gerada dos schemas: `GET https://lacuscrm.juliolmuller.com/api/v1/openapi.json`. Erros: `{"error": {"code", "message", "details?"}}`.

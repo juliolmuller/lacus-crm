@@ -7,8 +7,9 @@ const norm = (v: string): string =>
     .trim()
     .toLowerCase();
 
-const TICKET = { alto: 'alto', medio: 'medio', baixo: 'baixo' } as const;
-const OPENNESS = { alta: 'alta', media: 'media', baixa: 'baixa' } as const;
+// Keys are the normalized pt-BR values used in the niches spreadsheet; values are the DB enum values.
+const TICKET = { alto: 'high', medio: 'medium', baixo: 'low' } as const;
+const OPENNESS = { alta: 'high', media: 'medium', baixa: 'low' } as const;
 
 function pick<T extends Record<string, string>>(
   map: T,

@@ -43,8 +43,8 @@ async function world(tx: Db) {
   const [A, B] = await tx
     .insert(niches)
     .values([
-      { name: 'Nicho A', ticket: 'alto' },
-      { name: 'Nicho B', ticket: 'baixo' },
+      { name: 'Nicho A', ticket: 'high' },
+      { name: 'Nicho B', ticket: 'low' },
     ])
     .returning();
   const [R1, R2, R3] = await tx
@@ -593,7 +593,7 @@ describe('dashboard: desempenho', () => {
       await tx
         .insert(niches)
         .values(
-          Array.from({ length: 17 }, (_, i) => ({ name: `Nicho ${i}`, ticket: 'medio' as const })),
+          Array.from({ length: 17 }, (_, i) => ({ name: `Nicho ${i}`, ticket: 'medium' as const })),
         );
       await tx.insert(regions).values(
         Array.from({ length: 40 }, (_, i) => ({

@@ -11,8 +11,8 @@ describe('parseNichesCsv', () => {
 
     expect(n).toMatchObject({
       name: 'Clínicas',
-      ticket: 'medio',
-      openness: 'media',
+      ticket: 'medium',
+      openness: 'medium',
       whyBuys: 'porque, sim',
     });
   });

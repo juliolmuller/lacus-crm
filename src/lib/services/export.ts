@@ -2,7 +2,7 @@ import { asc, desc, eq } from 'drizzle-orm';
 import Papa from 'papaparse';
 
 import { type Db, schema } from '@/lib/db';
-import { HEADERS, leadToRow } from '@/lib/leads/csv';
+import { COLUMNS, HEADERS, leadToRow } from '@/lib/leads/csv';
 import { type LeadFilters } from '@/lib/leads/filters';
 import { formatCityNeighborhood } from '@/lib/normalize';
 
@@ -11,7 +11,7 @@ import { leadWhere } from './lead-list';
 const { leads, niches, regions } = schema;
 
 /**
- * CSV com os 39 cabeçalhos da planilha, UTF-8 com BOM, respeitando os filtros.
+ * CSV with the 39 English column headers, UTF-8 with BOM, honoring the filters.
  */
 export async function exportLeadsCsv(
   db: Db,
@@ -28,7 +28,7 @@ export async function exportLeadsCsv(
   const data = rows.map(({ lead, niche, region }) => {
     const row = leadToRow(lead, niche, formatCityNeighborhood(region));
 
-    return HEADERS.map((h) => row[h] ?? '');
+    return COLUMNS.map((c) => row[c.label] ?? '');
   });
 
   return `\uFEFF${Papa.unparse({ fields: HEADERS, data }, { delimiter, newline: '\r\n', quotes: true })}`;

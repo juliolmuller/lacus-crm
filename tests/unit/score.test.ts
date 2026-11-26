@@ -17,7 +17,7 @@ const base: ScoreLead = {
   decisionMakerContact: null,
   strongLocalCompetition: false,
 };
-const score = (l: Partial<ScoreLead>, ticket: 'alto' | 'baixo' | 'medio' | null = null): number =>
+const score = (l: Partial<ScoreLead>, ticket: 'high' | 'low' | 'medium' | null = null): number =>
   computeScore({ ...base, ...l }, { ticket }, settings).score;
 
 describe('computeScore', () => {
@@ -33,7 +33,7 @@ describe('computeScore', () => {
         decisionMakerContact: null,
         strongLocalCompetition: true,
       },
-      { ticket: 'alto' },
+      { ticket: 'high' },
       settings,
     );
 
@@ -72,16 +72,16 @@ describe('computeScore', () => {
   });
 
   it('ticket: alto 15, médio 7,5 (arredonda para 8), baixo 0, sem nicho 0', () => {
-    expect(score({}, 'alto')).toBe(15);
-    expect(score({}, 'medio')).toBe(8);
-    expect(score({}, 'baixo')).toBe(0);
+    expect(score({}, 'high')).toBe(15);
+    expect(score({}, 'medium')).toBe(8);
+    expect(score({}, 'low')).toBe(0);
     expect(computeScore(base, null, settings).score).toBe(0);
   });
 
   it('escala o ticket pelo peso editado e limita a 0..100', () => {
     const w = { ...settings.weights, ticket: 30 };
 
-    expect(computeScore(base, { ticket: 'medio' }, { ...settings, weights: w }).score).toBe(15);
+    expect(computeScore(base, { ticket: 'medium' }, { ...settings, weights: w }).score).toBe(15);
 
     const all = {
       website: 60,
@@ -95,7 +95,7 @@ describe('computeScore', () => {
     expect(
       computeScore(
         { ...base, websiteStatus: 'none' },
-        { ticket: 'alto' },
+        { ticket: 'high' },
         { ...settings, weights: all },
       ).score,
     ).toBe(100);

@@ -99,7 +99,7 @@ O `vercel.json` já declara o Schedule `followups-hourly` (`0 7-21 * * *`, `Amer
 
 ## 7. Conectores do claude.ai e tokens
 
-1. Em `https://lacuscrm.juliolmuller.com/configuracoes#tokens`, crie um token (`read`+`write`) para o Claude Code e teste `claude mcp add` (comandos em `docs/OPERACAO.md`).
+1. Em `https://lacuscrm.juliolmuller.com/configuracoes#tokens`, crie um token (`read`+`write`) para o Claude Code e teste `claude mcp add` (comandos em `docs/OPERATIONS.md`).
 2. Adicione os dois conectores do claude.ai e agende a rotina seguindo `docs/ROTINA.md` (precisa da URL pública HTTPS).
 3. Confira os conectores em **Configurações > Conectores autorizados**.
 
