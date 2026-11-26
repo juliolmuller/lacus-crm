@@ -45,8 +45,20 @@ describe('mapeamento de cabeçalhos', () => {
     });
   });
   it('parses the English and pt-BR ticket values', () => {
-    expect(parseLeadRow({ 'Ticket do nicho': 'Médio' }).ticket).toBe('medium');
-    expect(parseLeadRow({ 'Ticket do nicho': 'high' }).ticket).toBe('high');
+    const ticket = (v: string): ReturnType<typeof parseLeadRow>['ticket'] =>
+      parseLeadRow({ 'Ticket do nicho': v }).ticket;
+
+    expect(ticket('Médio')).toBe('medium');
+    expect(ticket('ALTO')).toBe('high');
+    expect(ticket('baixo')).toBe('low');
+    expect(ticket('high')).toBe('high');
+    expect(ticket(' Medium ')).toBe('medium');
+    expect(ticket('low')).toBe('low');
+  });
+  it('treats an empty or unknown ticket as null, never as an Object.prototype member', () => {
+    expect(parseLeadRow({ 'Ticket do nicho': '' }).ticket).toBeNull();
+    expect(parseLeadRow({ 'Ticket do nicho': 'altíssimo' }).ticket).toBeNull();
+    expect(parseLeadRow({ 'Ticket do nicho': 'constructor' }).ticket).toBeNull();
   });
   it('reconhece sem acento/caixa e deixa o resto sem mapear', () => {
     const m = autoMapHeaders(['nome do negocio', 'WHATSAPP', 'Coluna extra']);

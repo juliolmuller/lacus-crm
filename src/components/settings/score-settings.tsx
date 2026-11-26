@@ -11,6 +11,7 @@ import {
 } from '@/app/(app)/configuracoes/actions';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { ticketLabel } from '@/lib/leads/labels';
 import { type ScoreSettings } from '@/lib/score';
 
 const WEIGHTS = [
@@ -117,7 +118,7 @@ export function ScoreSettingsForm({ initial }: { initial: ScoreSettings }): Reac
         {(['high', 'medium', 'low'] as const).map((k) => (
           <Field
             key={k}
-            label={`Ticket ${{ high: 'alto', medium: 'médio', low: 'baixo' }[k]}`}
+            label={`Ticket ${ticketLabel[k].toLowerCase()}`}
             type="number"
             min={0}
             step="any"

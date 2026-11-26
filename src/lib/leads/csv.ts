@@ -33,13 +33,15 @@ type Kind =
   | 'ticket';
 export interface Column {
   /**
-   * English CSV header written on export (also accepted on import).
+   * English CSV header, written on export. Import accepts it too.
    */
   header: string;
   key: string;
   kind: Kind;
   /**
-   * Legacy pt-BR header: the UI label and the internal row key.
+   * Pt-BR header: the field's UI label and the key of the internal row objects.
+   * Import still accepts it, so spreadsheets with the old headers keep
+   * working.
    */
   label: string;
 }
@@ -156,18 +158,18 @@ export const COLUMNS: readonly Column[] = [
   { header: 'Approach pitch', label: 'Argumento de abordagem', key: 'pitch', kind: 'long' },
 ] as const;
 /**
- * Canonical pt-BR labels: UI field names and the internal row keys.
+ * The pt-BR labels: UI field names and internal row keys.
  */
 export const LABELS = COLUMNS.map((c) => c.label);
 /**
- * English headers, written on export.
+ * The English headers, written on export.
  */
 export const HEADERS = COLUMNS.map((c) => c.header);
 
 /**
- * Maps each file header to the canonical label (accent- and case-insensitive
- * match against the English header or the legacy pt-BR label); the rest map to
- * null.
+ * Maps each file header to its canonical label, ignoring accents and case. A
+ * header matches either the English header or the pt-BR label; anything else
+ * maps to null.
  */
 export function autoMapHeaders(csvHeaders: string[]): Record<string, null | string> {
   const byNorm = new Map<string, string>();
@@ -258,6 +260,15 @@ const SITE_BY_LABEL = new Map<string, WebsiteStatus>([
 ]);
 const STATUS_BY_LABEL = new Map(
   contactStatuses.map((s) => [normalizeName(statusLabel[s]), s] as const),
+);
+/**
+ * Accepts the pt-BR label ("Alto") and the enum value ("high").
+ */
+const TICKET_BY_TEXT = new Map(
+  (Object.keys(ticketLabel) as Array<keyof typeof ticketLabel>).flatMap((t) => [
+    [normalizeName(ticketLabel[t]), t] as const,
+    [t, t] as const,
+  ]),
 );
 
 export interface ParsedRow {
@@ -363,15 +374,7 @@ export function parseLeadRow(row: Record<string, string>): ParsedRow {
           break;
         }
         case 'ticket': {
-          const t = normalizeName(raw);
-          out.ticket =
-            t === 'alto' || t === 'high'
-              ? 'high'
-              : t === 'medio' || t === 'medium'
-                ? 'medium'
-                : t === 'baixo' || t === 'low'
-                  ? 'low'
-                  : null;
+          out.ticket = TICKET_BY_TEXT.get(normalizeName(raw)) ?? null;
           break;
         }
       }

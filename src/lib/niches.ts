@@ -7,7 +7,7 @@ const norm = (v: string): string =>
     .trim()
     .toLowerCase();
 
-// Keys are the normalized pt-BR values of the legacy spreadsheet; values are the enum values.
+// Keys are the normalized pt-BR values used in the niches spreadsheet; values are the DB enum values.
 const TICKET = { alto: 'high', medio: 'medium', baixo: 'low' } as const;
 const OPENNESS = { alta: 'high', media: 'medium', baixa: 'low' } as const;
 
