@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { type Scope } from '@/lib/auth/mcp-resources';
+import { toPeriod } from '@/lib/dashboard/filters';
 import { type Db, schema } from '@/lib/db';
 import { snoozePresets } from '@/lib/followups/snooze';
 import { renderTemplate, templateValues } from '@/lib/followups/templates';
@@ -11,7 +12,7 @@ import { whatsappUrl } from '@/lib/leads/links';
 import { logUsage, usageToday } from '@/lib/services/api-usage';
 import { audit } from '@/lib/services/audit';
 import { getCatalog } from '@/lib/services/catalog';
-import { getDashboard, toPeriod } from '@/lib/services/dashboard';
+import { getDashboard } from '@/lib/services/dashboard';
 import { createDeal, loseDeal, moveDeal, winDeal } from '@/lib/services/deals';
 import { saveDiagnosis } from '@/lib/services/diagnosis';
 import { getSetting } from '@/lib/services/followup-settings';
