@@ -1,6 +1,6 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { expect, test } from '@playwright/test';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 
 import { pointToE2eDatabase } from './env';
@@ -128,6 +128,19 @@ test('SDK oficial lista as ferramentas: completo e só prospecção', async () =
   expect(all).toHaveLength(21);
   expect(all).toContain('crm_update_lead');
 
+  const writer = new Client({ name: 'e2e', version: '1.0.0' });
+
+  await writer.connect(
+    new StreamableHTTPClientTransport(new URL('http://localhost:3100/api/mcp'), {
+      requestInit: { headers: { authorization: `Bearer ${await pat(['read', 'write'])}` } },
+    }),
+  );
+
+  const logTool = (await writer.listTools()).tools.find((t) => t.name === 'crm_log_interaction');
+
+  await writer.close();
+  expect(Object.keys(logTool?.inputSchema.properties ?? {})).toContain('body');
+
   const sub = await names('/api/mcp/prospecting', await pat(['prospecting']));
 
   expect(sub).toEqual(
@@ -184,7 +197,25 @@ test('REST com PAT: lista leads, openapi público e job de follow-ups com escopo
   const spec = await request.get('/api/v1/openapi.json');
 
   expect(spec.status()).toBe(200);
-  expect(Object.keys((await spec.json()).paths)).toContain('/queue/{position}/complete');
+
+  const doc = await spec.json();
+
+  expect(Object.keys(doc.paths)).toContain('/queue/{position}/complete');
+
+  const bodySchema =
+    doc.paths['/leads/{id}/interactions'].post.requestBody.content['application/json'].schema
+      .properties.body;
+
+  // nullable vira anyOf: [string com maxLength, null]
+  expect(JSON.stringify(bodySchema)).toContain('"maxLength":5000');
+
+  const tooLong = await request.post(`/api/v1/leads/${randomUUID()}/interactions`, {
+    headers: full,
+    data: { type: 'note', direction: 'internal', summary: 'x', body: 'x'.repeat(5001) },
+  });
+
+  expect(tooLong.status()).toBe(422);
+  expect((await tooLong.json()).error.code).toBe('validation_error');
 
   const noScope = await request.post('/api/jobs/followups', {
     headers: { authorization: `Bearer ${await pat(['read'])}` },

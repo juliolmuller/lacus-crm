@@ -251,3 +251,11 @@ Contexto: a [issue #8](https://github.com/juliolmuller/lacus-crm/issues/8) leva 
 4. **Planilha de nichos** (`.data/nichos.csv`): mantém cabeçalhos e valores em pt-BR, por ser dado de origem. `parseNichesCsv` converte para os valores do enum.
 
 Consequência: `niches_list` e o `niche` de `queue_claim_next` (e a REST equivalente) passam a devolver `high/medium/low`; rotinas do claude.ai que comparem esses campos com os valores antigos precisam ser atualizadas. O cache offline do service worker não guarda ticket nem abertura, então não há valor antigo para tratar ali. Como a migration renomeia valores em uso e o código antigo não entende os novos (nem o novo, os antigos), aplique-a no Neon (`bun run db:migrate`) logo antes de promover o deploy; o rollback é `bun run db:rollback 1`.
+
+## Corpo das interações pelo MCP e pela REST (26/11/2026)
+
+Contexto: a [issue #13](https://github.com/juliolmuller/lacus-crm/issues/13). `crm_log_interaction` e `POST /api/v1/leads/:id/interactions` não declaravam `body`, e o zod o descartava em silêncio; textos longos acabavam em `summary`.
+
+Decisão: `body` opcional na operação compartilhada (`logInteractionOp`), com no máximo 5000 caracteres, o mesmo limite dos formulários da interface (e abaixo do corte de 8.000 caracteres do texto do MCP). O valor passa por `trim` e vazio vira `null`. `summary` é o título curto (recomendado até ~120 caracteres, sem validação nova).
+
+Consequência: uma única mudança cobre MCP e REST, e o OpenAPI mostra `maxLength: 5000`. `crm_get_lead` já devolvia `body`. Acima do limite, a resposta é `validation_error` (422 na REST); quem enviava `body` antes via o campo ignorado e agora o vê salvo. Vários `body` longos ainda podem estourar o corte do texto de `crm_get_lead`; o `structuredContent` segue completo.

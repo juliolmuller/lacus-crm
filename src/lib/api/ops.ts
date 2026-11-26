@@ -430,7 +430,8 @@ export const setDnc = op({
 
 export const logInteractionOp = op({
   name: 'crm_log_interaction',
-  description: 'Registra uma interação (aplica as regras de follow-up e a sincronia de status).',
+  description:
+    'Registra uma interação (aplica as regras de follow-up e a sincronia de status). `summary` é o título curto que aparece na linha do tempo (até ~120 caracteres); o detalhe (texto completo, links, diagnóstico) vai em `body`, até 5000 caracteres.',
   scopes: ['write'],
   input: z.object({
     leadId: id,
@@ -449,13 +450,24 @@ export const logInteractionOp = op({
         'opt_out',
       ])
       .optional(),
-    summary: z.string().min(1),
+    summary: z
+      .string()
+      .min(1)
+      .describe('Título curto da interação (recomendado até ~120 caracteres)'),
+    body: z
+      .string()
+      .trim()
+      .max(5000)
+      .nullable()
+      .optional()
+      .describe('Detalhe da interação (até 5000 caracteres); vazio vira null'),
     occurredAt: when.optional(),
   }),
   async run(a, { db, actor }) {
     return db.transaction(async (tx) => {
       const r = await logInteraction(tx, {
         ...a,
+        body: a.body || null,
         occurredAt: a.occurredAt ? new Date(a.occurredAt) : undefined,
         type: a.type as Parameters<typeof logInteraction>[1]['type'],
         createdBy: 'mcp',
