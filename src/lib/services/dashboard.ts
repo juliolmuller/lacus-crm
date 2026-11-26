@@ -23,6 +23,13 @@ const {
 } = schema;
 
 export type Period = 'all' | 30 | 7 | 90;
+
+/**
+ * Normaliza o período recebido como texto (URL, MCP) ou número para `Period`.
+ */
+export const toPeriod = (p: '30' | '7' | '90' | 'all' | 30 | 7 | 90): Period =>
+  p === 'all' ? 'all' : (Number(p) as 30 | 7 | 90);
+
 export interface DashboardFilters {
   niche?: null | number;
   period: Period;

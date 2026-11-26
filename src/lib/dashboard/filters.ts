@@ -1,6 +1,6 @@
 import { createLoader, parseAsInteger, parseAsStringLiteral } from 'nuqs/server';
 
-import { type DashboardFilters } from '@/lib/services/dashboard';
+import { type DashboardFilters, toPeriod } from '@/lib/services/dashboard';
 
 export const PERIODS = ['7', '30', '90', 'all'] as const;
 export const periodLabel = {
@@ -28,7 +28,7 @@ export function parseDashboardFilters(
   const p = load(params);
 
   return {
-    period: p.period === 'all' ? 'all' : (Number(p.period) as 30 | 7 | 90),
+    period: toPeriod(p.period),
     niche: p.niche,
     region: p.region,
   };

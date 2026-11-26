@@ -1,8 +1,10 @@
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
+import { dashboardSummary } from '@/lib/api/ops';
 import { type Db } from '@/lib/db';
 import { type DashboardFilters, funnel, getDashboard, kpis } from '@/lib/services/dashboard';
+import { SettingError } from '@/lib/validation/settings';
 
 import { inTx, schema } from './db';
 
@@ -678,4 +680,41 @@ describe('dashboard: desempenho', () => {
       }
     });
   }, 120_000);
+});
+
+describe('dashboard: configurações e crm_dashboard_summary', () => {
+  it('score_thresholds no formato pré-0005 lança SettingError, não ZodError', async () => {
+    await inTx(async (tx) => {
+      const value = {
+        green: 70,
+        yellow: 40,
+        minRating: 4,
+        minReviews: 20,
+        ticketPoints: { alto: 15, medio: 7.5, baixo: 0 },
+      };
+
+      await tx
+        .insert(schema.settings)
+        .values({ key: 'score_thresholds', value })
+        .onConflictDoUpdate({ target: schema.settings.key, set: { value } });
+
+      const err = await getDashboard(tx, { period: 30 }).catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(SettingError);
+      expect((err as SettingError).key).toBe('score_thresholds');
+    });
+  });
+
+  it('a ferramenta responde para {}, 30, "30" e "all"; {} e "30" equivalem a 30', async () => {
+    await inTx(async (tx) => {
+      const run = (x: object) =>
+        dashboardSummary.run(dashboardSummary.input.parse(x), { db: tx, actor: 'test' });
+      const base = await run({ period: 30 });
+
+      expect(base).toHaveProperty('kpis');
+      expect(await run({})).toEqual(base);
+      expect(await run({ period: '30' })).toEqual(base);
+      expect(await run({ period: 'all' })).toHaveProperty('kpis');
+    });
+  });
 });
