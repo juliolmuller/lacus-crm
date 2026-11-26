@@ -15,6 +15,8 @@ import { getEnv } from '@/lib/env';
 import { syncAfterWrite } from '@/lib/google/context';
 import { allows, looksLikePat, verifyToken, withinRateLimit } from '@/lib/services/tokens';
 
+import { toolError } from './tool-error';
+
 export type Kind = 'full' | 'prospecting';
 
 interface Principal {
@@ -64,12 +66,7 @@ function buildServer(kind: Kind, p: Principal): McpServer {
 
           return { content: [{ type: 'text', text }], structuredContent: result };
         } catch (e) {
-          const err = toApiError(e);
-
-          return {
-            isError: true,
-            content: [{ type: 'text', text: `${err.code}: ${err.message}` }],
-          };
+          return toolError(toApiError(e));
         }
       }) as never,
     );

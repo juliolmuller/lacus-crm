@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { type Scope } from '@/lib/auth/mcp-resources';
+import { toPeriod } from '@/lib/dashboard/filters';
 import { type Db, schema } from '@/lib/db';
 import { snoozePresets } from '@/lib/followups/snooze';
 import { renderTemplate, templateValues } from '@/lib/followups/templates';
@@ -11,7 +12,7 @@ import { whatsappUrl } from '@/lib/leads/links';
 import { logUsage, usageToday } from '@/lib/services/api-usage';
 import { audit } from '@/lib/services/audit';
 import { getCatalog } from '@/lib/services/catalog';
-import { getDashboard, toPeriod } from '@/lib/services/dashboard';
+import { getDashboard } from '@/lib/services/dashboard';
 import { createDeal, loseDeal, moveDeal, winDeal } from '@/lib/services/deals';
 import { saveDiagnosis } from '@/lib/services/diagnosis';
 import { getSetting } from '@/lib/services/followup-settings';
@@ -367,11 +368,13 @@ const leadValues = (p: z.infer<typeof patch>): LeadValues => ({
 export const updateLeadOp = op({
   name: 'crm_update_lead',
   description:
-    'Atualiza campos permitidos do lead: session_url, next_action, pitch, priority, contact_status, notes, channel, response_or_objection e os campos do diagnóstico (website_url, website_status, instagram, other_socials, email, decision_maker_contact, has_whatsapp, has_active_ads, instagram_active, owner_replies_reviews, complaints, strong_local_competition). Recalcula o score.',
+    'Atualiza campos permitidos do lead: session_url, next_action, pitch, priority, contact_status, notes, channel, response_or_objection e os campos do diagnóstico (website_url, website_status, instagram, other_socials, email, decision_maker_contact, has_whatsapp, has_active_ads, instagram_active, owner_replies_reviews, complaints, strong_local_competition). Recalcula o score. patch vazio não grava nada e devolve o lead atual.',
   scopes: ['write'],
   input: z.object({ id, patch }),
   async run(a, { db, actor }) {
     const p = a.patch;
+
+    if (Object.keys(p).length === 0) return found(await getLead(db, a.id)).lead;
 
     return db.transaction(async (tx) => {
       const lead = await updateLead(tx, a.id, leadValues(p));

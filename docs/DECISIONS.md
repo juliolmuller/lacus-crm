@@ -261,6 +261,16 @@ Contexto: na [issue #12](https://github.com/juliolmuller/lacus-crm/issues/12) o 
 
 Consequência: a [issue #11](https://github.com/juliolmuller/lacus-crm/issues/11) (`crm_update_lead` e `crm_save_diagnosis` leem `score_thresholds`) provavelmente tem a mesma causa; a mudança do formato de erro do MCP continua nela. Se o banco de produção estiver sem a `0005`, só aplicá-la corrige a ferramenta.
 
+## Erros do MCP: detalhes de validação e `patch` vazio (26/11/2026)
+
+Contexto: a [issue #11](https://github.com/juliolmuller/lacus-crm/issues/11) relatou `validation_error: Entrada inválida` em toda chamada de `crm_update_lead` e `crm_save_diagnosis`, sem caminho de campo. A causa provável é a mesma da seção anterior (`score_thresholds` no formato antigo, agora `internal_error`); esta seção trata do que dificultou o diagnóstico: o erro não dizia qual campo ou chave falhou.
+
+1. **Erros de ferramenta do MCP levam os detalhes.** Em `validation_error`, o texto é `validation_error: Entrada inválida` seguido das issues em JSON (`[{path, code, message}]`, `path` com pontos, raiz `''`) e o mesmo vai em `structuredContent.error`. Outros códigos não levam `details`. A REST passa a devolver `details` nessa forma compacta (antes eram as issues cruas do Zod).
+2. **`patch` vazio em `crm_update_lead` é no-op**: devolve o lead atual, sem gravar e sem linha de auditoria (`not_found` se o id não existe). Em `crm_save_diagnosis`, `patch` vazio é normal (só o texto do diagnóstico).
+3. **Sem coerção de `patch` vindo como texto JSON.** `z.preprocess` apagaria os campos do JSON Schema publicado; os testes pelo transporte real mostram que `patch` tipado funciona e que o texto é recusado.
+
+Consequência: quem usa o MCP vê o campo recusado; configuração desatualizada aparece como `internal_error` citando a chave e indicando rodar as migrations. Migrations devem ser aplicadas antes (ou logo depois) do deploy que depende delas (`docs/DEPLOY.md`).
+
 ## Corpo das interações pelo MCP e pela REST (26/11/2026)
 
 Contexto: a [issue #13](https://github.com/juliolmuller/lacus-crm/issues/13). `crm_log_interaction` e `POST /api/v1/leads/:id/interactions` não declaravam `body`, e o zod o descartava em silêncio; textos longos acabavam em `summary`.

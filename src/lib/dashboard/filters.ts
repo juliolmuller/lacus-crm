@@ -1,8 +1,17 @@
 import { createLoader, parseAsInteger, parseAsStringLiteral } from 'nuqs/server';
 
-import { type DashboardFilters, toPeriod } from '@/lib/services/dashboard';
+import { type DashboardFilters, type Period } from '@/lib/services/dashboard';
 
 export const PERIODS = ['7', '30', '90', 'all'] as const;
+
+/**
+ * Normaliza o período recebido como texto (URL, MCP) ou número para `Period`.
+ * Fica aqui, e não em `services/dashboard`, para o bundle do navegador não
+ * puxar o banco.
+ */
+export const toPeriod = (p: '30' | '7' | '90' | 'all' | 30 | 7 | 90): Period =>
+  p === 'all' ? 'all' : (Number(p) as 30 | 7 | 90);
+
 export const periodLabel = {
   '7': '7 dias',
   '30': '30 dias',

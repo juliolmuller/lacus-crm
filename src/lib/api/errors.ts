@@ -45,6 +45,18 @@ export class ApiError extends Error {
   }
 }
 
+export interface IssueDetail {
+  code: string;
+  message: string;
+  path: string;
+}
+
+/**
+ * Issues do Zod na forma compacta e pública: `path` com pontos (raiz = '').
+ */
+export const zodDetails = (issues: ReadonlyArray<ZodError['issues'][number]>): IssueDetail[] =>
+  issues.map((i) => ({ path: i.path.map(String).join('.'), code: i.code, message: i.message }));
+
 /**
  * Erros dos serviços e do Zod → ApiError; o resto vira 500 sem vazar detalhes.
  */
@@ -60,7 +72,8 @@ export function toApiError(e: unknown): ApiError {
     );
   }
 
-  if (e instanceof ZodError) return new ApiError('validation_error', 'Entrada inválida', e.issues);
+  if (e instanceof ZodError)
+    return new ApiError('validation_error', 'Entrada inválida', zodDetails(e.issues));
 
   if (e instanceof LeadError)
     return new ApiError(
