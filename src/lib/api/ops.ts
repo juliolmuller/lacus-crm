@@ -11,7 +11,7 @@ import { whatsappUrl } from '@/lib/leads/links';
 import { logUsage, usageToday } from '@/lib/services/api-usage';
 import { audit } from '@/lib/services/audit';
 import { getCatalog } from '@/lib/services/catalog';
-import { getDashboard } from '@/lib/services/dashboard';
+import { getDashboard, toPeriod } from '@/lib/services/dashboard';
 import { createDeal, loseDeal, moveDeal, winDeal } from '@/lib/services/deals';
 import { saveDiagnosis } from '@/lib/services/diagnosis';
 import { getSetting } from '@/lib/services/followup-settings';
@@ -276,8 +276,7 @@ export const dashboardSummary = op({
       .default(30)
       .describe('Dias (7, 30 ou 90) ou "all"; padrão 30'),
   }),
-  run: (a, { db }) =>
-    getDashboard(db, { period: a.period === 'all' ? 'all' : (Number(a.period) as 30 | 7 | 90) }),
+  run: (a, { db }) => getDashboard(db, { period: toPeriod(a.period) }),
 });
 
 export const nichesList = op({

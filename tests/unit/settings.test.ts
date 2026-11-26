@@ -30,15 +30,17 @@ describe('settings', () => {
       ticketPoints: { alto: 15, medio: 7.5, baixo: 0 },
     };
 
-    expect(() => parseSetting('score_thresholds', legacy)).toThrow(SettingError);
+    let err: unknown;
 
     try {
       parseSetting('score_thresholds', legacy);
     } catch (e) {
-      expect(e).toBeInstanceOf(SettingError);
-      expect((e as SettingError).key).toBe('score_thresholds');
-      expect((e as SettingError).issues[0]?.path[0]).toBe('ticketPoints');
+      err = e;
     }
+
+    expect(err).toBeInstanceOf(SettingError);
+    expect((err as SettingError).key).toBe('score_thresholds');
+    expect((err as SettingError).issues[0]?.path[0]).toBe('ticketPoints');
   });
 
   it('valida a cadência de follow-up', () => {

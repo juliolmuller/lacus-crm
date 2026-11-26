@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
 
 import { toApiError } from '@/lib/api/errors';
@@ -6,14 +6,18 @@ import { dashboardSummary } from '@/lib/api/ops';
 import { SettingError } from '@/lib/validation/settings';
 
 describe('toApiError', () => {
-  it('SettingError vira internal_error com a chave', () => {
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  afterEach(() => vi.restoreAllMocks());
+
+  it('SettingError vira internal_error com a chave e registra só chave e issues', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const e = toApiError(new SettingError('score_thresholds', []));
 
     expect(e.code).toBe('internal_error');
     expect(e.status).toBe(500);
     expect(e.message).toContain('score_thresholds');
+    expect(e.message).toContain('migrations');
+    expect(log).toHaveBeenCalledWith('setting error', 'score_thresholds', []);
   });
 
   it('ZodError continua validation_error', () => {

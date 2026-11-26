@@ -147,7 +147,7 @@ test('SDK oficial lista as ferramentas: completo e só prospecção', async () =
   expect(readOnly).not.toContain('crm_update_lead');
 });
 
-test('crm_dashboard_summary pelo SDK oficial: {} , 7, 30, 90, "all" e "30"', async () => {
+test('crm_dashboard_summary pelo SDK oficial: {}, 7, 30, 90, "all" e "30"', async () => {
   const client = new Client({ name: 'e2e', version: '1.0.0' });
 
   await client.connect(
