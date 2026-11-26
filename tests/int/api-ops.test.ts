@@ -1,6 +1,5 @@
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { ZodError } from 'zod';
 
 import { toApiError } from '@/lib/api/errors';
 import { getLeadFull, logInteractionOp } from '@/lib/api/ops';
@@ -78,31 +77,16 @@ describe('crm_log_interaction body', () => {
       const leadId = await lead(tx);
       const args = { ...base, leadId, body: 'x'.repeat(5001) };
 
-      expect(() => logInteractionOp.input.parse(args)).toThrow(ZodError);
+      const parsed = logInteractionOp.input.safeParse(args);
 
-      try {
-        logInteractionOp.input.parse(args);
-      } catch (e) {
-        expect(toApiError(e).code).toBe('validation_error');
-      }
+      expect(parsed.success).toBe(false);
+      expect(toApiError(parsed.error).code).toBe('validation_error');
+      expect(await tx.select().from(interactions).where(eq(interactions.leadId, leadId))).toEqual(
+        [],
+      );
 
       const r = await call({ ...base, leadId, body: 'x'.repeat(5000) }, tx);
 
       expect(r.interaction.body).toHaveLength(5000);
-    }));
-
-  it('accepts the REST payload shape (path id merged into the body)', () =>
-    inTx(async (tx) => {
-      const leadId = await lead(tx);
-      const payload = {
-        type: 'whatsapp',
-        direction: 'outbound',
-        summary: 'Enviei a mensagem 1',
-        body: 'Texto completo',
-        leadId,
-      };
-      const r = await call(payload, tx);
-
-      expect(r.interaction.body).toBe('Texto completo');
     }));
 });

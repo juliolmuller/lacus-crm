@@ -7,6 +7,8 @@ import { pointToE2eDatabase } from './env';
 
 pointToE2eDatabase();
 
+type McpTool = Awaited<ReturnType<Client['listTools']>>['tools'][number];
+
 /**
  * HTTP real contra o app: autenticação, escopos e conectores do MCP. Só leitura
  * e tokens próprios.
@@ -102,43 +104,40 @@ test('REST: sem token 401, escopo errado 403, formato de erro', async ({ request
 });
 
 test('SDK oficial lista as ferramentas: completo e só prospecção', async () => {
-  const names = async (path: string, token: string): Promise<string[]> => {
+  const listTools = async (path: string, token: string): Promise<McpTool[]> => {
     const client = new Client({ name: 'e2e', version: '1.0.0' });
 
-    await client.connect(
-      new StreamableHTTPClientTransport(new URL(`http://localhost:3100${path}`), {
-        requestInit: { headers: { authorization: `Bearer ${token}` } },
-      }),
-    );
+    try {
+      await client.connect(
+        new StreamableHTTPClientTransport(new URL(`http://localhost:3100${path}`), {
+          requestInit: { headers: { authorization: `Bearer ${token}` } },
+        }),
+      );
 
-    const { tools } = await client.listTools();
+      const { tools } = await client.listTools();
 
-    if (path === '/api/mcp/prospecting') {
-      const r = await client.callTool({ name: 'api_usage_today', arguments: {} });
+      if (path === '/api/mcp/prospecting') {
+        const r = await client.callTool({ name: 'api_usage_today', arguments: {} });
 
-      expect(r.structuredContent).toMatchObject({ remaining: expect.any(Number) });
+        expect(r.structuredContent).toMatchObject({ remaining: expect.any(Number) });
+      }
+
+      return tools;
+    } finally {
+      await client.close();
     }
-
-    await client.close();
-
-    return tools.map((t) => t.name).sort();
   };
+  const names = async (path: string, token: string): Promise<string[]> =>
+    (await listTools(path, token)).map((t) => t.name).sort();
   const all = await names('/api/mcp', await pat(['read', 'write', 'prospecting']));
 
   expect(all).toHaveLength(21);
   expect(all).toContain('crm_update_lead');
 
-  const writer = new Client({ name: 'e2e', version: '1.0.0' });
-
-  await writer.connect(
-    new StreamableHTTPClientTransport(new URL('http://localhost:3100/api/mcp'), {
-      requestInit: { headers: { authorization: `Bearer ${await pat(['read', 'write'])}` } },
-    }),
+  const logTool = (await listTools('/api/mcp', await pat(['read', 'write']))).find(
+    (t) => t.name === 'crm_log_interaction',
   );
 
-  const logTool = (await writer.listTools()).tools.find((t) => t.name === 'crm_log_interaction');
-
-  await writer.close();
   expect(Object.keys(logTool?.inputSchema.properties ?? {})).toContain('body');
 
   const sub = await names('/api/mcp/prospecting', await pat(['prospecting']));
