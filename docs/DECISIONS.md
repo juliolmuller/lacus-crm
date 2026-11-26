@@ -270,3 +270,11 @@ Contexto: a [issue #11](https://github.com/juliolmuller/lacus-crm/issues/11) rel
 3. **Sem coerção de `patch` vindo como texto JSON.** `z.preprocess` apagaria os campos do JSON Schema publicado; os testes pelo transporte real mostram que `patch` tipado funciona e que o texto é recusado.
 
 Consequência: quem usa o MCP vê o campo recusado; configuração desatualizada aparece como `internal_error` citando a chave e indicando rodar as migrations. Migrations devem ser aplicadas antes (ou logo depois) do deploy que depende delas (`docs/DEPLOY.md`).
+
+## Corpo das interações pelo MCP e pela REST (26/11/2026)
+
+Contexto: a [issue #13](https://github.com/juliolmuller/lacus-crm/issues/13). `crm_log_interaction` e `POST /api/v1/leads/:id/interactions` não declaravam `body`, e o zod o descartava em silêncio; textos longos acabavam em `summary`.
+
+Decisão: `body` opcional na operação compartilhada (`logInteractionOp`), com no máximo 5000 caracteres, o mesmo limite dos formulários da interface (e abaixo do corte de 8.000 caracteres do texto do MCP). O valor passa por `trim` e vazio vira `null`. `summary` é o título curto (recomendado até ~120 caracteres, sem validação nova).
+
+Consequência: uma única mudança cobre MCP e REST, e o OpenAPI mostra `maxLength: 5000`. `crm_get_lead` já devolvia `body`. Acima do limite, a resposta é `validation_error` (422 na REST); quem enviava `body` antes via o campo ignorado e agora o vê salvo. Vários `body` longos ainda podem estourar o corte do texto de `crm_get_lead`; o `structuredContent` segue completo.
