@@ -4,6 +4,7 @@ import { DealError } from '@/lib/services/deals';
 import { LeadError } from '@/lib/services/leads';
 import { ReminderError } from '@/lib/services/reminders';
 import { UpsertError } from '@/lib/services/upsert-leads';
+import { SettingError } from '@/lib/validation/settings';
 
 export type ApiErrorCode =
   | 'conflict'
@@ -49,6 +50,15 @@ export class ApiError extends Error {
  */
 export function toApiError(e: unknown): ApiError {
   if (e instanceof ApiError) return e;
+
+  if (e instanceof SettingError) {
+    console.error('setting error', e.key, e.issues);
+
+    return new ApiError(
+      'internal_error',
+      `${e.message}. Confira se as migrations foram aplicadas.`,
+    );
+  }
 
   if (e instanceof ZodError) return new ApiError('validation_error', 'Entrada inválida', e.issues);
 

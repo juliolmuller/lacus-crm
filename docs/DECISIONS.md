@@ -251,3 +251,12 @@ Contexto: a [issue #8](https://github.com/juliolmuller/lacus-crm/issues/8) leva 
 4. **Planilha de nichos** (`.data/nichos.csv`): mantém cabeçalhos e valores em pt-BR, por ser dado de origem. `parseNichesCsv` converte para os valores do enum.
 
 Consequência: `niches_list` e o `niche` de `queue_claim_next` (e a REST equivalente) passam a devolver `high/medium/low`; rotinas do claude.ai que comparem esses campos com os valores antigos precisam ser atualizadas. O cache offline do service worker não guarda ticket nem abertura, então não há valor antigo para tratar ali. Como a migration renomeia valores em uso e o código antigo não entende os novos (nem o novo, os antigos), aplique-a no Neon (`bun run db:migrate`) logo antes de promover o deploy; o rollback é `bun run db:rollback 1`.
+
+## Configurações inválidas no banco e o período do painel (26/11/2026)
+
+Contexto: na [issue #12](https://github.com/juliolmuller/lacus-crm/issues/12) o `crm_dashboard_summary` devolvia `validation_error: Entrada inválida`. Esse texto só sai do nosso `catch` (`toApiError` com `ZodError`), então o erro veio de dentro de `getDashboard`, onde os únicos `parse` são as leituras de `settings` (`score_thresholds`, `places_daily_budget`). A causa provável é a migration `0005` não aplicada no Neon: `ticketPoints` ainda com `alto/medio/baixo` não passa no schema novo. Não foi reproduzido em produção.
+
+1. **Configuração inválida no banco é erro do servidor**: `parseSetting` lança `SettingError` (chave e issues do Zod) e `toApiError` a transforma em `internal_error: Configuração inválida no banco: <chave>. Confira se as migrations foram aplicadas.`, registrando chave e issues (nunca o valor). `saveSetting` continua com `.parse`, porque entrada inválida do usuário segue sendo `validation_error`. Não há tolerância às chaves antigas: aceitá-las esconderia um banco sem migrar, cujos enums de nicho também continuariam em português.
+2. **`period` aceita também `"7"`, `"30"`, `"90"`**: o schema fica sem `transform` (o JSON Schema publicado continua representável) e `run` normaliza para número. O padrão segue 30. É endurecimento para clientes que serializam números como texto, não a causa do bug.
+
+Consequência: a [issue #11](https://github.com/juliolmuller/lacus-crm/issues/11) (`crm_update_lead` e `crm_save_diagnosis` leem `score_thresholds`) provavelmente tem a mesma causa; a mudança do formato de erro do MCP continua nela. Se o banco de produção estiver sem a `0005`, só aplicá-la corrige a ferramenta.

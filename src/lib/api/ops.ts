@@ -267,12 +267,17 @@ export const renderMessage = op({
 
 export const dashboardSummary = op({
   name: 'crm_dashboard_summary',
-  description: 'KPIs, follow-ups, funil, distribuições, prospecção e alertas do painel.',
+  description:
+    'KPIs, follow-ups, funil, distribuições, prospecção e alertas do painel. Período: 7, 30 ou 90 dias, ou "all" (padrão 30).',
   scopes: ['read'],
   input: z.object({
-    period: z.union([z.literal(7), z.literal(30), z.literal(90), z.literal('all')]).default(30),
+    period: z
+      .union([z.literal(7), z.literal(30), z.literal(90), z.enum(['7', '30', '90', 'all'])])
+      .default(30)
+      .describe('Dias (7, 30 ou 90) ou "all"; padrão 30'),
   }),
-  run: (a, { db }) => getDashboard(db, { period: a.period }),
+  run: (a, { db }) =>
+    getDashboard(db, { period: a.period === 'all' ? 'all' : (Number(a.period) as 30 | 7 | 90) }),
 });
 
 export const nichesList = op({
