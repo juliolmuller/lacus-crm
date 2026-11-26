@@ -68,7 +68,7 @@ export function toApiError(e: unknown): ApiError {
     console.error(
       'invalid setting',
       e.key,
-      e.issues.map((i) => i.path.join('.')),
+      zodDetails(e.issues).map((i) => i.path),
     );
 
     return new ApiError('internal_error', e.message);

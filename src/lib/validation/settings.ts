@@ -70,7 +70,7 @@ export class SettingError extends Error {
     public issues: z.core.$ZodIssue[],
   ) {
     super(
-      `Configuração "${key}" inválida no banco; rode as migrations pendentes ou salve a configuração de novo`,
+      `Configuração "${key}" inválida no banco; rode as migrations pendentes (bun run db:migrate)`,
     );
   }
 }

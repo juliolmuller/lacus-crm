@@ -236,7 +236,7 @@ test.describe('escrita via MCP: crm_update_lead e crm_save_diagnosis', () => {
       'select id from leads order by name_normalized, id limit 4',
     );
 
-    return rows[projectName.includes('pwa') ? 1 : 0]!.id;
+    return rows[projectName === 'mobile' ? 1 : 0]!.id;
   };
 
   test('um campo grava, patch vazio é no-op e diagnóstico grava campos e nota', async ({
@@ -276,15 +276,15 @@ test.describe('escrita via MCP: crm_update_lead e crm_save_diagnosis', () => {
     const token = await pat(['read', 'write']);
     const id = await leadId(info.project.name);
 
-    for (const [patch, path] of [
-      [{ nope: 1 }, 'patch'],
-      [{ priority: 'x' }, 'patch.priority'],
+    for (const [patch, field] of [
+      [{ nope: 1 }, 'nope'],
+      [{ priority: 'x' }, 'priority'],
     ] as const) {
       const r = await callTool(request, token, 'crm_update_lead', { id, patch });
 
-      // o SDK pode recusar antes do nosso handler; nos dois casos o caminho aparece
+      // o SDK pode recusar antes do nosso handler; nos dois casos o campo recusado aparece
       expect(r.result.isError).toBe(true);
-      expect(JSON.stringify(r)).toContain(path);
+      expect(JSON.stringify(r)).toContain(field);
     }
   });
 
