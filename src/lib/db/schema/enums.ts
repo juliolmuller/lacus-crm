@@ -1,7 +1,7 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
-export const nicheTicket = pgEnum('niche_ticket', ['alto', 'medio', 'baixo']);
-export const nicheOpenness = pgEnum('niche_openness', ['alta', 'media', 'baixa']);
+export const nicheTicket = pgEnum('niche_ticket', ['high', 'medium', 'low']);
+export const nicheOpenness = pgEnum('niche_openness', ['high', 'medium', 'low']);
 export const websiteStatus = pgEnum('website_status', [
   'none',
   'social_only',

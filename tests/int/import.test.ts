@@ -38,8 +38,8 @@ const opts = { insertOnly: false, dryRun: false };
 type Tx = Parameters<Parameters<typeof inTx>[0]>[0];
 async function seed(tx: Tx): Promise<void> {
   await tx.insert(niches).values([
-    { name: 'Clínicas de teste', ticket: 'alto' },
-    { name: 'Estúdios de teste', ticket: 'baixo' },
+    { name: 'Clínicas de teste', ticket: 'high' },
+    { name: 'Estúdios de teste', ticket: 'low' },
   ]);
   await tx
     .insert(dealStages)
@@ -86,8 +86,8 @@ describe('importLeads', () => {
         'PR - Curitiba - Hauer',
       ]);
       expect(r.ticketMismatches.map((m) => [m.name, m.sheet, m.niche])).toEqual([
-        ['Escritório Exemplo Dois', 'medio', 'alto'],
-        ['Loja Exemplo Quatro', 'alto', 'baixo'],
+        ['Escritório Exemplo Dois', 'medium', 'high'],
+        ['Loja Exemplo Quatro', 'high', 'low'],
       ]);
 
       // status desconhecido → new + nota

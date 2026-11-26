@@ -24,7 +24,7 @@ const { leads, niches, reminders, deals, suppressionList, settings, dealStages }
 async function setup(tx: Parameters<Parameters<typeof inTx>[0]>[0]) {
   const [niche] = await tx
     .insert(niches)
-    .values({ name: 'Nicho de teste', ticket: 'alto' })
+    .values({ name: 'Nicho de teste', ticket: 'high' })
     .returning();
   const region = await resolveRegion(tx, {
     state: 'PR',

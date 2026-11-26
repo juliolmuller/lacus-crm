@@ -175,7 +175,7 @@ export interface ParsedRow {
   nicheName?: string;
   place?: string;
   sheetScore?: null | number;
-  ticket?: 'alto' | 'baixo' | 'medio' | null;
+  ticket?: 'high' | 'low' | 'medium' | null;
   /**
    * Valores prontos para o banco, só dos campos presentes na linha.
    */
@@ -275,7 +275,13 @@ export function parseLeadRow(row: Record<string, string>): ParsedRow {
         case 'ticket': {
           const t = normalizeName(raw);
           out.ticket =
-            t === 'alto' ? 'alto' : t === 'medio' ? 'medio' : t === 'baixo' ? 'baixo' : null;
+            t === 'alto' || t === 'high'
+              ? 'high'
+              : t === 'medio' || t === 'medium'
+                ? 'medium'
+                : t === 'baixo' || t === 'low'
+                  ? 'low'
+                  : null;
           break;
         }
       }
@@ -315,7 +321,7 @@ export const spDate = (d: Date): string =>
  */
 export function leadToRow(
   lead: LeadLike,
-  niche: { name: string; ticket: 'alto' | 'baixo' | 'medio' | null } | null,
+  niche: { name: string; ticket: 'high' | 'low' | 'medium' | null } | null,
   place: string,
 ): Record<string, string> {
   const row: Record<string, string> = {};

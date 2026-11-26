@@ -49,7 +49,7 @@ export function ScoreSettingsForm({ initial }: { initial: ScoreSettings }): Reac
     setS({ ...s, weights: { ...s.weights, [k]: num(v) } });
   const setT = (k: 'green' | 'minRating' | 'minReviews' | 'yellow', v: string): void =>
     setS({ ...s, thresholds: { ...s.thresholds, [k]: num(v) } });
-  const setTicket = (k: 'alto' | 'baixo' | 'medio', v: string): void =>
+  const setTicket = (k: 'high' | 'low' | 'medium', v: string): void =>
     setS({
       ...s,
       thresholds: { ...s.thresholds, ticketPoints: { ...s.thresholds.ticketPoints, [k]: num(v) } },
@@ -114,10 +114,10 @@ export function ScoreSettingsForm({ initial }: { initial: ScoreSettings }): Reac
         <legend className="mb-2 text-label text-text">
           Pontos por ticket do nicho (escala do peso)
         </legend>
-        {(['alto', 'medio', 'baixo'] as const).map((k) => (
+        {(['high', 'medium', 'low'] as const).map((k) => (
           <Field
             key={k}
-            label={`Ticket ${k === 'medio' ? 'médio' : k}`}
+            label={`Ticket ${{ high: 'alto', medium: 'médio', low: 'baixo' }[k]}`}
             type="number"
             min={0}
             step="any"

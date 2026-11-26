@@ -17,7 +17,7 @@ type Tx = Parameters<Parameters<typeof inTx>[0]>[0];
 const REGION = 'PR - Curitiba - Xaxim';
 
 async function world(tx: Tx) {
-  const [niche] = await tx.insert(niches).values({ name: 'Nicho MCP', ticket: 'alto' }).returning();
+  const [niche] = await tx.insert(niches).values({ name: 'Nicho MCP', ticket: 'high' }).returning();
   const region = await resolveRegion(tx, {
     state: 'PR',
     city: 'Curitiba',
@@ -33,7 +33,7 @@ async function world(tx: Tx) {
   return { niche: niche!, region };
 }
 const other = async (tx: Tx) =>
-  (await tx.insert(niches).values({ name: 'Outro nicho MCP', ticket: 'baixo' }).returning())[0]!;
+  (await tx.insert(niches).values({ name: 'Outro nicho MCP', ticket: 'low' }).returning())[0]!;
 
 const lead = (over: Record<string, unknown> = {}) => ({
   name: 'Clínica Alfa',

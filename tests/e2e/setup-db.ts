@@ -43,7 +43,7 @@ if (seed.status !== 0) throw new Error('seed falhou');
 // fixtures mínimas: leads, 1 negociação e 2 itens de fila tiram painel, lista, funil e fila do estado vazio;
 // o resto cada teste cria e remove
 await pool.query(`
-  insert into niches (name, ticket) values ('Clínicas odontológicas', 'alto'), ('Escritórios de advocacia', 'medio');
+  insert into niches (name, ticket) values ('Clínicas odontológicas', 'high'), ('Escritórios de advocacia', 'medium');
   insert into regions (state, city, neighborhood, label)
     values ('PR', 'Curitiba', 'Xaxim', 'PR - Curitiba - Xaxim'), ('PR', 'Curitiba', 'Batel', 'PR - Curitiba - Batel');
   insert into leads (name, name_normalized, niche_id, region_id, data_source, contact_status)

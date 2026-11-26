@@ -14,7 +14,7 @@ const base = {
 async function world(tx: Parameters<Parameters<typeof inTx>[0]>[0]): Promise<void> {
   const [niche] = await tx
     .insert(schema.niches)
-    .values({ name: 'Nicho score', ticket: 'alto' })
+    .values({ name: 'Nicho score', ticket: 'high' })
     .returning();
   const region = await resolveRegion(tx, {
     state: 'PR',

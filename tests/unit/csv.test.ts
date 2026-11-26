@@ -81,7 +81,7 @@ describe('parseLeadRow', () => {
       proposalValue: '1200.50',
       includedAt: '2026-11-12',
     });
-    expect(r.ticket).toBe('medio');
+    expect(r.ticket).toBe('medium');
     expect('email' in r.values).toBe(false);
   });
   it('status desconhecido vira new e o original vai para as observações', () => {
@@ -130,7 +130,7 @@ describe('leadToRow ↔ parseLeadRow', () => {
     } as { score: number } & Record<string, unknown>;
     const row = leadToRow(
       lead,
-      { name: 'Clínicas odontológicas', ticket: 'alto' },
+      { name: 'Clínicas odontológicas', ticket: 'high' },
       'Xaxim, Curitiba/PR',
     );
 
@@ -150,7 +150,7 @@ describe('leadToRow ↔ parseLeadRow', () => {
     }
     expect(back.nicheName).toBe('Clínicas odontológicas');
     expect(back.place).toBe('Xaxim, Curitiba/PR');
-    expect(back.ticket).toBe('alto');
+    expect(back.ticket).toBe('high');
     expect(back.sheetScore).toBe(85);
   });
 });
