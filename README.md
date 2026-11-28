@@ -21,6 +21,8 @@ bun run db:seed
 bun run dev                        # http://localhost:3000
 ```
 
+O `bun run dev` (e o `bunx next dev`) **avisa** no terminal quando há migrations pendentes (`[db] N migrations pendentes… Rode bun run db:migrate`); ele não migra sozinho nem trava a subida, e fica quieto com o banco em dia. Em produção, as migrations são aplicadas no build (`docs/DEPLOY.md`, passo 4).
+
 ### Variáveis de ambiente (`.env.local`)
 
 Gere `BETTER_AUTH_SECRET`, `TOKEN_ENCRYPTION_KEY` (`openssl rand -base64 32`) e `CRON_SECRET` (`openssl rand -hex 24`). `DATABASE_URL=postgres://lacus:lacus@localhost:54329/lacus_crm` para o Docker local. O app valida tudo no boot (`src/lib/env.ts`) e diz o que falta. A lista completa, por ambiente, está em `docs/DEPLOY.md`.
@@ -46,7 +48,8 @@ O seed lê `.data/nichos.csv` (fora do git), exportado da aba "Nichos" da planil
 | `bun run e2e`                                   | Playwright (desktop e Pixel 7) contra `next dev`, num banco `<nome>_e2e` **recriado a cada execução** (nunca o de dev) |
 | `bun run e2e:pwa`                               | PWA, painel e MCP contra o build de produção (porta 3101), também no banco `<nome>_e2e`                                |
 | `bun run db:generate`                           | gera migration do schema Drizzle                                                                                       |
-| `bun run db:migrate` / `db:rollback [n\|all]`   | aplica / desfaz migrations (`drizzle/down/*.down.sql`)                                                                 |
+| `bun run db:migrate` / `db:rollback [n\|all]`   | aplica (sob advisory lock, numa transação) / desfaz migrations (`drizzle/down/*.down.sql`)                             |
+| `bun run db:status [--quiet] [--strict]`        | diz se o banco está atrás das migrations do repositório (`--strict` sai com 1 se houver pendentes)                     |
 | `bun run db:seed`                               | seeds idempotentes                                                                                                     |
 | `bun run db:import [--insert-only] [--dry-run]` | importa os CSVs de `.data/`                                                                                            |
 | `bun run icons`                                 | regenera os ícones em `public/brand`                                                                                   |

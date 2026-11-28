@@ -79,7 +79,7 @@ validation_error: Entrada inválida
 
 ### Erro `internal_error: Configuração inválida no banco: <chave>`
 
-Um valor de `settings` guardado no banco não passa no schema atual da chave: quase sempre é uma migration pendente (por exemplo a `0005`, que renomeou `ticketPoints` de `alto/medio/baixo` para `high/medium/low`). Rode `bun run db:migrate` contra o Neon (passo a passo em `docs/DEPLOY.md`). Para conferir, `select value from settings where key = '<chave>';`.
+Um valor de `settings` guardado no banco não passa no schema atual da chave: quase sempre é uma migration pendente (por exemplo a `0005`, que renomeou `ticketPoints` de `alto/medio/baixo` para `high/medium/low`). O deploy de Production normalmente aplica as migrations, então a causa costuma ser um deploy pulado (`SKIP_DB_MIGRATIONS`), uma migration manual (`-- lacus:manual`, como a `0005`) ou um build que falhou: olhe o log do build na Vercel. Para confirmar, rode `bun run db:status` com `DATABASE_URL_UNPOOLED` do Neon; se houver pendentes, aplique-as como em `docs/DEPLOY.md` (passo 4). Para conferir, `select value from settings where key = '<chave>';`.
 
 ### REST (`/api/v1`)
 
