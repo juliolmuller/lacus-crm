@@ -109,6 +109,15 @@ describe('checkMigrationStatus', () => {
     expect(JSON.stringify(status)).not.toContain('postgres://');
   });
 
+  it('URL malformada vira unreachable, sem lançar nem vazar credenciais', async () => {
+    const status = await checkMigrationStatus('postgres://u:p@localhost:invalid/db', {
+      timeoutMs: 500,
+    });
+
+    expect(status.kind).toBe('unreachable');
+    expect(JSON.stringify(status)).not.toContain('u:p');
+  });
+
   it('sem URL, avisa em vez de lançar', async () => {
     expect(await checkMigrationStatus(undefined)).toEqual({
       kind: 'unreachable',
@@ -169,8 +178,9 @@ describe('runMigrations', () => {
   });
 
   it('em deploy, migration comum pendente é aplicada', async () => {
+    const when = Date.now();
     const folder = await copyFolder((j) =>
-      j.entries.push({ idx: j.entries.length, version: '7', when: Date.now(), tag: '9999_fake' }),
+      j.entries.push({ idx: j.entries.length, version: '7', when, tag: '9999_fake' }),
     );
 
     await writeFile(join(folder, '9999_fake.sql'), 'SELECT 1;\n');
@@ -183,9 +193,8 @@ describe('runMigrations', () => {
       ).resolves.toEqual(['9999_fake']);
       expect(await appliedCount()).toBe(before + 1);
     } finally {
-      await client.query(
-        'DELETE FROM drizzle.__drizzle_migrations WHERE created_at = (SELECT max(created_at) FROM drizzle.__drizzle_migrations)',
-      );
+      // Apaga só a linha da migration falsa (pelo `when`): se ela não chegou a ser aplicada, nada é removido.
+      await client.query('DELETE FROM drizzle.__drizzle_migrations WHERE created_at = $1', [when]);
     }
   });
 
@@ -207,8 +216,9 @@ describe('runMigrations', () => {
   });
 
   it('fora de deploy, a mesma migration manual é aplicada (rodar à mão é o passo explícito)', async () => {
+    const when = Date.now();
     const folder = await copyFolder((j) =>
-      j.entries.push({ idx: j.entries.length, version: '7', when: Date.now(), tag: '9999_fake' }),
+      j.entries.push({ idx: j.entries.length, version: '7', when, tag: '9999_fake' }),
     );
 
     await writeFile(join(folder, '9999_fake.sql'), '-- lacus:manual\nSELECT 1;\n');
@@ -222,9 +232,8 @@ describe('runMigrations', () => {
       expect(await appliedCount()).toBe(before + 1);
     } finally {
       // Deixa o banco de teste como estava, para os outros arquivos.
-      await client.query(
-        'DELETE FROM drizzle.__drizzle_migrations WHERE created_at = (SELECT max(created_at) FROM drizzle.__drizzle_migrations)',
-      );
+      // Apaga só a linha da migration falsa (pelo `when`): se ela não chegou a ser aplicada, nada é removido.
+      await client.query('DELETE FROM drizzle.__drizzle_migrations WHERE created_at = $1', [when]);
     }
 
     expect(await appliedCount()).toBe(before);

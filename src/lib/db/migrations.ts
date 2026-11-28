@@ -124,13 +124,6 @@ export async function checkMigrationStatus(
   if (!url) return { kind: 'unreachable', reason: 'DATABASE_URL não definida' };
 
   const { timeoutMs = 3000, folder } = opts;
-  const client = new Client({
-    connectionString: url,
-    connectionTimeoutMillis: timeoutMs,
-    query_timeout: timeoutMs,
-  });
-
-  client.on('error', () => {}); // queda de conexão ociosa não pode derrubar o processo
 
   try {
     await readJournal(folder);
@@ -138,14 +131,23 @@ export async function checkMigrationStatus(
     return { kind: 'unreachable', reason: `journal de migrations ilegível: ${safeReason(err)}` };
   }
 
+  let client: Client | undefined;
+
   try {
+    // A construção também pode lançar (URL malformada), então fica dentro do try.
+    client = new Client({
+      connectionString: url,
+      connectionTimeoutMillis: timeoutMs,
+      query_timeout: timeoutMs,
+    });
+    client.on('error', () => {}); // queda de conexão ociosa não pode derrubar o processo
     await client.connect();
 
     return await getMigrationStatus(client, { folder });
   } catch (err) {
     return { kind: 'unreachable', reason: safeReason(err) };
   } finally {
-    await client.end().catch(() => {});
+    await client?.end().catch(() => {});
   }
 }
 

@@ -295,7 +295,7 @@ Contexto: na [issue #17](https://github.com/juliolmuller/lacus-crm/issues/17) o 
 Consequências:
 
 - Há uma janela breve em que o código antigo atende contra o schema novo (a migration roda antes da promoção). Daí a regra de expandir/contrair; o que não cabe nela vai para `-- lacus:manual`.
-- Todas as pendentes entram numa transação única (comportamento do migrator do drizzle): falhou uma, nenhuma foi aplicada. O custo é que instruções que não rodam em transação (`CREATE INDEX CONCURRENTLY`) também precisam de `-- lacus:manual`.
+- Todas as pendentes entram numa transação única (comportamento do migrator do drizzle): falhou uma, nenhuma foi aplicada. O custo é que instruções que não rodam em transação (`CREATE INDEX CONCURRENTLY`) não são suportadas por este fluxo: o `-- lacus:manual` só tira a migration do deploy, e o `db:migrate` à mão usa o mesmo migrator, também em transação. Elas se rodam direto no `psql` (conexão unpooled), fora das migrations, com a migration do repositório idempotente (`IF NOT EXISTS`) ou sem a instrução.
 - Como a migration roda por último, um build que falha por outro motivo nunca deixa o banco migrado sem o código correspondente. O inverso (migrou, mas a promoção falhou depois) deixa o banco à frente do código antigo, o que a regra de compatibilidade cobre.
 - Previews nunca migram; só passam a ter schema próprio quando houver um branch do Neon por preview (fora de escopo).
 - O lock exige a URL direta (unpooled) e a variável precisa estar exposta ao build em Production. O Neon por TCP depende de `sslmode=require` na URL, como já era no `drizzle-kit migrate`.

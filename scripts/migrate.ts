@@ -72,7 +72,7 @@ async function main(): Promise<void> {
           (err instanceof Error ? err.message : String(err)).split('\n')[0];
 
     fail(
-      `Falha ao aplicar migrations: ${message}. Nada foi aplicado (transação única).${deploy ? ' Deploy interrompido.' : ''}`,
+      `Falha ao aplicar migrations: ${message}. As migrations rodam numa transação única, então uma falha antes do commit não aplica nenhuma; se a conexão caiu perto do fim, confira o estado com \`bun run db:status\`.${deploy ? ' Deploy interrompido.' : ''}`,
     );
   }
 }
