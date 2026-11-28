@@ -17,19 +17,33 @@ Tecnicamente tudo cabe no Hobby: funções com `maxDuration = 60` (limite do Hob
 
 ## 1. Projeto na Vercel e banco no Neon
 
-1. Importe o repositório como projeto Vercel (framework Next.js; build `bun run build`, Node 24).
+1. Importe o repositório como projeto Vercel (framework Next.js, Node 24). O `vercel.json` define o build como `bun run vercel-build` (`next build` e, só em Production, as migrations do passo 4); não é preciso configurar nada no painel.
 2. Em **Storage**, adicione o **Neon** pela integração da Vercel. Ela cria `DATABASE_URL` (pooled) e `DATABASE_URL_UNPOOLED` (conexão direta) no projeto. Confirme que existem em **Production** (e em Preview, se quiser banco nos previews; use um branch do Neon para isso, nunca o de produção). No assistente do Neon: marque só **Production e Preview** (Development não: um `vercel env pull` poderia levar as credenciais reais para o `.env.local`), deixe **Neon Auth**, **Data API** e **Realtime** desligados (o login é o Better Auth e o app não usa realtime) e escolha a região próxima das funções (padrão da Vercel: `iad1`/`us-east-1`; em `sa-east-1`, ajuste a região das funções para `gru1`). Se a integração criar `VITE_NEON_AUTH_URL` e `NEON_AUTH_BASE_URL`, o app não as usa; podem ser removidas. Não sobrescreva `DATABASE_URL`/`DATABASE_URL_UNPOOLED` à mão: elas são geridas pela integração, e **Preview e Production apontam para o mesmo banco** enquanto o branch por deploy de preview não for ativado.
 3. **Backup**: só é obrigatório quando o banco **já tem dados** (antes de importar leads reais sobre um banco em uso, antes de migrations que mexam em tabelas com dados e, depois, de tempos em tempos, com `pg_dump` da conexão unpooled guardado fora do Neon e do repositório). Num banco recém-criado e vazio, pule: migrations e seed se refazem em minutos e os leads vêm dos CSVs. Para criar o backup: no painel do Neon, **Branches > Create branch** a partir de `main` (nome sugerido `backup-AAAA-MM-DD`, "Current data"). Confira também a janela de restauração por ponto no tempo do seu plano (Settings > Storage).
-4. Migrar e semear com a conexão direta, da sua máquina:
+4. **Migrations e seed.**
+
+   **Automático em Production.** O build roda `next build && bun scripts/migrate.ts --deploy`. Depois que o `next build` passa e antes de a Vercel promover o deploy, o script aplica as migrations pendentes com a conexão direta (`DATABASE_URL_UNPOOLED`, obrigatória em Production: o pooler quebra o advisory lock). Detalhes:
+
+   - **Só Production migra.** Com `VERCEL_ENV` diferente de `production` (Preview, Development), o script imprime `Migrations não aplicadas: VERCEL_ENV=<x> (só produção migra)` e sai sem abrir conexão. Preview e Production compartilham o mesmo banco enquanto o branch por preview não for ativado, então um preview nunca migra.
+   - **Falha derruba o deploy.** Qualquer erro sai com código 1 e a Vercel não promove o deploy. O migrator do drizzle aplica todas as pendentes **numa única transação**: se uma falha, nenhuma é aplicada. Por isso uma migration que não roda dentro de transação (por exemplo `CREATE INDEX CONCURRENTLY`) precisa do marcador `-- lacus:manual`.
+   - **Sem corrida entre deploys.** O script segura um advisory lock de sessão (espera até 120 s, ajustável com `MIGRATIONS_LOCK_TIMEOUT_MS`; estourou, falha com `Outra migração está em andamento (lock ocupado)`). O segundo deploy, ao entrar, já não encontra nada pendente.
+   - **Janela de código antigo com schema novo.** A migration roda antes da promoção, então o deploy anterior atende por instantes com o schema novo. Toda migration automática precisa ser compatível com o código que está em produção (expandir, depois contrair: adicione colunas e tabelas num deploy, remova o que ficou sem uso em outro).
+   - **Migrations manuais.** Uma migration que reescreve ou apaga dados, ou que o código anterior não tolera, leva a linha `-- lacus:manual` no `.sql` (a `0005_english_enum_values` está numa lista fixa no código, porque migrations existentes não se editam). O build **não aplica nenhuma** e falha antes de mexer no banco, listando as tags. O passo manual: (1) crie o branch de backup no Neon (passo 3); (2) rode `bun run db:migrate` da sua máquina, com a URL unpooled de produção, como abaixo; (3) faça o redeploy, que não encontra mais nada pendente. O `db:migrate` local ignora o marcador: rodá-lo à mão é o passo explícito.
+
+   **Manual**, para a primeira configuração, o seed e as migrations `-- lacus:manual`, da sua máquina com a conexão direta:
 
    ```bash
    DATABASE_URL_UNPOOLED='<string unpooled do Neon>' DATABASE_URL='<a mesma>' bun run db:migrate
    DATABASE_URL='<string do Neon>' bun run db:seed
    ```
 
-   Aplique as migrations **antes** (ou logo depois) do deploy que depende delas: a suspeita da issue #11 (26/11/2026) é que o código com `ticketPoints` em inglês foi ao ar antes da `0005` no Neon, e `crm_update_lead` e `crm_save_diagnosis` falharam ao ler a configuração antiga (causa provável, não confirmada em produção; agora o erro é `internal_error` citando a configuração).
+   Para conferir o estado do banco sem alterar nada: `DATABASE_URL_UNPOOLED='<string unpooled do Neon>' bun run db:status` (diz se há migrations pendentes ou se o banco está à frente do código).
 
-   Rollback, se precisar: `bun run db:rollback 1` (usa `drizzle/down/*.down.sql`) ou restaure o branch de backup.
+   Histórico: a suspeita da issue #11 (26/11/2026) era que o código com `ticketPoints` em inglês foi ao ar antes da `0005` no Neon, e `crm_update_lead` e `crm_save_diagnosis` falharam ao ler a configuração antiga (causa provável, não confirmada em produção). A [issue #17](https://github.com/juliolmuller/lacus-crm/issues/17) fechou essa lacuna: o deploy aplica o que for seguro e para, com instruções, no que exige passo manual. A `0005`, se ainda estiver pendente, falha o primeiro build de Production depois do merge (veja o passo 9); é o comportamento esperado.
+
+   **Pulo de emergência.** Se o passo automático estiver bloqueando um deploy urgente (por exemplo, para reverter código), defina `SKIP_DB_MIGRATIONS=1` em Production e faça o redeploy: o build imprime `ATENÇÃO: migrations puladas por SKIP_DB_MIGRATIONS` e segue sem migrar. **Remova a variável depois**, ou nenhum deploy volta a migrar.
+
+   **Rollback.** `bun run db:rollback 1` (usa `drizzle/down/*.down.sql`), com a URL unpooled de produção, ou restaure o branch de backup do Neon. O "instant rollback" da Vercel volta o código, **não** desfaz migrations: se o código antigo não tolera o schema novo, desfaça a migration antes.
 
 5. Dados reais: `bun run db:import --insert-only` com os CSVs de `.data/` apontando para o Neon (o modo "somente novos" é o padrão seguro em produção). Confira `.data/import-report.json`.
 
@@ -122,6 +136,9 @@ O `vercel.json` já declara o Schedule `followups-hourly` (`0 7-21 * * *`, `Amer
 
 ## 9. Problemas conhecidos
 
+- **Build de Production falhou com `migration(s) manual(is) pendente(s)`**: há migration marcada `-- lacus:manual` (ou a `0005`) ainda não aplicada. Nada foi alterado no banco. Faça o backup (passo 3), rode `bun run db:migrate` da sua máquina com a URL unpooled de produção e redeploy.
+- **Build de Production falhou com `Outra migração está em andamento (lock ocupado)`**: outro deploy segurava o lock por mais de 120 s. Espere ele terminar e faça o redeploy.
+- **Build de Production falhou com `DATABASE_URL_UNPOOLED é obrigatória`**: a variável não está exposta ao build em Production (passo 1.2).
 - **`/login?error=invalid_scope`**: faltam os escopos **Email** e **Profile** habilitados em Manage no app da Vercel (passo 4).
 - **`Acesso negado. sub recebido: …`**: `OWNER_VERCEL_USER_ID` (ou `OWNER_EMAIL`) não confere ou está vazia. Em desenvolvimento a tela mostra o `sub`; copie-o para o `.env.local` e para a Vercel (Production e Preview) e reinicie o `bun run dev` (o `.env.local` só é lido na subida).
 - **`bun run dev` devolve 500 em todas as rotas com `Turbopack Error … task is missing in memory or persistent storage`**: cache do Turbopack corrompido (acontece depois de interromper o servidor durante a escrita ou de mover pastas). Pare o servidor, apague `.next` (só cache) e suba de novo.

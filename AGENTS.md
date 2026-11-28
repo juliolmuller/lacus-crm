@@ -29,6 +29,7 @@ Single-user prospecting CRM for Lacus Solutions (pt-BR only): Next.js 16 App Rou
 ```sh
 bun install && docker compose up -d && cp .env.example .env.local
 bun run db:migrate && bun run db:seed && bun run dev
+bun run db:status                    # is the database behind the migrations in the repo? (dev also warns on startup)
 bun run lint && bun run typecheck && bun run test
 bun run test:int                     # own `<db>_test` database
 bun run e2e && bun run e2e:pwa       # own `<db>_e2e` database, recreated every run
@@ -49,6 +50,7 @@ Run the relevant gates before saying something works; never claim an unrun check
 
 - Business rules live in `src/lib/services/`. Server Actions, REST (`src/lib/api`) and MCP (`src/lib/mcp`) are thin adapters over the same services and the shared ops in `src/lib/api/ops.ts`.
 - Every schema change is a Drizzle migration plus its rollback in `drizzle/down/`; CI runs migrate, rollback all, migrate.
+- Migrations must be backward compatible with the code in production (expand/contract). Those that rewrite or drop data, or break the previous code, carry a `-- lacus:manual` line and are applied by hand after a backup (docs/DEPLOY.md); production builds apply all the others automatically (`vercel-build`, production only, under an advisory lock, single transaction).
 - Tests and e2e never touch the dev database: integration uses `<db>_test`, e2e uses `<db>_e2e`. Real data stays in `.data/` (out of git); fixtures are fictional.
 - Follow-ups never send anything on their own: they create reminders and suggestions the owner acts on. "Não contatar" candidates are reported, never applied automatically.
 

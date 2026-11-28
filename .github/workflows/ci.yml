@@ -62,6 +62,7 @@ jobs:
           bun run db:migrate
           bun run db:rollback all
           bun run db:migrate
+          bun run db:status --strict
       - run: bun run db:seed
       - name: Integração (triggers)
         run: bun run test:int
